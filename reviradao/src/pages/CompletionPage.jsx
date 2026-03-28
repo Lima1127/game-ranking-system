@@ -49,6 +49,10 @@ export default function CompletionPage() {
       genres: ['Nao informado'],
     });
 
+    queryClient.setQueryData(['games'], (currentGames = []) => {
+      const alreadyCached = currentGames.some((game) => game.id === response.data.id);
+      return alreadyCached ? currentGames : [...currentGames, response.data];
+    });
     queryClient.invalidateQueries({ queryKey: ['games'] });
     return response.data.id;
   };
@@ -73,7 +77,7 @@ export default function CompletionPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       const gameId = await resolveGameId();
-      const platinumProofId = form.platinum ? await uploadPlatinumProof() : null;
+      const platinumProofId = await uploadPlatinumProof();
 
       return api.post(
         '/completions',
@@ -98,10 +102,10 @@ export default function CompletionPage() {
       );
     },
     onSuccess: () => {
-      alert('Conclusao registrada com sucesso!');
+      alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
       setForm(buildInitialForm());
       setPlatinumFile(null);
-      queryClient.invalidateQueries({ queryKey: ['ranking'] });
+      queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
     },
     onError: (error) => {
       alert(`Erro ao registrar: ${error.response?.data?.message || error.message}`);
@@ -114,10 +118,6 @@ export default function CompletionPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
-
-    if (name === 'platinum' && !checked) {
-      setPlatinumFile(null);
-    }
   };
 
   const handleFileChange = (e) => {
@@ -151,8 +151,8 @@ export default function CompletionPage() {
       return;
     }
 
-    if (form.platinum && !platinumFile) {
-      alert('Anexe uma imagem de comprovante para registrar platina.');
+    if (!platinumFile) {
+      alert('Anexe uma imagem para enviar a solicitacao.');
       return;
     }
 
@@ -262,9 +262,9 @@ export default function CompletionPage() {
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
-            <span className="ml-3 font-semibold text-gray-700">
-              Platina (100%)
-              <span className="block text-xs text-gray-500 font-normal">Ao marcar, sera necessario anexar um comprovante em imagem.</span>
+              <span className="ml-3 font-semibold text-gray-700">
+                Platina (100%)
+              <span className="block text-xs text-gray-500 font-normal">Marque quando o anexo enviado comprovar a platina.</span>
             </span>
           </label>
 
@@ -297,27 +297,25 @@ export default function CompletionPage() {
           </label>
         </div>
 
-        {form.platinum && (
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
-            <label className="block text-amber-900 font-bold mb-2">
-              Comprovante de Platina <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-amber-900 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-600 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-amber-700"
-            />
-            <p className="mt-2 text-sm text-amber-800">
-              Aceita apenas imagem, com limite de {formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <label className="block text-amber-900 font-bold mb-2">
+            Anexo da Solicitacao <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-amber-900 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-600 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-amber-700"
+          />
+          <p className="mt-2 text-sm text-amber-800">
+            Toda solicitacao exige uma imagem anexada, com limite de {formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.
+          </p>
+          {platinumFile && (
+            <p className="mt-2 text-sm text-amber-900">
+              Arquivo selecionado: <strong>{platinumFile.name}</strong> ({formatFileSize(platinumFile.size)})
             </p>
-            {platinumFile && (
-              <p className="mt-2 text-sm text-amber-900">
-                Arquivo selecionado: <strong>{platinumFile.name}</strong> ({formatFileSize(platinumFile.size)})
-              </p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="mt-8 flex gap-4">
           <button

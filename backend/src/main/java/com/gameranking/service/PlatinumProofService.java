@@ -58,11 +58,33 @@ public class PlatinumProofService {
                 .orElseThrow(() -> new NotFoundException("Comprovante de platina nao encontrado"));
     }
 
+    public String getContentType(UUID proofId) {
+        return findById(proofId).getContentType();
+    }
+
     @Transactional
     public void attachToCompletion(UUID proofId, Completion completion) {
         PlatinumProof proof = findById(proofId);
         proof.setCompletion(completion);
         platinumProofRepository.save(proof);
+    }
+
+    @Transactional
+    public void replaceCompletionProof(UUID proofId, Completion completion) {
+        deleteByCompletionId(completion.getId());
+        attachToCompletion(proofId, completion);
+    }
+
+    @Transactional
+    public void deleteByCompletionId(UUID completionId) {
+        platinumProofRepository.findByCompletionId(completionId).ifPresent(proof -> {
+            try {
+                Files.deleteIfExists(Path.of(proof.getStorageKey()));
+            } catch (IOException ex) {
+                throw new RuntimeException("Falha ao remover anexo do disco", ex);
+            }
+            platinumProofRepository.delete(proof);
+        });
     }
 
     private String getExtension(String fileName) {

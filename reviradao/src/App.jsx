@@ -6,6 +6,10 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import RankingPage from './pages/RankingPage';
 import CompletionPage from './pages/CompletionPage';
+import CompletionUpdatePage from './pages/CompletionUpdatePage';
+import RequestsPage from './pages/RequestsPage';
+import AdminRecordsPage from './pages/AdminRecordsPage';
+import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 
 function ProtectedRoute({ children }) {
   const { user, isLoading } = useAuth();
@@ -28,8 +32,33 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
 function MainLayout({ children }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -37,7 +66,7 @@ function MainLayout({ children }) {
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Game Ranking</h1>
-          <nav className="flex gap-4 items-center">
+          <nav className="flex gap-4 items-center flex-wrap">
             <Link to="/dashboard" className="hover:opacity-80">
               Dashboard
             </Link>
@@ -47,6 +76,22 @@ function MainLayout({ children }) {
             <Link to="/completion" className="hover:opacity-80">
               Registrar
             </Link>
+            <Link to="/requests" className="hover:opacity-80">
+              Solicitacoes
+            </Link>
+            {user?.role === 'ADMIN' && (
+              <>
+                <Link to="/admin/records" className="hover:opacity-80">
+                  Admin
+                </Link>
+                <Link to="/admin/logs" className="hover:opacity-80">
+                  Logs
+                </Link>
+                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
+                  Admin
+                </span>
+              </>
+            )}
             <button
               onClick={() => {
                 logout();
@@ -111,6 +156,46 @@ function AppContent() {
               <CompletionPage />
             </MainLayout>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/completion/:completionId/update"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CompletionUpdatePage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/requests"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <RequestsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/records"
+        element={
+          <AdminRoute>
+            <MainLayout>
+              <AdminRecordsPage />
+            </MainLayout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/logs"
+        element={
+          <AdminRoute>
+            <MainLayout>
+              <AdminAuditLogsPage />
+            </MainLayout>
+          </AdminRoute>
         }
       />
       <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
