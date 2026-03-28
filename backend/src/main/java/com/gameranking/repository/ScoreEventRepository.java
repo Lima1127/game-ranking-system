@@ -14,7 +14,8 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
             select new com.gameranking.web.dto.ranking.RankingRowResponse(
                 se.user.id,
                 se.user.displayName,
-                coalesce(sum(se.points), 0)
+                coalesce(sum(se.points), 0),
+                coalesce(sum(case when se.ruleCode = 'UNDERDOG_BONUS' then 1 else 0 end), 0)
             )
             from ScoreEvent se
             where se.edition.id = :editionId
@@ -22,4 +23,12 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
             order by coalesce(sum(se.points), 0) desc
             """)
     List<RankingRowResponse> getRanking(UUID editionId);
+
+    @Query("""
+            select coalesce(sum(se.points), 0)
+            from ScoreEvent se
+            where se.edition.id = :editionId
+              and se.user.id = :userId
+            """)
+    Long getTotalPointsForUser(UUID editionId, UUID userId);
 }
