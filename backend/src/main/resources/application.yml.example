@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    # Ajuste para o seu PostgreSQL local
+    url: jdbc:postgresql://localhost:5432/game_ranking
+    username: postgres
+    password: sua_senha_aqui
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    # Troque este valor em ambientes reais
+    secret: troque-esta-chave-em-producao
+    expiration-seconds: 7200
+  storage:
+    root-path: ./storage
