@@ -57,7 +57,6 @@ public class CompletionService {
         }
 
         boolean firstInEdition = !completionRepository.existsByEditionIdAndGameId(edition.getId(), game.getId());
-        boolean inReleaseYear = request.completedAt().getYear() == game.getReleaseYear();
 
         Completion completion = Completion.builder()
                 .id(UUID.randomUUID())
@@ -68,7 +67,7 @@ public class CompletionService {
                 .hoursPlayed(request.hoursPlayed())
                 .firstTimeEver(request.firstTimeEver())
                 .firstInEdition(firstInEdition)
-                .completedInReleaseYear(inReleaseYear)
+                .completedInReleaseYear(request.completedInReleaseYear())
                 .platinum(request.platinum())
                 .coop(request.coop())
                 .coopPlayers(request.coopPlayers())
@@ -84,7 +83,15 @@ public class CompletionService {
             platinumProofService.attachToCompletion(request.platinumProofId(), saved);
         }
 
-        boolean underdogBonus = false;
+        Long userCurrentScore = scoreEventRepository.getTotalPointsForUser(edition.getId(), user.getId());
+        Long leaderScore = scoreEventRepository.getRanking(edition.getId()).stream()
+                .mapToLong(row -> row.totalPoints() == null ? 0L : row.totalPoints())
+                .max()
+                .orElse(0L);
+        boolean underdogBonus = leaderScore != null
+                && userCurrentScore != null
+                && leaderScore - userCurrentScore >= 20;
+
         List<ScoreEvent> events = scoringEngine.buildCompletionEvents(saved, edition, user, underdogBonus);
         scoreEventRepository.saveAll(events);
 

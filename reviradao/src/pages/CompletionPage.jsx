@@ -1,114 +1,199 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+
+const MAX_PLATINUM_IMAGE_SIZE = 5 * 1024 * 1024;
+
+const buildInitialForm = () => ({
+  gameName: '',
+  completedAt: new Date().toISOString().split('T')[0],
+  hoursPlayed: '',
+  firstTimeEver: false,
+  firstInEdition: false,
+  completedInReleaseYear: false,
+  platinum: false,
+});
+
+function formatFileSize(size) {
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 export default function CompletionPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
-  const [form, setForm] = useState({
-    gameId: '',
-    editionId: '',
-    completedAt: new Date().toISOString().split('T')[0],
-    hoursPlayed: '',
-    firstTimeEver: false,
-    firstInEdition: false,
-    completedInReleaseYear: false,
-    platinum: false
-  });
+  const [form, setForm] = useState(buildInitialForm);
+  const [platinumFile, setPlatinumFile] = useState(null);
 
   const { data: games = [], isLoading: gamesLoading } = useQuery({
     queryKey: ['games'],
     queryFn: async () => {
       const response = await api.get('/games');
       return response.data;
-    }
+    },
   });
+
+  const resolveGameId = async () => {
+    const normalizedName = form.gameName.trim().toLowerCase();
+    const existingGame = games.find((game) => game.name.trim().toLowerCase() === normalizedName);
+
+    if (existingGame) {
+      return existingGame.id;
+    }
+
+    const response = await api.post('/games', {
+      name: form.gameName.trim(),
+      releaseYear: Number(form.completedAt.slice(0, 4)),
+      estimatedHoursMain: null,
+      estimatedHoursPlatinum: null,
+      genres: ['Nao informado'],
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['games'] });
+    return response.data.id;
+  };
+
+  const uploadPlatinumProof = async () => {
+    if (!platinumFile) {
+      return null;
+    }
+
+    const payload = new FormData();
+    payload.append('file', platinumFile);
+
+    const response = await api.post('/uploads/platinum', payload, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.proofId;
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      return api.post('/completions', form, {
-        headers: { 'X-User-Id': user.id }
-      });
+      const gameId = await resolveGameId();
+      const platinumProofId = form.platinum ? await uploadPlatinumProof() : null;
+
+      return api.post(
+        '/completions',
+        {
+          gameId,
+          completedAt: form.completedAt,
+          hoursPlayed: form.hoursPlayed,
+          firstTimeEver: form.firstTimeEver,
+          completedInReleaseYear: form.completedInReleaseYear,
+          platinum: form.platinum,
+          platinumProofId,
+          coop: false,
+          coopPlayers: null,
+          hypeParticipation: false,
+          hypeCompletedBonus: false,
+          rotativeList: false,
+          notes: null,
+        },
+        {
+          headers: { 'X-User-Id': user.id },
+        }
+      );
     },
     onSuccess: () => {
-      alert('✅ Conclusão registrada com sucesso!');
-      // Resetar form
-      setForm({
-        gameId: '',
-        editionId: '',
-        completedAt: new Date().toISOString().split('T')[0],
-        hoursPlayed: '',
-        firstTimeEver: false,
-        firstInEdition: false,
-        completedInReleaseYear: false,
-        platinum: false
-      });
-      // Invalidar cache do ranking
+      alert('Conclusao registrada com sucesso!');
+      setForm(buildInitialForm());
+      setPlatinumFile(null);
       queryClient.invalidateQueries({ queryKey: ['ranking'] });
     },
     onError: (error) => {
-      alert('❌ Erro ao registrar: ' + (error.response?.data?.message || error.message));
-    }
+      alert(`Erro ao registrar: ${error.response?.data?.message || error.message}`);
+    },
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
+
+    if (name === 'platinum' && !checked) {
+      setPlatinumFile(null);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      setPlatinumFile(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      alert('Envie apenas arquivos de imagem.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > MAX_PLATINUM_IMAGE_SIZE) {
+      alert(`A imagem excede o limite de ${formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.`);
+      e.target.value = '';
+      return;
+    }
+
+    setPlatinumFile(file);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.gameId || !form.hoursPlayed) {
-      alert('Por favor, preencha todos os campos obrigatórios');
+    if (!form.gameName.trim() || !form.hoursPlayed) {
+      alert('Preencha nome do jogo e horas jogadas.');
+      return;
+    }
+
+    if (form.platinum && !platinumFile) {
+      alert('Anexe uma imagem de comprovante para registrar platina.');
       return;
     }
 
     mutation.mutate();
   };
 
-  const selectedGame = games.find(g => g.id === form.gameId);
+  const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+
+  const resetForm = () => {
+    setForm(buildInitialForm());
+    setPlatinumFile(null);
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-4xl font-bold mb-2">✅ Registrar Conclusão</h1>
-      <p className="text-gray-600 mb-8">Informe um jogo que você completou</p>
+      <h1 className="text-4xl font-bold mb-2">Registrar Conclusao</h1>
+      <p className="text-gray-600 mb-8">Informe o jogo livremente. Se ele ainda nao existir, sera criado automaticamente.</p>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Jogo */}
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-gray-700 font-bold mb-2">
               Jogo <span className="text-red-500">*</span>
             </label>
-            <select
-              name="gameId"
-              value={form.gameId}
+            <input
+              type="text"
+              name="gameName"
+              value={form.gameName}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Ex: Elden Ring"
               required
-              disabled={gamesLoading}
-            >
-              <option value="">
-                {gamesLoading ? 'Carregando jogos...' : 'Selecione um jogo'}
-              </option>
-              {games.map(game => (
-                <option key={game.id} value={game.id}>
-                  {game.name} ({game.releaseYear})
-                </option>
-              ))}
-            </select>
+            />
+            <p className="mt-2 text-sm text-gray-500">
+              O nome e digitado livremente pelo usuario. Nao depende mais de uma lista fechada.
+            </p>
           </div>
 
-          {/* Data */}
           <div>
             <label className="block text-gray-700 font-bold mb-2">
-              Data de Conclusão <span className="text-red-500">*</span>
+              Data de Conclusao <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -120,7 +205,6 @@ export default function CompletionPage() {
             />
           </div>
 
-          {/* Horas */}
           <div>
             <label className="block text-gray-700 font-bold mb-2">
               Horas Jogadas <span className="text-red-500">*</span>
@@ -138,20 +222,23 @@ export default function CompletionPage() {
             />
           </div>
 
-          {/* Info do Jogo */}
-          {selectedGame && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600 mb-2">
-                <strong>Campanha:</strong> {selectedGame.estimatedHoursMain || '?'} horas
-              </p>
-              <p className="text-sm text-gray-600">
-                <strong>Platina:</strong> {selectedGame.estimatedHoursPlatinum || '?'} horas
-              </p>
-            </div>
-          )}
+          <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            {form.gameName.trim() ? (
+              matchingGame ? (
+                <p className="text-sm text-green-700">
+                  Este jogo ja existe no sistema e sera reutilizado: <strong>{matchingGame.name}</strong>
+                </p>
+              ) : (
+                <p className="text-sm text-amber-700">
+                  Este jogo ainda nao existe no sistema. Ele sera criado automaticamente ao registrar a conclusao.
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-gray-500">Preencha o nome para o sistema verificar se o jogo ja existe.</p>
+            )}
+          </div>
         </div>
 
-        {/* Checkboxes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <label className="flex items-center cursor-pointer p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
             <input
@@ -162,7 +249,7 @@ export default function CompletionPage() {
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700">
-              🆕 Primeira Experiência
+              Primeira Experiencia
               <span className="block text-xs text-gray-500 font-normal">Primeira vez na vida completando este jogo</span>
             </span>
           </label>
@@ -176,8 +263,8 @@ export default function CompletionPage() {
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700">
-              👑 Platina (100%)
-              <span className="block text-xs text-gray-500 font-normal">Atingiu 100% de completude</span>
+              Platina (100%)
+              <span className="block text-xs text-gray-500 font-normal">Ao marcar, sera necessario anexar um comprovante em imagem.</span>
             </span>
           </label>
 
@@ -190,8 +277,8 @@ export default function CompletionPage() {
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700">
-              🥇 Primeiro na Edição
-              <span className="block text-xs text-gray-500 font-normal">Primeiro participante a completar nesta edição</span>
+              Primeiro na Edicao
+              <span className="block text-xs text-gray-500 font-normal">Primeiro participante a completar nesta edicao</span>
             </span>
           </label>
 
@@ -204,35 +291,45 @@ export default function CompletionPage() {
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700">
-              📅 Em Dia
-              <span className="block text-xs text-gray-500 font-normal">Completou no ano de lançamento</span>
+              Em Dia
+              <span className="block text-xs text-gray-500 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
             </span>
           </label>
         </div>
 
-        {/* Submit */}
+        {form.platinum && (
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <label className="block text-amber-900 font-bold mb-2">
+              Comprovante de Platina <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="block w-full text-sm text-amber-900 file:mr-4 file:rounded-lg file:border-0 file:bg-amber-600 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-amber-700"
+            />
+            <p className="mt-2 text-sm text-amber-800">
+              Aceita apenas imagem, com limite de {formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.
+            </p>
+            {platinumFile && (
+              <p className="mt-2 text-sm text-amber-900">
+                Arquivo selecionado: <strong>{platinumFile.name}</strong> ({formatFileSize(platinumFile.size)})
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="mt-8 flex gap-4">
           <button
             type="submit"
-            disabled={mutation.isLoading || gamesLoading}
+            disabled={mutation.isPending || gamesLoading}
             className="flex-1 bg-primary hover:bg-secondary text-white font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50"
           >
-            {mutation.isLoading ? '⏳ Registrando...' : '✅ Registrar Conclusão'}
+            {mutation.isPending ? 'Registrando...' : 'Registrar Conclusao'}
           </button>
           <button
             type="button"
-            onClick={() => {
-              setForm({
-                gameId: '',
-                editionId: '',
-                completedAt: new Date().toISOString().split('T')[0],
-                hoursPlayed: '',
-                firstTimeEver: false,
-                firstInEdition: false,
-                completedInReleaseYear: false,
-                platinum: false
-              });
-            }}
+            onClick={resetForm}
             className="px-6 bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 rounded-lg transition duration-200"
           >
             Limpar
@@ -246,11 +343,10 @@ export default function CompletionPage() {
         )}
       </form>
 
-      {/* Info */}
       <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-bold text-blue-900 mb-2">💡 Dica</h3>
+        <h3 className="font-bold text-blue-900 mb-2">Dica</h3>
         <p className="text-blue-800 text-sm">
-          Quanto mais campos você marcar, mais pontos ganhará! Aproveite bônus especiais como "Primeira Experiência", "Platina" e "Tempo Valioso" (25h).
+          Se o jogo ainda nao existir no sistema, ele sera cadastrado automaticamente com o genero padrao "Nao informado" e ano tecnico igual ao da data de conclusao.
         </p>
       </div>
     </div>

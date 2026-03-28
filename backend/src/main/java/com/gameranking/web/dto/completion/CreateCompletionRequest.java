@@ -11,6 +11,7 @@ public record CreateCompletionRequest(
         @NotNull LocalDate completedAt,
         @NotNull @DecimalMin("0.0") @DecimalMax("1000.0") BigDecimal hoursPlayed,
         boolean firstTimeEver,
+        boolean completedInReleaseYear,
         boolean platinum,
         UUID platinumProofId,
         boolean coop,
