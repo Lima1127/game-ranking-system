@@ -205,3 +205,39 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Java/Maven
+target/
+.m2/
+*.war
+
+# Spring Boot Configuration Files (sensitive data)
+application.yml
+application.properties
+application-*.yml
+application-*.properties
+!application.yml.example
+!application.yml.template
+!application.properties.example
+!application.properties.template
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local storage
+storage/
