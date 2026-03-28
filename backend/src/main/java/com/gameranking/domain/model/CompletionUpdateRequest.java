@@ -1,8 +1,19 @@
 package com.gameranking.domain.model;
 
-import com.gameranking.domain.enums.CompletionStatus;
-import jakarta.persistence.*;
-import lombok.*;
+import com.gameranking.domain.enums.CompletionUpdateStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,30 +26,23 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "completions")
-public class Completion extends AuditableEntity {
+@Table(name = "completion_update_requests")
+public class CompletionUpdateRequest extends AuditableEntity {
 
     @Id
     private UUID id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "edition_id")
-    private Edition edition;
+    @JoinColumn(name = "completion_id")
+    private Completion completion;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "requested_by_user_id")
+    private User requestedBy;
 
     @ManyToOne
     @JoinColumn(name = "approved_by_user_id")
     private User approvedBy;
-
-    @OneToOne(mappedBy = "completion")
-    private PlatinumProof proof;
-
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "game_id")
-    private Game game;
 
     @Column(name = "completed_at", nullable = false)
     private LocalDate completedAt;
@@ -49,14 +53,14 @@ public class Completion extends AuditableEntity {
     @Column(name = "first_time_ever", nullable = false)
     private boolean firstTimeEver;
 
-    @Column(name = "first_in_edition", nullable = false)
-    private boolean firstInEdition;
-
     @Column(name = "completed_in_release_year", nullable = false)
     private boolean completedInReleaseYear;
 
     @Column(nullable = false)
     private boolean platinum;
+
+    @Column(name = "proof_id")
+    private UUID proofId;
 
     @Column(nullable = false)
     private boolean coop;
@@ -78,7 +82,7 @@ public class Completion extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private CompletionStatus status;
+    private CompletionUpdateStatus status;
 
     @Column(name = "approved_at")
     private OffsetDateTime approvedAt;

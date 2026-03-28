@@ -25,6 +25,13 @@ public class GameService {
 
     @Transactional
     public GameResponse create(CreateGameRequest request) {
+        Game existingGame = gameRepository.findByNameIgnoreCaseAndReleaseYear(request.name(), request.releaseYear())
+                .orElse(null);
+
+        if (existingGame != null) {
+            return toResponse(existingGame);
+        }
+
         Set<Genre> genres = request.genres().stream()
                 .map(this::findOrCreateGenre)
                 .collect(Collectors.toSet());
