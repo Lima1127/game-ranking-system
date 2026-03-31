@@ -49,6 +49,7 @@ public class GameService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<GameResponse> list() {
         return gameRepository.findAll().stream().map(this::toResponse).toList();
     }

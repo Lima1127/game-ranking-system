@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,7 +25,7 @@ export default function CompletionPage() {
   const [form, setForm] = useState(buildInitialForm);
   const [platinumFile, setPlatinumFile] = useState(null);
 
-  const { data: games = [], isLoading: gamesLoading } = useQuery({
+  const { data: games = [], isLoading: gamesLoading, isError: gamesLoadError } = useQuery({
     queryKey: ['games'],
     queryFn: async () => {
       const response = await api.get('/games');
@@ -160,6 +160,33 @@ export default function CompletionPage() {
   };
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+  const hasExistingGameSelected = Boolean(matchingGame);
+  const gameSuggestions = useMemo(() => {
+    const normalizedQuery = form.gameName.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return games
+      .filter((game) => game.name.toLowerCase().includes(normalizedQuery))
+      .slice(0, 6);
+  }, [games, form.gameName]);
+
+  const handleSelectSuggestion = (gameName) => {
+    setForm((prev) => ({
+      ...prev,
+      gameName,
+    }));
+  };
+
+  useEffect(() => {
+    if (hasExistingGameSelected) {
+      setForm((prev) => ({
+        ...prev,
+        firstInEdition: false,
+      }));
+    }
+  }, [hasExistingGameSelected]);
 
   const resetForm = () => {
     setForm(buildInitialForm());
@@ -173,6 +200,12 @@ export default function CompletionPage() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {gamesLoadError && (
+            <div className="md:col-span-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              Nao foi possivel carregar os jogos cadastrados. Recarregue a pagina ou verifique o backend.
+            </div>
+          )}
+
           <div className="md:col-span-2">
             <label className="block text-gray-700 font-bold mb-2">
               Jogo <span className="text-red-500">*</span>
@@ -189,6 +222,20 @@ export default function CompletionPage() {
             <p className="mt-2 text-sm text-gray-500">
               O nome e digitado livremente pelo usuario. Nao depende mais de uma lista fechada.
             </p>
+            {gameSuggestions.length > 0 && (
+              <div className="mt-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                {gameSuggestions.map((game) => (
+                  <button
+                    key={game.id}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(game.name)}
+                    className="block w-full border-b border-gray-100 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 last:border-b-0"
+                  >
+                    {game.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -274,11 +321,16 @@ export default function CompletionPage() {
               name="firstInEdition"
               checked={form.firstInEdition}
               onChange={handleChange}
+              disabled={hasExistingGameSelected}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700">
               Primeiro na Edicao
-              <span className="block text-xs text-gray-500 font-normal">Primeiro participante a completar nesta edicao</span>
+              <span className="block text-xs text-gray-500 font-normal">
+                {hasExistingGameSelected
+                  ? 'Desabilitado porque este jogo ja existe no sistema.'
+                  : 'Primeiro participante a completar nesta edicao'}
+              </span>
             </span>
           </label>
 
