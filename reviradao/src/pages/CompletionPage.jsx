@@ -32,6 +32,16 @@ export default function CompletionPage() {
       return response.data;
     },
   });
+  const { data: myCompletionRequests = [] } = useQuery({
+    queryKey: ['my-completion-requests', user?.id],
+    queryFn: async () => {
+      const response = await api.get('/completions/requests', {
+        headers: { 'X-User-Id': user.id },
+      });
+      return response.data;
+    },
+    enabled: Boolean(user?.id),
+  });
 
   const resolveGameId = async () => {
     const normalizedName = form.gameName.trim().toLowerCase();
@@ -151,6 +161,11 @@ export default function CompletionPage() {
       return;
     }
 
+    if (hasUserCompletionForGame) {
+      alert('Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.');
+      return;
+    }
+
     if (!platinumFile) {
       alert('Anexe uma imagem para enviar a solicitacao.');
       return;
@@ -161,6 +176,9 @@ export default function CompletionPage() {
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
   const hasExistingGameSelected = Boolean(matchingGame);
+  const hasUserCompletionForGame = matchingGame
+    ? myCompletionRequests.some((request) => request.gameId === matchingGame.id)
+    : false;
   const gameSuggestions = useMemo(() => {
     const normalizedQuery = form.gameName.trim().toLowerCase();
     if (!normalizedQuery) {
@@ -223,9 +241,6 @@ export default function CompletionPage() {
               placeholder="Ex: Elden Ring"
               required
             />
-            <p className="mt-2 text-sm text-gray-500">
-              O nome e digitado livremente pelo usuario. Nao depende mais de uma lista fechada.
-            </p>
             {gameSuggestions.length > 0 && (
               <div className="mt-3 rounded-lg border border-gray-200 bg-white shadow-sm">
                 {gameSuggestions.map((game) => (
@@ -275,7 +290,11 @@ export default function CompletionPage() {
 
           <div className="md:col-span-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
             {form.gameName.trim() ? (
-              matchingGame ? (
+              hasUserCompletionForGame ? (
+                <p className="text-sm text-red-700">
+                  Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.
+                </p>
+              ) : matchingGame ? (
                 <p className="text-sm text-green-700">
                   Este jogo ja existe no sistema e sera reutilizado: <strong>{matchingGame.name}</strong>
                 </p>
@@ -376,7 +395,7 @@ export default function CompletionPage() {
         <div className="mt-8 flex gap-4">
           <button
             type="submit"
-            disabled={mutation.isPending || gamesLoading}
+            disabled={mutation.isPending || gamesLoading || hasUserCompletionForGame}
             className="flex-1 bg-primary hover:bg-secondary text-white font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50"
           >
             {mutation.isPending ? 'Registrando...' : 'Registrar Conclusao'}
