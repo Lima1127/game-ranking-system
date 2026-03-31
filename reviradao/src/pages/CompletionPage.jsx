@@ -198,7 +198,7 @@ export default function CompletionPage() {
       <h1 className="text-4xl font-bold mb-2">Registrar Conclusao</h1>
       <p className="text-gray-600 mb-8">Informe o jogo livremente. Se ele ainda nao existir, sera criado automaticamente.</p>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
+      <form onSubmit={handleSubmit} autoComplete="off" className="bg-white rounded-lg shadow p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {gamesLoadError && (
             <div className="md:col-span-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -215,6 +215,10 @@ export default function CompletionPage() {
               name="gameName"
               value={form.gameName}
               onChange={handleChange}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ex: Elden Ring"
               required
