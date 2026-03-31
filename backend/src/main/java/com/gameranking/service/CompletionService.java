@@ -52,6 +52,10 @@ public class CompletionService {
 
         Game game = gameService.getById(request.gameId());
 
+        if (completionRepository.existsByUserIdAndGameId(user.getId(), game.getId())) {
+            throw new BusinessException("Voce ja registrou uma conclusao para este jogo");
+        }
+
         if (request.platinumProofId() == null) {
             throw new BusinessException("Toda solicitacao exige um anexo");
         }
