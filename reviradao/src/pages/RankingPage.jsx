@@ -30,15 +30,31 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
     return null;
   }
 
+  const groupedRules = ruleCodes.reduce((acc, ruleCode) => {
+    if (!acc[ruleCode]) {
+      acc[ruleCode] = { code: ruleCode, count: 0 };
+    }
+    acc[ruleCode].count += 1;
+    return acc;
+  }, {});
+
+  const orderedGroupedRules = Object.values(groupedRules);
+
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      {ruleCodes.map((ruleCode, index) => (
-        <span
-          key={`${ruleCode}-${index}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-lg shadow-sm"
-          title={ruleCode}
-        >
-          {emojiByRuleCode[ruleCode] || '⭐'}
+      {orderedGroupedRules.map(({ code, count }) => (
+        <span key={code} className="relative inline-flex">
+          <span
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-lg shadow-sm"
+            title={count > 1 ? `${code} x${count}` : code}
+          >
+            {emojiByRuleCode[code] || '⭐'}
+          </span>
+          {count > 1 && (
+            <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow">
+              x{count}
+            </span>
+          )}
         </span>
       ))}
     </div>
