@@ -73,18 +73,6 @@ export default function CompletionUpdatePage() {
     onError: (error) => alert(error.response?.data?.message || error.message),
   });
 
-  if (isLoading) {
-    return <div className="text-slate-600">Carregando registro...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-600">Erro ao carregar registro: {error.message}</div>;
-  }
-
-  if (!completion) {
-    return <div className="text-slate-600">Registro nao encontrado.</div>;
-  }
-
   useEffect(() => {
     if (completion) {
       setForm({
@@ -97,6 +85,18 @@ export default function CompletionUpdatePage() {
       });
     }
   }, [completion]);
+
+  if (isLoading) {
+    return <div className="text-slate-600">Carregando registro...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-600">Erro ao carregar registro: {error.message}</div>;
+  }
+
+  if (!completion) {
+    return <div className="text-slate-600">Registro nao encontrado.</div>;
+  }
 
   if (!form) {
     return <div className="text-slate-600">Preparando formulario...</div>;
