@@ -1,5 +1,6 @@
 package com.gameranking.service;
 
+import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.PlatinumProof;
@@ -62,15 +63,29 @@ public class PlatinumProofService {
         return findById(proofId).getContentType();
     }
 
+    public String getContentTypeIfExists(UUID proofId) {
+        if (proofId == null) {
+            return null;
+        }
+        return platinumProofRepository.findById(proofId)
+                .map(PlatinumProof::getContentType)
+                .orElse(null);
+    }
+
     @Transactional
     public void attachToCompletion(UUID proofId, Completion completion) {
         PlatinumProof proof = findById(proofId);
+        if (proof.getCompletion() != null && !proof.getCompletion().getId().equals(completion.getId())) {
+            throw new BusinessException("Este anexo ja esta vinculado a outro registro");
+        }
         proof.setCompletion(completion);
-        platinumProofRepository.save(proof);
+        PlatinumProof savedProof = platinumProofRepository.save(proof);
+        completion.setProof(savedProof);
     }
 
     @Transactional
     public void replaceCompletionProof(UUID proofId, Completion completion) {
+        completion.setProof(null);
         deleteByCompletionId(completion.getId());
         attachToCompletion(proofId, completion);
     }
@@ -84,6 +99,7 @@ public class PlatinumProofService {
                 throw new RuntimeException("Falha ao remover anexo do disco", ex);
             }
             platinumProofRepository.delete(proof);
+            platinumProofRepository.flush();
         });
     }
 

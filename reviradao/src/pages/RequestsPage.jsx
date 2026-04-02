@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,6 +11,7 @@ function statusClasses(status) {
 
 export default function RequestsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === 'ADMIN';
   const buildProofUrl = (proofId) => `${api.defaults.baseURL}/uploads/proofs/${proofId}`;
@@ -36,6 +37,12 @@ export default function RequestsPage() {
     },
     enabled: Boolean(user?.id),
   });
+  const hasPendingUpdateByCompletionId = updateRequests.reduce((acc, updateRequest) => {
+    if (updateRequest.status === 'PENDING') {
+      acc[updateRequest.completionId] = true;
+    }
+    return acc;
+  }, {});
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
@@ -160,12 +167,16 @@ export default function RequestsPage() {
                     )}
                     {request.status === 'APPROVED' && request.userId === user.id && (
                       <div>
-                        <Link
-                          to={`/completion/${request.completionId}/update`}
-                          className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary"
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/completion/${request.completionId}/update`)}
+                          disabled={hasPendingUpdateByCompletionId[request.completionId]}
+                          className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Solicitar atualizacao
-                        </Link>
+                          {hasPendingUpdateByCompletionId[request.completionId]
+                            ? 'Atualizacao pendente'
+                            : 'Solicitar atualizacao'}
+                        </button>
                       </div>
                     )}
                   </div>

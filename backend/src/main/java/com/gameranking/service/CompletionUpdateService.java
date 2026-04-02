@@ -76,7 +76,7 @@ public class CompletionUpdateService {
                         item.createdAt(),
                         item.approvedAt(),
                         item.proofId(),
-                        item.proofId() != null ? platinumProofService.getContentType(item.proofId()) : null
+                        platinumProofService.getContentTypeIfExists(item.proofId())
                 ))
                 .toList();
     }
@@ -147,7 +147,7 @@ public class CompletionUpdateService {
                 saved.getCreatedAt(),
                 saved.getApprovedAt(),
                 saved.getProofId(),
-                platinumProofService.getContentType(saved.getProofId())
+                platinumProofService.getContentTypeIfExists(saved.getProofId())
         );
     }
 
@@ -242,7 +242,7 @@ public class CompletionUpdateService {
                 updateRequest.getCreatedAt(),
                 updateRequest.getApprovedAt(),
                 updateRequest.getProofId(),
-                updateRequest.getProofId() != null ? platinumProofService.getContentType(updateRequest.getProofId()) : null
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId())
         );
     }
 
