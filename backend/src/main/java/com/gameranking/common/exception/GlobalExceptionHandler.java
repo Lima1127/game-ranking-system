@@ -37,7 +37,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(DataIntegrityViolationException ex) {
-        return build(HttpStatus.CONFLICT, "Registro duplicado ou violacao de integridade");
+        String detailedMessage = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+
+        if (detailedMessage != null && detailedMessage.contains("uq_completions_user_game")) {
+            return build(HttpStatus.CONFLICT, "O usuario ja possui uma conclusao para esse jogo.");
+        }
+        if (detailedMessage != null && detailedMessage.contains("platinum_proofs_completion_id_key")) {
+            return build(HttpStatus.CONFLICT, "Ja existe um anexo vinculado a este registro. Tente novamente.");
+        }
+
+        return build(HttpStatus.CONFLICT, "Violacao de integridade: " + detailedMessage);
     }
 
 
