@@ -4,10 +4,13 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 function statusClasses(status) {
-  if (status === 'APPROVED') return 'bg-green-100 text-green-800';
-  if (status === 'CANCELLED') return 'bg-red-100 text-red-800';
-  return 'bg-amber-100 text-amber-800';
+  if (status === 'APPROVED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+  if (status === 'CANCELLED') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
+  return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
 }
+
+const platinumBadgeClass =
+  'inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#432200] border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] dark:text-[#fff6d8] dark:border-[#163a56] dark:bg-gradient-to-r dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff]';
 
 export default function RequestsPage() {
   const { user } = useAuth();
@@ -90,7 +93,7 @@ export default function RequestsPage() {
   });
 
   if (isLoading || updateLoading) {
-    return <div className="text-gray-600">Carregando solicitacoes...</div>;
+    return <div className="text-gray-600 dark:text-slate-300">Carregando solicitacoes...</div>;
   }
 
   if (error || updateError) {
@@ -101,7 +104,7 @@ export default function RequestsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-4xl font-bold mb-2">Solicitacoes</h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-slate-300">
           {isAdmin
             ? 'Voce pode revisar, aprovar ou cancelar solicitacoes pendentes.'
             : 'Aqui ficam suas solicitacoes enviadas. Enquanto estiverem pendentes, voce pode cancelar.'}
@@ -109,7 +112,7 @@ export default function RequestsPage() {
       </div>
 
       {requests.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow p-8 text-gray-600">Nenhuma solicitacao encontrada.</div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow p-8 text-gray-600 dark:text-slate-300 border border-gray-100 dark:border-slate-800">Nenhuma solicitacao encontrada.</div>
       ) : (
         <div className="space-y-4">
           {requests.map((request) => {
@@ -117,37 +120,37 @@ export default function RequestsPage() {
             const canApprove = request.status === 'PENDING' && isAdmin;
 
             return (
-              <div key={request.completionId} className="bg-white rounded-2xl shadow p-6 border border-gray-100">
+              <div key={request.completionId} className="bg-white dark:bg-slate-900 rounded-2xl shadow p-6 border border-gray-100 dark:border-slate-800">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-2xl font-bold text-slate-900">{request.gameName}</h2>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{request.gameName}</h2>
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(request.status)}`}>
                         {request.status}
                       </span>
                       {request.platinum && (
-                        <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-900">
+                        <span className={platinumBadgeClass}>
                           Platina
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Jogador:</strong> {request.userDisplayName}
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Data:</strong> {request.completedAt} · <strong>Horas:</strong> {request.hoursPlayed}
                     </div>
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
                       <strong>Enviado em:</strong> {request.createdAt}
                     </div>
                     {request.proofId && (
-                      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="text-sm font-semibold text-slate-700">Anexo enviado</div>
+                      <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Anexo enviado</div>
                         {request.proofContentType?.startsWith('image/') && (
                           <img
                             src={buildProofUrl(request.proofId)}
                             alt={`Anexo de ${request.gameName}`}
-                            className="max-h-56 w-auto rounded-lg border border-slate-200 object-contain bg-white"
+                            className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900"
                           />
                         )}
                         <a
@@ -161,7 +164,7 @@ export default function RequestsPage() {
                       </div>
                     )}
                     {request.approvedAt && (
-                      <div className="text-sm text-green-700">
+                    <div className="text-sm text-green-700 dark:text-green-300">
                         <strong>Aprovado em:</strong> {request.approvedAt}
                       </div>
                     )}
@@ -212,7 +215,7 @@ export default function RequestsPage() {
 
       <div>
         <h2 className="text-3xl font-bold mb-2">Atualizacoes de Registros</h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-slate-300">
           {isAdmin
             ? 'Solicitacoes de atualizacao enviadas pelos usuarios para registros ja aprovados.'
             : 'Aqui voce acompanha as atualizacoes pedidas para jogos que ja tinham sido aprovados.'}
@@ -220,7 +223,7 @@ export default function RequestsPage() {
       </div>
 
       {updateRequests.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow p-8 text-gray-600">Nenhuma solicitacao de atualizacao encontrada.</div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow p-8 text-gray-600 dark:text-slate-300 border border-gray-100 dark:border-slate-800">Nenhuma solicitacao de atualizacao encontrada.</div>
       ) : (
         <div className="space-y-4">
           {updateRequests.map((request) => {
@@ -228,40 +231,40 @@ export default function RequestsPage() {
             const canCancel = request.status === 'PENDING' && (request.userId === user.id || isAdmin);
 
             return (
-              <div key={request.updateRequestId} className="bg-white rounded-2xl shadow p-6 border border-gray-100">
+              <div key={request.updateRequestId} className="bg-white dark:bg-slate-900 rounded-2xl shadow p-6 border border-gray-100 dark:border-slate-800">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-2xl font-bold text-slate-900">{request.gameName}</h2>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{request.gameName}</h2>
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(request.status)}`}>
                         {request.status}
                       </span>
                       {request.platinum && (
-                        <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-900">
+                        <span className={platinumBadgeClass}>
                           Platina
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Jogador:</strong> {request.userDisplayName}
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Atualizacao para o registro:</strong> {request.completionId}
                     </div>
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Data:</strong> {request.completedAt} · <strong>Horas:</strong> {request.hoursPlayed}
                     </div>
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
                       <strong>Enviado em:</strong> {request.createdAt}
                     </div>
                     {request.proofId && (
-                      <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="text-sm font-semibold text-slate-700">Novo anexo enviado</div>
+                      <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Novo anexo enviado</div>
                         {request.proofContentType?.startsWith('image/') && (
                           <img
                             src={buildProofUrl(request.proofId)}
                             alt={`Atualizacao de ${request.gameName}`}
-                            className="max-h-56 w-auto rounded-lg border border-slate-200 object-contain bg-white"
+                            className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900"
                           />
                         )}
                         <a
