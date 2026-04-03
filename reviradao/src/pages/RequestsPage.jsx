@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,35 +19,19 @@ export default function RequestsPage() {
   const isAdmin = user?.role === 'ADMIN';
   const buildProofUrl = (proofId) => `${api.defaults.baseURL}/uploads/proofs/${proofId}`;
 
-  const { data: requests = [], isLoading, error } = useQuery({
-    queryKey: ['completion-requests'],
+  const { data: submissions = [], isLoading, error } = useQuery({
+    queryKey: ['completion-submissions'],
     queryFn: async () => {
-      const response = await api.get('/completions/requests', {
+      const response = await api.get('/completions/submissions', {
         headers: { 'X-User-Id': user.id },
       });
       return response.data;
     },
     enabled: Boolean(user?.id),
   });
-
-  const { data: updateRequests = [], isLoading: updateLoading, error: updateError } = useQuery({
-    queryKey: ['completion-update-requests'],
-    queryFn: async () => {
-      const response = await api.get('/completions/update-requests', {
-        headers: { 'X-User-Id': user.id },
-      });
-      return response.data;
-    },
-    enabled: Boolean(user?.id),
-  });
-  const hasPendingUpdateByCompletionId = updateRequests.reduce((acc, updateRequest) => {
-    if (updateRequest.status === 'PENDING') {
-      acc[updateRequest.completionId] = true;
-    }
-    return acc;
-  }, {});
 
   const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
     queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
     queryClient.invalidateQueries({ queryKey: ['completion-update-requests'] });
     queryClient.invalidateQueries({ queryKey: ['ranking'] });
@@ -57,8 +41,8 @@ export default function RequestsPage() {
   };
 
   const approveMutation = useMutation({
-    mutationFn: async (completionId) =>
-      api.post(`/completions/${completionId}/approve`, null, {
+    mutationFn: async ({ kind, submissionId }) =>
+      api.post(`/completions/submissions/${kind}/${submissionId}/approve`, null, {
         headers: { 'X-User-Id': user.id },
       }),
     onSuccess: refresh,
@@ -66,38 +50,20 @@ export default function RequestsPage() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: async (completionId) =>
-      api.post(`/completions/${completionId}/cancel`, null, {
+    mutationFn: async ({ kind, submissionId }) =>
+      api.post(`/completions/submissions/${kind}/${submissionId}/cancel`, null, {
         headers: { 'X-User-Id': user.id },
       }),
     onSuccess: refresh,
     onError: (error) => alert(error.response?.data?.message || error.message),
   });
 
-  const approveUpdateMutation = useMutation({
-    mutationFn: async (updateRequestId) =>
-      api.post(`/completions/update-requests/${updateRequestId}/approve`, null, {
-        headers: { 'X-User-Id': user.id },
-      }),
-    onSuccess: refresh,
-    onError: (error) => alert(error.response?.data?.message || error.message),
-  });
-
-  const cancelUpdateMutation = useMutation({
-    mutationFn: async (updateRequestId) =>
-      api.post(`/completions/update-requests/${updateRequestId}/cancel`, null, {
-        headers: { 'X-User-Id': user.id },
-      }),
-    onSuccess: refresh,
-    onError: (error) => alert(error.response?.data?.message || error.message),
-  });
-
-  if (isLoading || updateLoading) {
+  if (isLoading) {
     return <div className="text-gray-600 dark:text-slate-300">Carregando solicitacoes...</div>;
   }
 
-  if (error || updateError) {
-    return <div className="text-red-600">Erro ao carregar solicitacoes: {(error || updateError).message}</div>;
+  if (error) {
+    return <div className="text-red-600">Erro ao carregar solicitacoes: {error.message}</div>;
   }
 
   return (
@@ -106,55 +72,65 @@ export default function RequestsPage() {
         <h1 className="text-4xl font-bold mb-2">Solicitacoes</h1>
         <p className="text-gray-600 dark:text-slate-300">
           {isAdmin
-            ? 'Voce pode revisar, aprovar ou cancelar solicitacoes pendentes.'
-            : 'Aqui ficam suas solicitacoes enviadas. Enquanto estiverem pendentes, voce pode cancelar.'}
+            ? 'Voce pode revisar, editar, aprovar ou cancelar a fila unificada de solicitacoes.'
+            : 'Aqui ficam suas solicitacoes e atualizacoes. Enquanto estiverem pendentes, voce pode editar ou cancelar.'}
         </p>
       </div>
 
-      {requests.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow p-8 text-gray-600 dark:text-slate-300 border border-gray-100 dark:border-slate-800">Nenhuma solicitacao encontrada.</div>
+      {submissions.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow p-8 text-gray-600 dark:text-slate-300 border border-gray-100 dark:border-slate-800">
+          Nenhuma solicitacao encontrada.
+        </div>
       ) : (
         <div className="space-y-4">
-          {requests.map((request) => {
-            const canCancel = request.status === 'PENDING' && (request.userId === user.id || isAdmin);
-            const canApprove = request.status === 'PENDING' && isAdmin;
+          {submissions.map((submission) => {
+            const isUpdate = submission.kind === 'UPDATE_COMPLETION';
+            const canCancel = submission.status === 'PENDING' && (submission.userId === user.id || isAdmin);
+            const canApprove = submission.status === 'PENDING' && isAdmin;
+            const canEdit = submission.editable;
+            const canRequestUpdate = submission.kind === 'NEW_COMPLETION' && submission.status === 'APPROVED' && submission.userId === user.id;
 
             return (
-              <div key={request.completionId} className="bg-white dark:bg-slate-900 rounded-2xl shadow p-6 border border-gray-100 dark:border-slate-800">
+              <div key={`${submission.kind}-${submission.submissionId}`} className="bg-white dark:bg-slate-900 rounded-2xl shadow p-6 border border-gray-100 dark:border-slate-800">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{request.gameName}</h2>
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(request.status)}`}>
-                        {request.status}
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{submission.gameName}</h2>
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(submission.status)}`}>
+                        {submission.status}
                       </span>
-                      {request.platinum && (
-                        <span className={platinumBadgeClass}>
-                          Platina
-                        </span>
-                      )}
+                      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        {isUpdate ? 'Atualizacao' : 'Novo registro'}
+                      </span>
+                      {submission.platinum && <span className={platinumBadgeClass}>Platina</span>}
+                    </div>
+
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
+                      <strong>Jogador:</strong> {submission.userDisplayName}
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Jogador:</strong> {request.userDisplayName}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Data:</strong> {request.completedAt} · <strong>Horas:</strong> {request.hoursPlayed}
+                      <strong>Data:</strong> {submission.completedAt} · <strong>Horas:</strong> {submission.hoursPlayed}
                     </div>
                     <div className="text-sm text-slate-500 dark:text-slate-400">
-                      <strong>Enviado em:</strong> {request.createdAt}
+                      <strong>Enviado em:</strong> {submission.createdAt}
                     </div>
-                    {request.proofId && (
+                    {isUpdate && (
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        <strong>Registro oficial relacionado:</strong> {submission.completionId}
+                      </div>
+                    )}
+                    {submission.proofId && (
                       <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                         <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Anexo enviado</div>
-                        {request.proofContentType?.startsWith('image/') && (
+                        {submission.proofContentType?.startsWith('image/') && (
                           <img
-                            src={buildProofUrl(request.proofId)}
-                            alt={`Anexo de ${request.gameName}`}
+                            src={buildProofUrl(submission.proofId)}
+                            alt={`Anexo de ${submission.gameName}`}
                             className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900"
                           />
                         )}
                         <a
-                          href={buildProofUrl(request.proofId)}
+                          href={buildProofUrl(submission.proofId)}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
@@ -163,32 +139,38 @@ export default function RequestsPage() {
                         </a>
                       </div>
                     )}
-                    {request.approvedAt && (
-                    <div className="text-sm text-green-700 dark:text-green-300">
-                        <strong>Aprovado em:</strong> {request.approvedAt}
+                    {submission.approvedAt && (
+                      <div className="text-sm text-green-700 dark:text-green-300">
+                        <strong>Aprovado em:</strong> {submission.approvedAt}
                       </div>
                     )}
-                    {request.status === 'APPROVED' && request.userId === user.id && (
-                      <div>
+
+                    <div className="flex flex-wrap gap-3">
+                      {canEdit && (
+                        <Link
+                          to={`/requests/${submission.kind}/${submission.submissionId}/edit`}
+                          className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary"
+                        >
+                          Editar solicitacao
+                        </Link>
+                      )}
+                      {canRequestUpdate && (
                         <button
                           type="button"
-                          onClick={() => navigate(`/completion/${request.completionId}/update`)}
-                          disabled={hasPendingUpdateByCompletionId[request.completionId]}
-                          className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          onClick={() => navigate(`/completion/${submission.completionId}/update`)}
+                          className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary"
                         >
-                          {hasPendingUpdateByCompletionId[request.completionId]
-                            ? 'Atualizacao pendente'
-                            : 'Solicitar atualizacao'}
+                          Solicitar atualizacao
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-3">
                     {canApprove && (
                       <button
                         type="button"
-                        onClick={() => approveMutation.mutate(request.completionId)}
+                        onClick={() => approveMutation.mutate({ kind: submission.kind, submissionId: submission.submissionId })}
                         disabled={approveMutation.isPending}
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
                       >
@@ -198,103 +180,8 @@ export default function RequestsPage() {
                     {canCancel && (
                       <button
                         type="button"
-                        onClick={() => cancelMutation.mutate(request.completionId)}
+                        onClick={() => cancelMutation.mutate({ kind: submission.kind, submissionId: submission.submissionId })}
                         disabled={cancelMutation.isPending}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div>
-        <h2 className="text-3xl font-bold mb-2">Atualizacoes de Registros</h2>
-        <p className="text-gray-600 dark:text-slate-300">
-          {isAdmin
-            ? 'Solicitacoes de atualizacao enviadas pelos usuarios para registros ja aprovados.'
-            : 'Aqui voce acompanha as atualizacoes pedidas para jogos que ja tinham sido aprovados.'}
-        </p>
-      </div>
-
-      {updateRequests.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow p-8 text-gray-600 dark:text-slate-300 border border-gray-100 dark:border-slate-800">Nenhuma solicitacao de atualizacao encontrada.</div>
-      ) : (
-        <div className="space-y-4">
-          {updateRequests.map((request) => {
-            const canApprove = request.status === 'PENDING' && isAdmin;
-            const canCancel = request.status === 'PENDING' && (request.userId === user.id || isAdmin);
-
-            return (
-              <div key={request.updateRequestId} className="bg-white dark:bg-slate-900 rounded-2xl shadow p-6 border border-gray-100 dark:border-slate-800">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{request.gameName}</h2>
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(request.status)}`}>
-                        {request.status}
-                      </span>
-                      {request.platinum && (
-                        <span className={platinumBadgeClass}>
-                          Platina
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Jogador:</strong> {request.userDisplayName}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Atualizacao para o registro:</strong> {request.completionId}
-                    </div>
-                    <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Data:</strong> {request.completedAt} · <strong>Horas:</strong> {request.hoursPlayed}
-                    </div>
-                    <div className="text-sm text-slate-500 dark:text-slate-400">
-                      <strong>Enviado em:</strong> {request.createdAt}
-                    </div>
-                    {request.proofId && (
-                      <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
-                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Novo anexo enviado</div>
-                        {request.proofContentType?.startsWith('image/') && (
-                          <img
-                            src={buildProofUrl(request.proofId)}
-                            alt={`Atualizacao de ${request.gameName}`}
-                            className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900"
-                          />
-                        )}
-                        <a
-                          href={buildProofUrl(request.proofId)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
-                        >
-                          Abrir anexo
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-3">
-                    {canApprove && (
-                      <button
-                        type="button"
-                        onClick={() => approveUpdateMutation.mutate(request.updateRequestId)}
-                        disabled={approveUpdateMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
-                      >
-                        Aprovar
-                      </button>
-                    )}
-                    {canCancel && (
-                      <button
-                        type="button"
-                        onClick={() => cancelUpdateMutation.mutate(request.updateRequestId)}
-                        disabled={cancelUpdateMutation.isPending}
                         className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
                       >
                         Cancelar

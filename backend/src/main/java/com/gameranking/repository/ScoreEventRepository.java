@@ -1,5 +1,6 @@
 package com.gameranking.repository;
 
+import com.gameranking.domain.enums.ScoreSourceType;
 import com.gameranking.domain.model.ScoreEvent;
 import com.gameranking.web.dto.ranking.RankingRowResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -80,7 +81,15 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
     @Modifying
     @Query("""
             delete from ScoreEvent se
-            where se.edition.id = :editionId
+            where se.obligation.id = :obligationId
             """)
-    void deleteByEditionId(UUID editionId);
+    void deleteByObligationId(UUID obligationId);
+
+    @Modifying
+    @Query("""
+            delete from ScoreEvent se
+            where se.edition.id = :editionId
+              and se.sourceType = :sourceType
+            """)
+    void deleteByEditionIdAndSourceType(UUID editionId, ScoreSourceType sourceType);
 }
