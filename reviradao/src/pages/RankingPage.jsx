@@ -21,6 +21,9 @@ const emojiByRuleCode = scoringRules.reduce((acc, rule) => {
   return acc;
 }, {});
 
+const platinumBadgeClass =
+  'rounded-full border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-[#432200] dark:border-[#163a56] dark:bg-gradient-to-r dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff] dark:text-[#fff6d8]';
+
 function formatPosition(index) {
   return String(index + 1);
 }
@@ -45,13 +48,13 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
       {orderedGroupedRules.map(({ code, count }) => (
         <span key={code} className="relative inline-flex">
           <span
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-lg shadow-sm"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-lg shadow-sm"
             title={count > 1 ? `${code} x${count}` : code}
           >
             {emojiByRuleCode[code] || '⭐'}
           </span>
           {count > 1 && (
-            <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow">
+            <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow">
               x{count}
             </span>
           )}
@@ -86,7 +89,7 @@ function PodiumCard({ player, index, userCompletions }) {
       </div>
       <div className="space-y-2">
         {userCompletions.slice(0, 3).map((completion) => (
-          <div key={completion.completionId} className="rounded-2xl bg-white/25 px-4 py-3">
+          <div key={completion.completionId} className="rounded-2xl bg-white/25 dark:bg-black/20 px-4 py-3">
             <div className="font-bold">{completion.gameName}</div>
             <div className="text-xs opacity-80">
               {completion.completedAt} - {completion.hoursPlayed}h{completion.platinum ? ' - platina' : ''}
@@ -133,7 +136,7 @@ export default function RankingPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando ranking...</p>
+          <p className="text-gray-600 dark:text-slate-300">Carregando ranking...</p>
         </div>
       </div>
     );
@@ -182,9 +185,9 @@ export default function RankingPage() {
 
       {ranking.length === 0 ? (
         <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="bg-white rounded-[2rem] shadow-lg p-8">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg p-8 border border-slate-100 dark:border-slate-800">
             <h2 className="text-2xl font-black mb-3">Nenhuma conclusao registrada ainda</h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-slate-300 mb-6">
               Assim que os usuarios registrarem conclusoes, o ranking sera calculado automaticamente pela soma dos eventos de score.
             </p>
             <Link
@@ -195,16 +198,16 @@ export default function RankingPage() {
             </Link>
           </div>
 
-          <div className="bg-white rounded-[2rem] shadow-lg p-8">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg p-8 border border-slate-100 dark:border-slate-800">
             <h2 className="text-xl font-black mb-4">Como a pontuacao funciona</h2>
             <div className="space-y-3">
               {activeRules.slice(0, 5).map((rule) => (
-                <div key={rule.code} className="rounded-2xl border border-slate-200 p-4">
+                <div key={rule.code} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
                   <div className="flex items-center justify-between gap-4 mb-2">
                     <span className="text-3xl">{rule.emoji}</span>
-                    <span className="bg-slate-900 text-white text-sm font-bold px-3 py-1 rounded-full">+{rule.points}</span>
+                    <span className="bg-slate-900 dark:bg-slate-700 text-white text-sm font-bold px-3 py-1 rounded-full">+{rule.points}</span>
                   </div>
-                  <p className="text-sm text-slate-600">{rule.description}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">{rule.description}</p>
                 </div>
               ))}
             </div>
@@ -224,16 +227,16 @@ export default function RankingPage() {
           </section>
 
           <section className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
-            <div className="bg-white rounded-[2rem] shadow-lg overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-100">
-                <h2 className="text-2xl font-black text-slate-900">Tabela completa</h2>
-                <p className="text-slate-600 mt-1">Cada jogador mostra abaixo os jogos e os emojis das categorias que pontuaram.</p>
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg overflow-hidden border border-slate-100 dark:border-slate-800">
+              <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Tabela completa</h2>
+                <p className="text-slate-600 dark:text-slate-300 mt-1">Cada jogador mostra abaixo os jogos e os emojis das categorias que pontuaram.</p>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-[0.25em] text-slate-500">
+                    <tr className="text-left text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
                       <th className="px-8 py-4 font-bold">Posicao</th>
                       <th className="px-8 py-4 font-bold">Jogador</th>
                       <th className="px-8 py-4 font-bold">Destaque</th>
@@ -247,41 +250,41 @@ export default function RankingPage() {
                       return (
                         <tr
                           key={row.userId}
-                          className={`border-t border-slate-100 align-top ${
-                            index === 0 ? 'bg-amber-50/80' : index % 2 === 0 ? 'bg-slate-50/70' : 'bg-white'
+                          className={`border-t border-slate-100 dark:border-slate-800 align-top ${
+                            index === 0 ? 'bg-amber-50/80 dark:bg-amber-900/20' : index % 2 === 0 ? 'bg-slate-50/70 dark:bg-slate-900/60' : 'bg-white dark:bg-slate-900'
                           }`}
                         >
                           <td className="px-8 py-5">
                             <div className="flex items-center gap-3">
-                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white font-black">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 text-white font-black">
                                 {formatPosition(index)}
                               </span>
-                              {index < 3 && <span className="text-xs uppercase tracking-[0.25em] text-slate-500">Top {index + 1}</span>}
+                              {index < 3 && <span className="text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Top {index + 1}</span>}
                             </div>
                           </td>
                           <td className="px-8 py-5 min-w-[320px]">
-                            <div className="font-bold text-slate-900">{row.displayName}</div>
-                            <div className="text-sm text-slate-500 mb-4">Usuario {row.userId}</div>
+                            <div className="font-bold text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400 mb-4">Usuario {row.userId}</div>
                             <div className="space-y-2">
                               {userCompletions.length > 0 ? (
                                 userCompletions.map((completion) => (
-                                  <div key={completion.completionId} className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+                                  <div key={completion.completionId} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-4 py-3">
                                     <div className="flex items-center justify-between gap-4">
-                                      <span className="font-semibold text-slate-900">{completion.gameName}</span>
+                                      <span className="font-semibold text-slate-900 dark:text-slate-100">{completion.gameName}</span>
                                       {completion.platinum && (
-                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-amber-900">
+                                        <span className={platinumBadgeClass}>
                                           Platina
                                         </span>
                                       )}
                                     </div>
-                                    <div className="mt-1 text-xs text-slate-500">
+                                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                       {completion.completedAt} - {completion.hoursPlayed}h
                                     </div>
                                     <RuleEmojiStrip ruleCodes={completion.ruleCodes} />
                                   </div>
                                 ))
                               ) : (
-                                <div className="text-sm text-slate-400">Nenhum jogo registrado.</div>
+                                <div className="text-sm text-slate-400 dark:text-slate-500">Nenhum jogo registrado.</div>
                               )}
                             </div>
                           </td>
@@ -291,7 +294,7 @@ export default function RankingPage() {
                                 UnderDog +3 x{row.underdogBonusCount}
                               </span>
                             ) : (
-                              <span className="text-sm text-slate-400">-</span>
+                              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
                             )}
                           </td>
                           <td className="px-8 py-5 text-right">
@@ -308,28 +311,28 @@ export default function RankingPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white rounded-[2rem] shadow-lg p-8">
-                <h2 className="text-2xl font-black text-slate-900 mb-3">Como o calculo funciona</h2>
-                <p className="text-slate-600 mb-6">
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg p-8 border border-slate-100 dark:border-slate-800">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-3">Como o calculo funciona</h2>
+                <p className="text-slate-600 dark:text-slate-300 mb-6">
                   O backend gera eventos de score para cada conclusao. Depois o ranking soma os pontos por usuario e exibe os emojis das regras aplicadas em cada jogo.
                 </p>
 
                 <div className="space-y-3">
                   {scoringRules.map((rule) => (
-                    <div key={rule.code} className="rounded-2xl border border-slate-200 p-4">
+                    <div key={rule.code} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
                       <div className="flex items-center justify-between gap-4 mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-2xl">
                             {rule.emoji}
                           </div>
-                          <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{rule.code}</div>
+                          <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">{rule.code}</div>
                         </div>
                         <div className="text-right">
                           <div className={`text-sm font-black ${rule.active ? 'text-primary' : 'text-slate-400'}`}>+{rule.points} pts</div>
-                          <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{rule.active ? 'ativo' : 'inativo'}</div>
+                          <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{rule.active ? 'ativo' : 'inativo'}</div>
                         </div>
                       </div>
-                      <p className="text-sm text-slate-600">{rule.description}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{rule.description}</p>
                     </div>
                   ))}
                 </div>

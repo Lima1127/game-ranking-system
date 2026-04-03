@@ -36,7 +36,7 @@ export default function AdminAuditLogsPage() {
   }
 
   if (isLoading) {
-    return <div className="text-slate-600">Carregando logs...</div>;
+    return <div className="text-slate-600 dark:text-slate-300">Carregando logs...</div>;
   }
 
   if (error) {
@@ -46,37 +46,37 @@ export default function AdminAuditLogsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-4xl font-black text-slate-900 mb-2">Logs Administrativos</h1>
-        <p className="text-slate-600">Acompanhe tudo o que foi aprovado, cancelado ou excluido pelos fluxos administrativos.</p>
+        <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 mb-2">Logs Administrativos</h1>
+        <p className="text-slate-600 dark:text-slate-300">Acompanhe tudo o que foi aprovado, cancelado ou excluido pelos fluxos administrativos.</p>
       </div>
 
       {logs.length === 0 ? (
-        <div className="rounded-2xl bg-white p-6 text-slate-500 shadow-sm">Nenhum log encontrado.</div>
+        <div className="rounded-2xl bg-white dark:bg-slate-900 p-6 text-slate-500 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-800">Nenhum log encontrado.</div>
       ) : (
         <div className="space-y-4">
           {logs.map((log) => (
-            <div key={log.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div key={log.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
-                  <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{log.actionCode}</div>
-                  <h2 className="text-2xl font-black text-slate-900">{actionLabel(log.actionCode)}</h2>
-                  <div className="text-sm text-slate-600">
+                  <div className="text-xs uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">{log.actionCode}</div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">{actionLabel(log.actionCode)}</h2>
+                  <div className="text-sm text-slate-600 dark:text-slate-300">
                     <strong>Admin/ator:</strong> {log.actorDisplayName} ({log.actorRole})
                   </div>
                   {log.subjectDisplayName && (
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Usuario afetado:</strong> {log.subjectDisplayName}
                     </div>
                   )}
                   {log.gameName && (
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <strong>Jogo:</strong> {log.gameName}
                     </div>
                   )}
-                  {log.details && <div className="text-sm text-slate-500">{log.details}</div>}
+                  {log.details && <div className="text-sm text-slate-500 dark:text-slate-400">{log.details}</div>}
                 </div>
 
-                <div className="text-sm font-semibold text-slate-500">{log.createdAt}</div>
+                <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">{log.createdAt}</div>
               </div>
             </div>
           ))}

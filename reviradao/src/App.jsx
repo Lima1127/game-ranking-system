@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -16,10 +17,10 @@ function ProtectedRoute({ children }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600 dark:text-gray-300">Carregando...</p>
         </div>
       </div>
     );
@@ -37,10 +38,10 @@ function AdminRoute({ children }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600 dark:text-gray-300">Carregando...</p>
         </div>
       </div>
     );
@@ -57,12 +58,12 @@ function AdminRoute({ children }) {
   return children;
 }
 
-function MainLayout({ children }) {
+function MainLayout({ children, isDarkMode, onToggleTheme }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Game Ranking</h1>
@@ -93,6 +94,28 @@ function MainLayout({ children }) {
               </>
             )}
             <button
+              type="button"
+              onClick={onToggleTheme}
+              aria-label={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              title={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              className={`relative h-10 w-20 rounded-full border transition-all duration-300 ${
+                isDarkMode
+                  ? 'border-white/30 bg-black/90'
+                  : 'border-white/50 bg-slate-100/90'
+              }`}
+            >
+              <span
+                className={`absolute top-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg transition-all duration-300 ${
+                  isDarkMode
+                    ? 'left-1 bg-white text-slate-900'
+                    : 'left-11 bg-slate-900 text-white'
+                }`}
+                aria-hidden="true"
+              >
+                {isDarkMode ? '☀' : '☾'}
+              </span>
+            </button>
+            <button
               onClick={() => {
                 logout();
                 navigate('/login', { replace: true });
@@ -110,15 +133,15 @@ function MainLayout({ children }) {
   );
 }
 
-function AppContent() {
+function AppContent({ isDarkMode, onToggleTheme }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-gray-600 dark:text-gray-300">Carregando...</p>
         </div>
       </div>
     );
@@ -132,7 +155,7 @@ function AppContent() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <DashboardPage />
             </MainLayout>
           </ProtectedRoute>
@@ -142,7 +165,7 @@ function AppContent() {
         path="/ranking"
         element={
           <ProtectedRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <RankingPage />
             </MainLayout>
           </ProtectedRoute>
@@ -152,7 +175,7 @@ function AppContent() {
         path="/completion"
         element={
           <ProtectedRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <CompletionPage />
             </MainLayout>
           </ProtectedRoute>
@@ -162,7 +185,7 @@ function AppContent() {
         path="/completion/:completionId/update"
         element={
           <ProtectedRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <CompletionUpdatePage />
             </MainLayout>
           </ProtectedRoute>
@@ -172,7 +195,7 @@ function AppContent() {
         path="/requests"
         element={
           <ProtectedRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <RequestsPage />
             </MainLayout>
           </ProtectedRoute>
@@ -182,7 +205,7 @@ function AppContent() {
         path="/admin/records"
         element={
           <AdminRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <AdminRecordsPage />
             </MainLayout>
           </AdminRoute>
@@ -192,7 +215,7 @@ function AppContent() {
         path="/admin/logs"
         element={
           <AdminRoute>
-            <MainLayout>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <AdminAuditLogsPage />
             </MainLayout>
           </AdminRoute>
@@ -204,10 +227,40 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      return;
+    }
+    if (savedTheme === 'light') {
+      setIsDarkMode(false);
+      return;
+    }
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDarkMode(prefersDark);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <AppContent
+          isDarkMode={isDarkMode}
+          onToggleTheme={() => setIsDarkMode((prev) => !prev)}
+        />
       </AuthProvider>
     </BrowserRouter>
   );
