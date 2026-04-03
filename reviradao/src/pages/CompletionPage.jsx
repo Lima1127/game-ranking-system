@@ -116,6 +116,7 @@ export default function CompletionPage() {
       setForm(buildInitialForm());
       setPlatinumFile(null);
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
     },
     onError: (error) => {
       alert(`Erro ao registrar: ${error.response?.data?.message || error.message}`);

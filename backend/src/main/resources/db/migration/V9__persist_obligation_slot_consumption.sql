@@ -1,0 +1,2 @@
+ALTER TABLE obligations
+ADD COLUMN slot_consumed BOOLEAN NOT NULL DEFAULT TRUE;

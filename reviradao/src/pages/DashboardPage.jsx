@@ -45,6 +45,18 @@ export default function DashboardPage() {
           >
             Registrar Conclusao
           </Link>
+          <Link
+            to="/requests"
+            className="bg-slate-700 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-bold text-center transition duration-200"
+          >
+            Ver Solicitacoes
+          </Link>
+          <Link
+            to="/obligations"
+            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-bold text-center transition duration-200"
+          >
+            Gerenciar Obrigacoes
+          </Link>
         </div>
       </div>
     </div>

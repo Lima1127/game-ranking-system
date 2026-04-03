@@ -16,6 +16,7 @@ import java.util.UUID;
 public interface CompletionRepository extends JpaRepository<Completion, UUID> {
     boolean existsByEditionIdAndGameIdAndStatus(UUID editionId, UUID gameId, CompletionStatus status);
     boolean existsByUserIdAndGameId(UUID userId, UUID gameId);
+    boolean existsByUserIdAndGameIdAndStatus(UUID userId, UUID gameId, CompletionStatus status);
     Optional<Completion> findByIdAndEditionId(UUID completionId, UUID editionId);
 
     @Query("""

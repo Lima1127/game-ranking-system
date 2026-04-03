@@ -68,6 +68,7 @@ export default function CompletionUpdatePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['completion-update-requests'] });
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
       navigate('/requests');
     },
     onError: (error) => alert(error.response?.data?.message || error.message),
