@@ -54,7 +54,8 @@ public class AuthService {
                 tokenService.getExpirationSeconds(),
                 user.getId(),
                 user.getDisplayName(),
-                user.getRole()
+                user.getRole(),
+                user.getAvatarUploadedAt()
         );
     }
 }

@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
     const userEmail = localStorage.getItem('user_email');
     const displayName = localStorage.getItem('user_display_name');
     const role = localStorage.getItem('user_role');
+    const avatarUploadedAt = localStorage.getItem('user_avatar_uploaded_at');
 
     if (token && userId) {
       setUser({
@@ -20,13 +21,14 @@ export function AuthProvider({ children }) {
         email: userEmail,
         displayName,
         role,
+        avatarUploadedAt: avatarUploadedAt || null,
       });
     }
 
     setIsLoading(false);
   }, []);
 
-  const persistSession = ({ accessToken, userId, displayName, email, role }) => {
+  const persistSession = ({ accessToken, userId, displayName, email, role, avatarUploadedAt }) => {
     localStorage.setItem('auth_token', accessToken);
     localStorage.setItem('user_id', userId);
     localStorage.setItem('user_email', email);
@@ -35,15 +37,20 @@ export function AuthProvider({ children }) {
     if (displayName) {
       localStorage.setItem('user_display_name', displayName);
     }
+    if (avatarUploadedAt) {
+      localStorage.setItem('user_avatar_uploaded_at', avatarUploadedAt);
+    } else {
+      localStorage.removeItem('user_avatar_uploaded_at');
+    }
 
-    setUser({ id: userId, email, displayName, role });
+    setUser({ id: userId, email, displayName, role, avatarUploadedAt: avatarUploadedAt || null });
   };
 
   const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
-    const { accessToken, userId, displayName, role } = response.data;
+    const { accessToken, userId, displayName, role, avatarUploadedAt } = response.data;
 
-    persistSession({ accessToken, userId, displayName, email, role });
+    persistSession({ accessToken, userId, displayName, email, role, avatarUploadedAt });
     return response.data;
   };
 
@@ -63,11 +70,17 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_display_name');
     localStorage.removeItem('user_role');
+    localStorage.removeItem('user_avatar_uploaded_at');
     setUser(null);
   };
 
+  const updateAvatar = (avatarUploadedAt) => {
+    localStorage.setItem('user_avatar_uploaded_at', avatarUploadedAt);
+    setUser((prev) => (prev ? { ...prev, avatarUploadedAt } : prev));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );

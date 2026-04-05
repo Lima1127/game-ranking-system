@@ -28,6 +28,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user_email');
       localStorage.removeItem('user_display_name');
       localStorage.removeItem('user_role');
+      localStorage.removeItem('user_avatar_uploaded_at');
       window.location.href = '/login';
     }
     return Promise.reject(error);
