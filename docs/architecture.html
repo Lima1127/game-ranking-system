@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Ranking System - Documentação Técnica</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #764ba2;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        h4 {
+            color: #555;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        table tr:hover {
+            background: #f0f0f0;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #d63384;
+        }
+        
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.4;
+        }
+        
+        .endpoint {
+            background: #f0f5ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .endpoint.post {
+            border-left-color: #28a745;
+        }
+        
+        .endpoint.get {
+            border-left-color: #007bff;
+        }
+        
+        .endpoint.put {
+            border-left-color: #ffc107;
+        }
+        
+        .endpoint.delete {
+            border-left-color: #dc3545;
+        }
+        
+        .method {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 0.9em;
+        }
+        
+        .method.post {
+            background: #28a745;
+        }
+        
+        .method.get {
+            background: #007bff;
+        }
+        
+        .method.put {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .method.delete {
+            background: #dc3545;
+        }
+        
+        .entity {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .entity h4 {
+            margin-top: 0;
+        }
+        
+        .property {
+            margin: 10px 0;
+            padding-left: 20px;
+            border-left: 2px solid #667eea;
+        }
+        
+        .property-type {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .flow-diagram {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-family: monospace;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+        
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .tech-item {
+            background: #f0f5ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        
+        .tech-item strong {
+            color: #667eea;
+        }
+        
+        .layer-diagram {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 30px 0;
+        }
+        
+        .layer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .layer.controller {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .layer.service {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .layer.repository {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .layer h4 {
+            color: white;
+            margin-top: 0;
+        }
+        
+        .scoring-breakdown {
+            margin: 20px 0;
+        }
+        
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            background: #fafafa;
+        }
+        
+        .score-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .score-value {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .highlighter {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        
+        footer {
+            background: #f9f9f9;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        li {
+            margin: 8px 0;
+        }
+        
+        .diagram-box {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Game Ranking System</h1>
+            <p>Documentação Técnica Detalhada</p>
+        </header>
+        
+        <div class="content">
+            <!-- ========== VISÃO GERAL ========== -->
+            <div class="section">
+                <h2>📋 Visão Geral Técnica</h2>
+                <p>
+                    O Game Ranking System é uma aplicação backend desenvolvida em <strong>Spring Boot 3.3.5</strong> 
+                    com <strong>Java 21</strong> que implementa um sistema de ranking competitivo para jogadores. 
+                    A aplicação oferece APIs RESTful para gerenciar usuários, edições de competição, jogos, 
+                    conclusões e um mecanismo sofisticado de pontuação.
+                </p>
+                
+                <h3>Stack Tecnológico</h3>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <strong>Framework</strong><br>Spring Boot 3.3.5
+                    </div>
+                    <div class="tech-item">
+                        <strong>Linguagem</strong><br>Java 21
+                    </div>
+                    <div class="tech-item">
+                        <strong>Banco de Dados</strong><br>PostgreSQL
+                    </div>
+                    <div class="tech-item">
+                        <strong>ORM</strong><br>Spring Data JPA
+                    </div>
+                    <div class="tech-item">
+                        <strong>Migração</strong><br>Flyway 11.3.4
+                    </div>
+                    <div class="tech-item">
+                        <strong>Segurança</strong><br>Spring Security + JWT
+                    </div>
+                    <div class="tech-item">
+                        <strong>Validação</strong><br>Spring Validation
+                    </div>
+                    <div class="tech-item">
+                        <strong>Port</strong><br>8080
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ========== ARQUITETURA ========== -->
+            <div class="section">
+                <h2>🏗️ Arquitetura em Camadas</h2>
+                
+                <h3>Estrutura de Camadas</h3>
+                <div class="layer-diagram">
+                    <div class="layer controller">
+                        <h4>🌐 Controller Layer</h4>
+                        <small>HTTP Endpoints</small>
+                    </div>
+                    <div class="layer service">
+                        <h4>⚙️ Service Layer</h4>
+                        <small>Lógica de Negócio</small>
+                    </div>
+                    <div class="layer repository">
+                        <h4>💾 Repository Layer</h4>
+                        <small>Acesso a Dados</small>
+                    </div>
+                </div>
+                
+                <h3>Controllers Principais</h3>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/v1/auth/register</code>
+                    <p><strong>Descrição:</strong> Registra novo usuário</p>
+                    <p><strong>Request:</strong> RegisterRequest (displayName, email, password)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/v1/auth/login</code>
+                    <p><strong>Descrição:</strong> Autentica usuário e retorna JWT</p>
+                    <p><strong>Request:</strong> LoginRequest (email, password)</p>
+                    <p><strong>Response:</strong> AuthResponse (token, expiresIn)</p>
+                </div>
+                
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <code>/api/v1/completions</code>
+                    <p><strong>Descrição:</strong> Registra conclusão de jogo</p>
+                    <p><strong>Headers:</strong> X-User-Id (UUID do usuário)</p>
+                    <p><strong>Request:</strong> CreateCompletionRequest</p>
+                    <p><strong>Response:</strong> CompletionResponse</p>
+                </div>
+                
+                <div class="endpoint get">
+                    <span class="method get">GET</span>
+                    <code>/api/v1/ranking</code>
+                    <p><strong>Descrição:</strong> Recupera ranking da edição</p>
+                    <p><strong>Query Params:</strong> editionId (opcional)</p>
+                    <p><strong>Response:</strong> List&lt;RankingRowResponse&gt;</p>
+                </div>
+                
+                <div class="endpoint get">
+                    <span class="method get">GET</span>
+                    <code>/api/v1/games</code>
+                    <p><strong>Descrição:</strong> Lista todos os jogos</p>
+                    <p><strong>Response:</strong> List&lt;GameResponse&gt;</p>
+                </div>
+                
+                <div class="endpoint post">
+                    <span class="method post">POST</span>
+                    <code>/api/v1/games</code>
+                    <p><strong>Descrição:</strong> Cria novo jogo (admin only)</p>
+                    <p><strong>Request:</strong> CreateGameRequest</p>
+                    <p><strong>Response:</strong> GameResponse</p>
+                </div>
+                
+                <div class="endpoint post">
+                    <span class="method post">POST</span>
+                    <code>/api/v1/uploads</code>
+                    <p><strong>Descrição:</strong> Upload de prova de platina</p>
+                    <p><strong>Headers:</strong> X-User-Id (UUID)</p>
+                    <p><strong>Body:</strong> MultipartFile (imagem ou vídeo)</p>
+                </div>
+            </div>
+            
+            <!-- ========== ENTIDADES ========== -->
+            <div class="section">
+                <h2>🗄️ Modelo de Dados</h2>
+                
+                <h3>Entity Diagram</h3>
+                <div class="diagram-box">
+User (UUID)
+├── id: UUID (PK)
+├── displayName: String
+├── email: String (UNIQUE)
+├── passwordHash: String
+├── role: UserRole [ADMIN, USER]
+├── active: Boolean
+└── timestamps: createdAt, updatedAt
+
+Edition (UUID)
+├── id: UUID (PK)
+├── name: String
+├── year: Integer
+├── startsAt: LocalDate
+├── endsAt: LocalDate
+└── timestamps: createdAt, updatedAt
+
+Game (UUID)
+├── id: UUID (PK)
+├── name: String
+├── releaseYear: Integer
+├── estimatedHoursMain: BigDecimal
+├── estimatedHoursPlatinum: BigDecimal
+├── genres: Set&lt;Genre&gt; (ManyToMany)
+└── timestamps: createdAt, updatedAt
+
+Completion (UUID)
+├── id: UUID (PK)
+├── edition: Edition (FK)
+├── user: User (FK)
+├── game: Game (FK)
+├── completedAt: LocalDate
+├── hoursPlayed: BigDecimal
+├── firstTimeEver: Boolean
+├── firstInEdition: Boolean
+├── completedInReleaseYear: Boolean
+├── platinum: Boolean
+├── coop: Boolean
+├── coopPlayers: Integer
+├── hyped: Boolean
+└── timestamps: createdAt, updatedAt
+
+ScoreEvent (UUID)
+├── id: UUID (PK)
+├── edition: Edition (FK)
+├── user: User (FK)
+├── completion: Completion (FK)
+├── eventType: ScoreSourceType (enum)
+├── points: Integer
+├── description: String
+└── timestamp: OffsetDateTime
+
+Genre (UUID)
+├── id: UUID (PK)
+├── name: String
+└── games: Set&lt;Game&gt; (ManyToMany)
+
+PlatinumProof (UUID)
+├── id: UUID (PK)
+├── user: User (FK)
+├── completion: Completion (FK)
+├── filePath: String
+└── uploadedAt: LocalDateTime
+                </div>
+                
+                <h3>Principais Entidades</h3>
+                
+                <div class="entity">
+                    <h4>👤 User (Usuário)</h4>
+                    <div class="property">
+                        <span class="property-type">UUID</span> <strong>id</strong> - Identificador único
+                    </div>
+                    <div class="property">
+                        <span class="property-type">String</span> <strong>displayName</strong> - Nome de exibição (até 120 chars)
+                    </div>
+                    <div class="property">
+                        <span class="property-type">String</span> <strong>email</strong> - Email único para login
+                    </div>
+                    <div class="property">
+                        <span class="property-type">String</span> <strong>passwordHash</strong> - Hash bcrypt da senha
+                    </div>
+                    <div class="property">
+                        <span class="property-type">UserRole</span> <strong>role</strong> - ADMIN ou USER
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Boolean</span> <strong>active</strong> - Status da conta
+                    </div>
+                </div>
+                
+                <div class="entity">
+                    <h4>🎮 Game (Jogo)</h4>
+                    <div class="property">
+                        <span class="property-type">UUID</span> <strong>id</strong> - Identificador único
+                    </div>
+                    <div class="property">
+                        <span class="property-type">String</span> <strong>name</strong> - Título do jogo
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Integer</span> <strong>releaseYear</strong> - Ano de lançamento
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Decimal(6,2)</span> <strong>estimatedHoursMain</strong> - Tempo campanha
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Decimal(6,2)</span> <strong>estimatedHoursPlatinum</strong> - Tempo para 100%
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Set&lt;Genre&gt;</span> <strong>genres</strong> - Relacionamento ManyToMany
+                    </div>
+                </div>
+                
+                <div class="entity">
+                    <h4>✅ Completion (Conclusão)</h4>
+                    <div class="property">
+                        <span class="property-type">UUID</span> <strong>id</strong> - Identificador único
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Edition</span> <strong>edition</strong> - Edição do evento
+                    </div>
+                    <div class="property">
+                        <span class="property-type">User</span> <strong>user</strong> - Usuário que completou
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Game</span> <strong>game</strong> - Jogo completado
+                    </div>
+                    <div class="property">
+                        <span class="property-type">LocalDate</span> <strong>completedAt</strong> - Data da conclusão
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Decimal(6,2)</span> <strong>hoursPlayed</strong> - Horas jogadas
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Boolean</span> <strong>firstTimeEver</strong> - Primeira vez na vida
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Boolean</span> <strong>firstInEdition</strong> - Primeiro nesta edição
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Boolean</span> <strong>completedInReleaseYear</strong> - Completou no ano do lançamento
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Boolean</span> <strong>platinum</strong> - 100% completude
+                    </div>
+                </div>
+                
+                <div class="entity">
+                    <h4>📊 ScoreEvent (Evento de Pontuação)</h4>
+                    <div class="property">
+                        <span class="property-type">UUID</span> <strong>id</strong> - Identificador único
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Edition</span> <strong>edition</strong> - Edição
+                    </div>
+                    <div class="property">
+                        <span class="property-type">User</span> <strong>user</strong> - Usuário recebeu pontos
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Completion</span> <strong>completion</strong> - Conclusão associada
+                    </div>
+                    <div class="property">
+                        <span class="property-type">ScoreSourceType</span> <strong>eventType</strong> - Tipo de evento
+                    </div>
+                    <div class="property">
+                        <span class="property-type">Integer</span> <strong>points</strong> - Pontos atribuídos
+                    </div>
+                    <div class="property">
+                        <span class="property-type">String</span> <strong>description</strong> - Descrição humanizada
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ========== SCORING ENGINE ========== -->
+            <div class="section">
+                <h2>🎯 ScoringEngine - Motor de Pontuação</h2>
+                
+                <p>
+                    O <code>ScoringEngine</code> é o componente responsável por analisar cada 
+                    <code>Completion</code> e gerar <code>ScoreEvent</code>s correspondentes. É um componente 
+                    crítico do sistema que implementa toda a lógica de recompensas.
+                </p>
+                
+                <h3>Critérios de Pontuação</h3>
+                
+                <div class="scoring-breakdown">
+                    <div class="score-item">
+                        <span><strong>🎮 Jogo Completado</strong></span>
+                        <span class="score-value">1 ponto</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>🆕 Primeira Experiência</strong> - Primeira vez na vida completando este jogo</span>
+                        <span class="score-value">1 ponto</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>🥇 Primeiro na Edição</strong> - Primeiro participante a completar nesta edição</span>
+                        <span class="score-value">1 ponto</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>📅 Em Dia</strong> - Completou no mesmo ano de lançamento</span>
+                        <span class="score-value">1 ponto</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>⏱️ Tempo Valioso (bloco)</strong> - A cada 25 horas jogadas</span>
+                        <span class="score-value">2 pontos/bloco</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>👑 Platina</strong> - Atingiu 100% de completude</span>
+                        <span class="score-value">3 pontos</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>🤝 Braço Direito</strong> - Completou em coop (até 4 jogadores)</span>
+                        <span class="score-value">2 pontos</span>
+                    </div>
+                    <div class="score-item">
+                        <span><strong>🔥 Participação no Hype</strong> - Participou de eventos especiais</span>
+                        <span class="score-value">1 ponto</span>
+                    </div>
+                </div>
+                
+                <h3>Algoritmo de Exemplo</h3>
+                <pre>
+function buildCompletionEvents(completion, edition, user, underdogBonus):
+    events = []
+    
+    // Base
+    events.add(GAME_COMPLETED, 1 ponto)
+    
+    // Histórico
+    if completion.firstTimeEver:
+        events.add(FIRST_EXPERIENCE, 1 ponto)
+    
+    // Competição
+    if completion.firstInEdition:
+        events.add(FIRST_IN_EDITION, 1 ponto)
+    
+    // Timing
+    if completion.completedInReleaseYear:
+        events.add(IN_RELEASE_YEAR, 1 ponto)
+    
+    // Tempo investido (blocos de 25h)
+    blocks = floor(completion.hoursPlayed / 25)
+    for i in 0..blocks:
+        events.add(TIME_VALUABLE_BLOCK, 2 pontos)
+    
+    // Completude
+    if completion.platinum:
+        events.add(PLATINUM, 3 pontos)
+    
+    // Modo cooperativo
+    if completion.coop AND completion.coopPlayers <= 4:
+        events.add(COOP_RIGHT_HAND, 2 pontos)
+    
+    // Evento especial
+    if completion.hyped:
+        events.add(HYPE_PARTICIPATION, 1 ponto)
+    
+    return events
+                </pre>
+                
+                <h3>Exemplos de Cenários</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cenário</th>
+                            <th>Detalhes</th>
+                            <th>Pontos Totais</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Conclusão simples</td>
+                            <td>Jogo completado (20h, sem platina, não primeira)</td>
+                            <td><strong>1</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Primeira vez completa</td>
+                            <td>Primeira experiência + jogo completado</td>
+                            <td><strong>2</strong></td>
+                        </tr>
+                        <tr>
+                            <td>100% achievement</td>
+                            <td>Platina (75h) + jogo + primeira + tempo (3 blocos)</td>
+                            <td><strong>10</strong> (1+3+2+3+1)</td>
+                        </tr>
+                        <tr>
+                            <td>Speed run no lançamento</td>
+                            <td>Jogo + primeira edição + em dia + primeira na vida</td>
+                            <td><strong>4</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Sessão maratona coop</td>
+                            <td>Jogo + 100h coop (4 blocos) + primeiro + coop</td>
+                            <td><strong>11</strong> (1+1+8+1)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- ========== FLUXO DE DADOS ========== -->
+            <div class="section">
+                <h2>🔄 Fluxo de Dados Principal</h2>
+                
+                <h3>1. Fluxo de Autenticação</h3>
+                <div class="flow-diagram">
+POST /api/v1/auth/register
+    ↓
+AuthController.register()
+    ↓
+AuthService.register()
+    ├─ Valida email (não existe)
+    ├─ Hash de senha (bcrypt)
+    ├─ Cria User (ativo)
+    └─ UserRepository.save()
+    ↓
+Retorna AuthResponse com
+    ├─ token (JWT)
+    └─ expiresIn (7200s = 2h)
+                </div>
+                
+                <h3>2. Fluxo de Registro de Conclusão</h3>
+                <div class="flow-diagram">
+POST /api/v1/completions
+Header: X-User-Id: {userId}
+Body: CreateCompletionRequest
+    ↓
+CompletionController.create()
+    ├─ Valida X-User-Id header
+    └─ Chama CompletionService.create(userId, request)
+    ↓
+CompletionService.create()
+    ├─ Carrega User, Game, Edition
+    ├─ Valida período de edição
+    ├─ Cria Completion entity
+    ├─ CompletionRepository.save()
+    └─ Chama ScoringEngine
+    ↓
+ScoringEngine.buildCompletionEvents()
+    ├─ Analisa cada critério
+    ├─ Gera lista de ScoreEvent
+    └─ ScoreEventRepository.saveAll()
+    ↓
+Retorna CompletionResponse com
+    ├─ Id da conclusão
+    ├─ Pontos totais
+    └─ Lista de eventos
+                </div>
+                
+                <h3>3. Fluxo de Consulta de Ranking</h3>
+                <div class="flow-diagram">
+GET /api/v1/ranking?editionId={editionId}
+    ↓
+RankingController.get()
+    └─ Chama RankingService.getRanking(editionId)
+    ↓
+RankingService.getRanking()
+    ├─ Se editionId vazio, busca edição ativa
+    ├─ Query native SQL:
+    │  SELECT user_id, displayName, SUM(points) as totalPoints
+    │  FROM score_events
+    │  WHERE edition_id = ?
+    │  GROUP BY user_id, displayName
+    │  ORDER BY totalPoints DESC
+    └─ Mapeia resultado para RankingRowResponse
+    ↓
+Retorna List&lt;RankingRowResponse&gt;
+    ├─ Posição
+    ├─ Usuario (displayName)
+    └─ Pontos totais
+                </div>
+                
+                <h3>4. Estrutura de Segurança com JWT</h3>
+                <div class="highlighter">
+                    <strong>🔐 Token JWT</strong><br>
+                    Estrutura: Header.Payload.Signature<br><br>
+                    <strong>Payload contém:</strong><br>
+                    • sub: Email do usuário (subject)<br>
+                    • iat: Issued at (timestamp)<br>
+                    • exp: Expiration (timestamp + 7200s)<br>
+                    • role: Papel do usuário (ADMIN/USER)<br><br>
+                    <strong>Validação:</strong><br>
+                    • Assinatura HMAC-SHA256 com secret configurável<br>
+                    • Expiração validada a cada request<br>
+                    • Header X-User-Id extrai userId do contexto seguro
+                </div>
+            </div>
+            
+            <!-- ========== CONFIGURAÇÕES ========== -->
+            <div class="section">
+                <h2>⚙️ Configurações e Deployments</h2>
+                
+                <h3>Application.yml</h3>
+                <pre>
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/game_ranking
+    username: postgres
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Validar schema, não criar
+    properties:
+      hibernate:
+        format_sql: true  # SQL formatado nos logs
+    open-in-view: false   # Evitar lazy loading desnecessário
+  flyway:
+    enabled: true         # Migrations automáticas
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: change-me-in-env  # MUDE EM PRODUÇÃO
+    expiration-seconds: 7200   # 2 horas
+  storage:
+    root-path: ./storage       # Armazena uploads localmente
+                </pre>
+                
+                <h3>Variáveis de Ambiente (Produção)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Variável</th>
+                            <th>Descrição</th>
+                            <th>Exemplo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>SPRING_DATASOURCE_URL</code></td>
+                            <td>URL do PostgreSQL</td>
+                            <td>jdbc:postgresql://db.prod.com:5432/ranking</td>
+                        </tr>
+                        <tr>
+                            <td><code>SPRING_DATASOURCE_USERNAME</code></td>
+                            <td>Usuário do banco</td>
+                            <td>appuser</td>
+                        </tr>
+                        <tr>
+                            <td><code>SPRING_DATASOURCE_PASSWORD</code></td>
+                            <td>Senha do banco</td>
+                            <td>SecurePassword123!</td>
+                        </tr>
+                        <tr>
+                            <td><code>APP_JWT_SECRET</code></td>
+                            <td>Secret do JWT</td>
+                            <td>very-long-random-string- with-min-256bits</td>
+                        </tr>
+                        <tr>
+                            <td><code>APP_STORAGE_ROOT_PATH</code></td>
+                            <td>Caminho storage arquivos</td>
+                            <td>/data/uploads</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Build & Execução</h3>
+                <pre>
+# Build com Maven
+mvn clean package
+
+# Executar JAR
+java -jar backend-0.0.1-SNAPSHOT.jar
+
+# Com variáveis de ambiente
+java -Dapp.jwt.secret=your-secret-key \
+     -Dspring.datasource.password=pwd \
+     -jar backend-0.0.1-SNAPSHOT.jar
+                </pre>
+            </div>
+            
+            <!-- ========== MIGRAÇÕES ========== -->
+            <div class="section">
+                <h2>🔧 Flyway Migrations</h2>
+                
+                <h3>Arquivos de Migração</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Arquivo</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>V1__init.sql</code></td>
+                            <td>Schema inicial com todas as tabelas</td>
+                            <td>✅ Aplicada</td>
+                        </tr>
+                        <tr>
+                            <td><code>V2__add_updated_at_to_games.sql</code></td>
+                            <td>Adiciona coluna updated_at na tabela games</td>
+                            <td>✅ Aplicada</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Padrão de Migração</h3>
+                <pre>
+-- V3__add_new_feature.sql
+-- Convenção: V{número}__description.sql
+-- Flyway aplica automaticamente em ordem sequencial
+
+ALTER TABLE completions
+ADD COLUMN feature_flag BOOLEAN DEFAULT false;
+
+CREATE INDEX idx_completion_feature ON completions(feature_flag);
+                </pre>
+            </div>
+            
+            <!-- ========== TRATAMENTO DE ERROS ========== -->
+            <div class="section">
+                <h2>⚠️ Tratamento de Erros</h2>
+                
+                <h3>Exceções Customizadas</h3>
+                
+                <div class="entity">
+                    <h4>BusinessException</h4>
+                    <p>Erros de lógica de negócio (ex: período de edição encerrado)</p>
+                    <p><strong>HTTP Status:</strong> 400 Bad Request</p>
+                </div>
+                
+                <div class="entity">
+                    <h4>NotFoundException</h4>
+                    <p>Recurso não encontrado (ex: usuário, jogo, edição)</p>
+                    <p><strong>HTTP Status:</strong> 404 Not Found</p>
+                </div>
+                
+                <h3>GlobalExceptionHandler</h3>
+                <p>Centraliza tratamento de exceções e retorna responses padronizados.</p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Exceção</th>
+                            <th>HTTP Status</th>
+                            <th>Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>BusinessException</td>
+                            <td>400</td>
+                            <td>{ "error": "message", "code": "BUSINESS_ERROR" }</td>
+                        </tr>
+                        <tr>
+                            <td>NotFoundException</td>
+                            <td>404</td>
+                            <td>{ "error": "message", "code": "NOT_FOUND" }</td>
+                        </tr>
+                        <tr>
+                            <td>MethodArgumentNotValidException</td>
+                            <td>400</td>
+                            <td>{ "error": "Validation failed", "fields": {...} }</td>
+                        </tr>
+                        <tr>
+                            <td>Exception (genérica)</td>
+                            <td>500</td>
+                            <td>{ "error": "Internal server error" }</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- ========== PERFORMANCE ========== -->
+            <div class="section">
+                <h2>⚡ Otimizações e Performance</h2>
+                
+                <h3>Query Optimization</h3>
+                <ul>
+                    <li><strong>Eager Loading:</strong> Carrega Game e User na Completion para evitar N+1</li>
+                    <li><strong>Native Queries:</strong> RankingService usa SQL nativa para agregações</li>
+                    <li><strong>Índices:</strong> Criados em FK (user_id, game_id, edition_id)</li>
+                    <li><strong>Pagination:</strong> Implementada para listagens grandes</li>
+                </ul>
+                
+                <h3>Caching Potencial</h3>
+                <pre>
+// Futuro: Cache em cache para rankings
+@Cacheable(value = "rankings", key = "#editionId")
+public List&lt;RankingRowResponse&gt; getRanking(UUID editionId) {
+    // Query custosa
+}
+
+// TTL: 5 minutos (tempo suficiente entre atualizações)
+                </pre>
+                
+                <h3>Boas Práticas Adotadas</h3>
+                <ul>
+                    <li>open-in-view = false para evitar lazy loading desnecessário</li>
+                    <li>Format SQL = true para melhorar legibilidade em logs</li>
+                    <li>Validação de entrada em Controllers / DTOs</li>
+                    <li>Transações gerenciadas automaticamente (Spring @Transactional)</li>
+                </ul>
+            </div>
+            
+            <!-- ========== SEGURANÇA ========== -->
+            <div class="section">
+                <h2>🔒 Segurança</h2>
+                
+                <h3>Spring Security Configuration</h3>
+                <ul>
+                    <li><strong>CORS Configurado:</strong> Permite requisições do frontend</li>
+                    <li><strong>CSRF Desabilitado:</strong> APIs stateless com JWT</li>
+                    <li><strong>Password Encoding:</strong> BCrypt com força 12</li>
+                    <li><strong>JWT Validation:</strong> Assinatura HMAC-SHA256</li>
+                </ul>
+                
+                <h3>Endpoints Protegidos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Autenticação</th>
+                            <th>Autorização</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>POST /auth/register</td>
+                            <td>❌ Não (público)</td>
+                            <td>—</td>
+                        </tr>
+                        <tr>
+                            <td>POST /auth/login</td>
+                            <td>❌ Não (público)</td>
+                            <td>—</td>
+                        </tr>
+                        <tr>
+                            <td>POST /completions</td>
+                            <td>✅ JWT</td>
+                            <td>🔒 Own user only</td>
+                        </tr>
+                        <tr>
+                            <td>GET /ranking</td>
+                            <td>✅ JWT</td>
+                            <td>—</td>
+                        </tr>
+                        <tr>
+                            <td>POST /games</td>
+                            <td>✅ JWT</td>
+                            <td>🔒 ADMIN only</td>
+                        </tr>
+                        <tr>
+                            <td>POST /uploads</td>
+                            <td>✅ JWT</td>
+                            <td>🔒 Own user only</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Checklist de Segurança</h3>
+                <ul>
+                    <li>✅ Senhas hasheadas com bcrypt</li>
+                    <li>✅ JWT com expiração (2 horas)</li>
+                    <li>✅ HTTPS recomendado em produção</li>
+                    <li>✅ Validação de entrada em DTOs</li>
+                    <li>⚠️ Secret JWT deve ser mudado de "change-me-in-env"</li>
+                    <li>⚠️ Credenciais do DB não devem estar hardcoded</li>
+                    <li>⚠️ Rate limiting não implementado (adicionar em produção)</li>
+                </ul>
+            </div>
+            
+            <!-- ========== PRÓXIMOS PASSOS ========== -->
+            <div class="section">
+                <h2>🚀 Roadmap e Melhorias Futuras</h2>
+                
+                <h3>Curto Prazo</h3>
+                <ul>
+                    <li>📌 Implementar rate limiting (Spring Cloud Resilience4j)</li>
+                    <li>📌 Adicionar swagger/OpenAPI para documentação automática</li>
+                    <li>📌 Implementar refresh tokens</li>
+                    <li>📌 Validação de email com confirmação</li>
+                    <li>📌 Testes unitários e integração</li>
+                </ul>
+                
+                <h3>Médio Prazo</h3>
+                <ul>
+                    <li>📌 Caching distribuído (Redis)</li>
+                    <li>📌 Webhooks para notificações</li>
+                    <li>📌 Análise de performance e relatórios</li>
+                    <li>📌 Integração com PSN/Xbox/Steam APIs</li>
+                    <li>📌 Badges e achievements</li>
+                </ul>
+                
+                <h3>Longo Prazo</h3>
+                <ul>
+                    <li>📌 Multiplayer real-time (WebSockets)</li>
+                    <li>📌 Mobile app (Flutter/React Native)</li>
+                    <li>📌 Analytics e BI avançado</li>
+                    <li>📌 Machine learning para recommendations</li>
+                    <li>📌 Marketplace de troféus/itens</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            <p><strong>Game Ranking System</strong> - Documentação Técnica v1.0</p>
+            <p>Gerada: 28 de Março de 2026</p>
+            <p>Framework: Spring Boot 3.3.5 | Java 21 | PostgreSQL</p>
+        </footer>
+    </div>
+</body>
+</html>
