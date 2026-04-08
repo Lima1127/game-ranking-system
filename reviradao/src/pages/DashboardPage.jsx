@@ -3,10 +3,12 @@ import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 export default function DashboardPage() {
   const { user, updateAvatar } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const avatarUrl = user?.avatarUploadedAt
     ? `${api.defaults.baseURL}/users/${user.id}/avatar?v=${encodeURIComponent(user.avatarUploadedAt)}`
@@ -61,11 +63,22 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={`Avatar de ${user?.displayName || user?.email}`}
-                className="h-20 w-20 rounded-full object-cover border border-slate-300 dark:border-slate-700"
-              />
+              <button
+                type="button"
+                onClick={() =>
+                  setPreviewImage({
+                    src: avatarUrl,
+                    alt: `Avatar de ${user?.displayName || user?.email}`,
+                  })
+                }
+                className="inline-block"
+              >
+                <img
+                  src={avatarUrl}
+                  alt={`Avatar de ${user?.displayName || user?.email}`}
+                  className="h-20 w-20 rounded-full object-cover border border-slate-300 dark:border-slate-700 cursor-zoom-in"
+                />
+              </button>
             ) : (
               <div className="flex h-20 w-20 items-center justify-center rounded-full border border-dashed border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 text-xs font-semibold text-center px-2">
                 Sem foto
@@ -139,6 +152,13 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageSrc={previewImage?.src}
+        imageAlt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

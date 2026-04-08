@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const scoringRules = [
   { code: 'GAME_COMPLETED', emoji: '🎮', points: 1, description: 'Cada conclusao registrada gera 1 ponto base.', active: true },
@@ -65,7 +67,7 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
   );
 }
 
-function PodiumCard({ player, index, userCompletions, avatarUrl }) {
+function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
   const styles = [
     'from-amber-400 to-yellow-300 text-amber-950',
     'from-slate-300 to-slate-100 text-slate-900',
@@ -79,11 +81,17 @@ function PodiumCard({ player, index, userCompletions, avatarUrl }) {
       <div className="text-xs uppercase tracking-[0.3em] opacity-70 mb-3">{medals[index]}</div>
       <div className="mb-2 flex items-center gap-3">
         {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={`Avatar de ${player.displayName}`}
-            className="h-10 w-10 rounded-full object-cover border border-black/10"
-          />
+          <button
+            type="button"
+            onClick={() => onPreview(avatarUrl, `Avatar de ${player.displayName}`)}
+            className="inline-block"
+          >
+            <img
+              src={avatarUrl}
+              alt={`Avatar de ${player.displayName}`}
+              className="h-10 w-10 rounded-full object-cover border border-black/10 cursor-zoom-in"
+            />
+          </button>
         ) : (
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-xs font-bold">
             {player.displayName?.slice(0, 1)?.toUpperCase() || '?'}
@@ -118,6 +126,7 @@ function PodiumCard({ player, index, userCompletions, avatarUrl }) {
 
 export default function RankingPage() {
   const { user } = useAuth();
+  const [previewImage, setPreviewImage] = useState(null);
   const { data: ranking = [], isLoading, error } = useQuery({
     queryKey: ['ranking'],
     queryFn: async () => {
@@ -285,6 +294,7 @@ export default function RankingPage() {
                 index={index}
                 userCompletions={completionsByUser[player.userId] || []}
                 avatarUrl={buildAvatarUrl(player)}
+                onPreview={(src, alt) => setPreviewImage({ src, alt })}
               />
             ))}
           </section>
@@ -332,11 +342,22 @@ export default function RankingPage() {
                           <td className="px-8 py-5 min-w-[320px]">
                             <div className="flex items-center gap-2">
                               {buildAvatarUrl(row) ? (
-                                <img
-                                  src={buildAvatarUrl(row)}
-                                  alt={`Avatar de ${row.displayName}`}
-                                  className="h-9 w-9 rounded-full object-cover border border-slate-300 dark:border-slate-700"
-                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewImage({
+                                      src: buildAvatarUrl(row),
+                                      alt: `Avatar de ${row.displayName}`,
+                                    })
+                                  }
+                                  className="inline-block"
+                                >
+                                  <img
+                                    src={buildAvatarUrl(row)}
+                                    alt={`Avatar de ${row.displayName}`}
+                                    className="h-9 w-9 rounded-full object-cover border border-slate-300 dark:border-slate-700 cursor-zoom-in"
+                                  />
+                                </button>
                               ) : (
                                 <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
                                   {row.displayName?.slice(0, 1)?.toUpperCase() || '?'}
@@ -435,6 +456,13 @@ export default function RankingPage() {
           </section>
         </>
       )}
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageSrc={previewImage?.src}
+        imageAlt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
