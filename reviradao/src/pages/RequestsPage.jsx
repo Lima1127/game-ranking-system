@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 function statusClasses(status) {
   if (status === 'APPROVED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
@@ -16,6 +18,7 @@ export default function RequestsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [previewImage, setPreviewImage] = useState(null);
   const isAdmin = user?.role === 'ADMIN';
   const buildProofUrl = (proofId) => `${api.defaults.baseURL}/uploads/proofs/${proofId}`;
 
@@ -123,11 +126,22 @@ export default function RequestsPage() {
                       <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
                         <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Anexo enviado</div>
                         {submission.proofContentType?.startsWith('image/') && (
-                          <img
-                            src={buildProofUrl(submission.proofId)}
-                            alt={`Anexo de ${submission.gameName}`}
-                            className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900"
-                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewImage({
+                                src: buildProofUrl(submission.proofId),
+                                alt: `Anexo de ${submission.gameName}`,
+                              })
+                            }
+                            className="inline-block"
+                          >
+                            <img
+                              src={buildProofUrl(submission.proofId)}
+                              alt={`Anexo de ${submission.gameName}`}
+                              className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-slate-700 object-contain bg-white dark:bg-slate-900 cursor-zoom-in"
+                            />
+                          </button>
                         )}
                         <a
                           href={buildProofUrl(submission.proofId)}
@@ -194,6 +208,13 @@ export default function RequestsPage() {
           })}
         </div>
       )}
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageSrc={previewImage?.src}
+        imageAlt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
