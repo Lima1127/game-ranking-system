@@ -7,8 +7,10 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import RankingPage from './pages/RankingPage';
 import CompletionPage from './pages/CompletionPage';
+import CompletionSubmissionEditPage from './pages/CompletionSubmissionEditPage';
 import CompletionUpdatePage from './pages/CompletionUpdatePage';
 import RequestsPage from './pages/RequestsPage';
+import ObligationsPage from './pages/ObligationsPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 
@@ -79,6 +81,9 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
             </Link>
             <Link to="/requests" className="hover:opacity-80">
               Solicitacoes
+            </Link>
+            <Link to="/obligations" className="hover:opacity-80">
+              Obrigacoes
             </Link>
             {user?.role === 'ADMIN' && (
               <>
@@ -197,6 +202,26 @@ function AppContent({ isDarkMode, onToggleTheme }) {
           <ProtectedRoute>
             <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <RequestsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/obligations"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <ObligationsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/requests/:kind/:submissionId/edit"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <CompletionSubmissionEditPage />
             </MainLayout>
           </ProtectedRoute>
         }

@@ -41,6 +41,7 @@ public class CompletionService {
     private final ScoringEngine scoringEngine;
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
+    private final ObligationService obligationService;
 
     @Transactional
     public CompletionResponse create(UUID userId, CreateCompletionRequest request) {
@@ -77,6 +78,7 @@ public class CompletionService {
                 .hoursPlayed(request.hoursPlayed())
                 .firstTimeEver(request.firstTimeEver())
                 .firstInEdition(false)
+                .underdogAwarded(false)
                 .completedInReleaseYear(request.completedInReleaseYear())
                 .platinum(request.platinum())
                 .coop(request.coop())
@@ -93,6 +95,61 @@ public class CompletionService {
         platinumProofService.attachToCompletion(request.platinumProofId(), saved);
 
         return new CompletionResponse(saved.getId(), user.getId(), game.getId(), 0, CompletionStatus.PENDING);
+    }
+
+    @Transactional
+    public CompletionResponse updatePending(UUID requesterId, UUID completionId, CreateCompletionRequest request) {
+        Edition edition = resolveEdition(null);
+        User requester = userRepository.findById(requesterId)
+                .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
+
+        Completion completion = completionRepository.findByIdAndEditionId(completionId, edition.getId())
+                .orElseThrow(() -> new NotFoundException("Solicitacao nao encontrada"));
+
+        boolean ownsRequest = completion.getUser().getId().equals(requesterId);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!ownsRequest && !isAdmin) {
+            throw new BusinessException("Voce nao pode editar esta solicitacao");
+        }
+
+        if (completion.getStatus() != CompletionStatus.PENDING) {
+            throw new BusinessException("Apenas solicitacoes pendentes podem ser editadas");
+        }
+
+        if (request.platinumProofId() == null) {
+            throw new BusinessException("Toda solicitacao exige um anexo");
+        }
+
+        if (!request.coop() && request.coopPlayers() != null) {
+            throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
+        }
+
+        if (request.coop() && request.coopPlayers() == null) {
+            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
+        }
+
+        Game game = gameService.getById(request.gameId());
+        completion.setGame(game);
+        completion.setCompletedAt(request.completedAt() == null ? LocalDate.now() : request.completedAt());
+        completion.setHoursPlayed(request.hoursPlayed());
+        completion.setFirstTimeEver(request.firstTimeEver());
+        completion.setCompletedInReleaseYear(request.completedInReleaseYear());
+        completion.setPlatinum(request.platinum());
+        completion.setCoop(request.coop());
+        completion.setCoopPlayers(request.coopPlayers());
+        completion.setHypeParticipation(request.hypeParticipation());
+        completion.setHypeCompletedBonus(request.hypeCompletedBonus());
+        completion.setRotativeList(request.rotativeList());
+        completion.setNotes(request.notes());
+
+        if (completion.getProof() == null) {
+            platinumProofService.attachToCompletion(request.platinumProofId(), completion);
+        } else if (!completion.getProof().getId().equals(request.platinumProofId())) {
+            platinumProofService.replaceCompletionProof(request.platinumProofId(), completion);
+        }
+
+        return new CompletionResponse(completion.getId(), completion.getUser().getId(), completion.getGame().getId(), 0, completion.getStatus());
     }
 
     @Transactional(readOnly = true)
@@ -182,9 +239,11 @@ public class CompletionService {
                 .max()
                 .orElse(0L);
         boolean underdogBonus = leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
+        completion.setUnderdogAwarded(underdogBonus);
 
         List<ScoreEvent> events = scoringEngine.buildCompletionEvents(completion, edition, completion.getUser(), underdogBonus);
         scoreEventRepository.saveAll(events);
+        obligationService.resolveWithApprovedCompletion(completion);
 
         int total = events.stream().mapToInt(ScoreEvent::getPoints).sum();
         adminAuditLogService.log(

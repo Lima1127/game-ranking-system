@@ -4,6 +4,7 @@ import com.gameranking.common.exception.BusinessException;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.UserRepository;
+import com.gameranking.security.TokenService;
 import com.gameranking.web.dto.auth.AuthResponse;
 import com.gameranking.web.dto.auth.LoginRequest;
 import com.gameranking.web.dto.auth.RegisterRequest;
@@ -19,6 +20,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
     public User register(RegisterRequest request) {
         userRepository.findByEmailIgnoreCase(request.email()).ifPresent(u -> {
@@ -45,7 +47,15 @@ public class AuthService {
             throw new BusinessException("Credenciais invalidas");
         }
 
-        String accessToken = "dev-token-" + user.getId();
-        return new AuthResponse(accessToken, "Bearer", 7200L, user.getId(), user.getDisplayName(), user.getRole());
+        String accessToken = tokenService.createToken(user);
+        return new AuthResponse(
+                accessToken,
+                "Bearer",
+                tokenService.getExpirationSeconds(),
+                user.getId(),
+                user.getDisplayName(),
+                user.getRole(),
+                user.getAvatarUploadedAt()
+        );
     }
 }

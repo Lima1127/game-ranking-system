@@ -3,6 +3,7 @@ package com.gameranking.service;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.CompletionStatus;
+import com.gameranking.domain.enums.CompletionSubmissionKind;
 import com.gameranking.domain.enums.CompletionUpdateStatus;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
@@ -14,9 +15,11 @@ import com.gameranking.repository.CompletionUpdateRequestRepository;
 import com.gameranking.repository.EditionRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.completion.CompletionDetailsResponse;
+import com.gameranking.web.dto.completion.CompletionSubmissionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionResponse;
 import com.gameranking.web.dto.completion.CompletionUpdateRequestResponse;
 import com.gameranking.web.dto.completion.CreateCompletionUpdateRequest;
+import com.gameranking.web.dto.completion.UpsertCompletionSubmissionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -228,6 +231,103 @@ public class CompletionUpdateService {
                         ? "Solicitacao de atualizacao cancelada por um admin."
                         : "Solicitacao de atualizacao cancelada pelo proprio usuario."
         );
+
+        return new CompletionUpdateRequestResponse(
+                updateRequest.getId(),
+                updateRequest.getCompletion().getId(),
+                updateRequest.getRequestedBy().getId(),
+                updateRequest.getRequestedBy().getDisplayName(),
+                updateRequest.getCompletion().getGame().getName(),
+                updateRequest.getCompletedAt(),
+                updateRequest.getHoursPlayed(),
+                updateRequest.isPlatinum(),
+                updateRequest.getStatus(),
+                updateRequest.getCreatedAt(),
+                updateRequest.getApprovedAt(),
+                updateRequest.getProofId(),
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId())
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public CompletionSubmissionDetailsResponse getSubmission(UUID requesterId, UUID updateRequestId) {
+        User requester = findUser(requesterId);
+        CompletionUpdateRequest updateRequest = completionUpdateRequestRepository.findById(updateRequestId)
+                .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
+
+        boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!ownsRequest && !isAdmin) {
+            throw new BusinessException("Voce nao pode visualizar esta solicitacao");
+        }
+
+        return new CompletionSubmissionDetailsResponse(
+                CompletionSubmissionKind.UPDATE_COMPLETION,
+                updateRequest.getId(),
+                updateRequest.getCompletion().getId(),
+                updateRequest.getRequestedBy().getId(),
+                updateRequest.getRequestedBy().getDisplayName(),
+                updateRequest.getCompletion().getGame().getId(),
+                updateRequest.getCompletion().getGame().getName(),
+                updateRequest.getCompletedAt(),
+                updateRequest.getHoursPlayed(),
+                updateRequest.isFirstTimeEver(),
+                updateRequest.isCompletedInReleaseYear(),
+                updateRequest.isPlatinum(),
+                updateRequest.isCoop(),
+                updateRequest.getCoopPlayers(),
+                updateRequest.isHypeParticipation(),
+                updateRequest.isHypeCompletedBonus(),
+                updateRequest.isRotativeList(),
+                updateRequest.getNotes(),
+                updateRequest.getStatus().name(),
+                updateRequest.getProofId(),
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getStatus() == CompletionUpdateStatus.PENDING && (ownsRequest || isAdmin)
+        );
+    }
+
+    @Transactional
+    public CompletionUpdateRequestResponse updatePending(UUID requesterId, UUID updateRequestId, UpsertCompletionSubmissionRequest request) {
+        Edition edition = resolveEdition(null);
+        User requester = findUser(requesterId);
+        CompletionUpdateRequest updateRequest = completionUpdateRequestRepository.findByIdAndCompletionEditionId(updateRequestId, edition.getId())
+                .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
+
+        boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!ownsRequest && !isAdmin) {
+            throw new BusinessException("Voce nao pode editar esta solicitacao");
+        }
+
+        if (updateRequest.getStatus() != CompletionUpdateStatus.PENDING) {
+            throw new BusinessException("Apenas atualizacoes pendentes podem ser editadas");
+        }
+
+        if (!request.coop() && request.coopPlayers() != null) {
+            throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
+        }
+
+        if (request.coop() && request.coopPlayers() == null) {
+            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
+        }
+
+        platinumProofService.findById(request.proofId());
+
+        updateRequest.setCompletedAt(request.completedAt());
+        updateRequest.setHoursPlayed(request.hoursPlayed());
+        updateRequest.setFirstTimeEver(request.firstTimeEver());
+        updateRequest.setCompletedInReleaseYear(request.completedInReleaseYear());
+        updateRequest.setPlatinum(request.platinum());
+        updateRequest.setProofId(request.proofId());
+        updateRequest.setCoop(request.coop());
+        updateRequest.setCoopPlayers(request.coopPlayers());
+        updateRequest.setHypeParticipation(request.hypeParticipation());
+        updateRequest.setHypeCompletedBonus(request.hypeCompletedBonus());
+        updateRequest.setRotativeList(request.rotativeList());
+        updateRequest.setNotes(request.notes());
 
         return new CompletionUpdateRequestResponse(
                 updateRequest.getId(),

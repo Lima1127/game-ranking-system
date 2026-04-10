@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const scoringRules = [
   { code: 'GAME_COMPLETED', emoji: '🎮', points: 1, description: 'Cada conclusao registrada gera 1 ponto base.', active: true },
@@ -64,7 +67,7 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
   );
 }
 
-function PodiumCard({ player, index, userCompletions }) {
+function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
   const styles = [
     'from-amber-400 to-yellow-300 text-amber-950',
     'from-slate-300 to-slate-100 text-slate-900',
@@ -76,7 +79,26 @@ function PodiumCard({ player, index, userCompletions }) {
   return (
     <div className={`rounded-3xl bg-gradient-to-br ${styles[index]} shadow-lg p-6`}>
       <div className="text-xs uppercase tracking-[0.3em] opacity-70 mb-3">{medals[index]}</div>
-      <div className="text-2xl font-black mb-2">{player.displayName}</div>
+      <div className="mb-2 flex items-center gap-3">
+        {avatarUrl ? (
+          <button
+            type="button"
+            onClick={() => onPreview(avatarUrl, `Avatar de ${player.displayName}`)}
+            className="inline-block"
+          >
+            <img
+              src={avatarUrl}
+              alt={`Avatar de ${player.displayName}`}
+              className="h-10 w-10 rounded-full object-cover border border-black/10 cursor-zoom-in"
+            />
+          </button>
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-xs font-bold">
+            {player.displayName?.slice(0, 1)?.toUpperCase() || '?'}
+          </div>
+        )}
+        <div className="text-2xl font-black">{player.displayName}</div>
+      </div>
       <div className="text-sm opacity-80 mb-4">Pontuacao total acumulada na edicao ativa.</div>
       {player.underdogBonusCount > 0 && (
         <div className="inline-flex items-center rounded-full bg-black/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] mb-4">
@@ -103,6 +125,8 @@ function PodiumCard({ player, index, userCompletions }) {
 }
 
 export default function RankingPage() {
+  const { user } = useAuth();
+  const [previewImage, setPreviewImage] = useState(null);
   const { data: ranking = [], isLoading, error } = useQuery({
     queryKey: ['ranking'],
     queryFn: async () => {
@@ -130,6 +154,26 @@ export default function RankingPage() {
   const leader = ranking[0];
   const totalPlayers = ranking.length;
   const activeRules = scoringRules.filter((rule) => rule.active);
+  const currentUserIndex = ranking.findIndex((row) => row.userId === user?.id);
+  const currentUserEntry = currentUserIndex >= 0 ? ranking[currentUserIndex] : null;
+  const buildAvatarUrl = (row) => {
+    if (!row?.hasAvatar) {
+      return null;
+    }
+    const version = row.avatarUploadedAt ? `?v=${encodeURIComponent(row.avatarUploadedAt)}` : '';
+    return `${api.defaults.baseURL}/users/${row.userId}/avatar${version}`;
+  };
+
+  const scrollToCurrentUserRow = () => {
+    if (!currentUserEntry) {
+      return;
+    }
+
+    const row = document.getElementById(`ranking-row-${currentUserEntry.userId}`);
+    if (row) {
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   if (isLoading || completionsLoading) {
     return (
@@ -183,6 +227,33 @@ export default function RankingPage() {
         </div>
       </section>
 
+      {user?.id && (
+        <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-5">
+          {currentUserEntry ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-1">Sua posicao</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100">
+                  #{currentUserIndex + 1} - {currentUserEntry.displayName}
+                </div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{currentUserEntry.totalPoints} pontos</div>
+              </div>
+              <button
+                type="button"
+                onClick={scrollToCurrentUserRow}
+                className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary"
+              >
+                Ir para minha linha
+              </button>
+            </div>
+          ) : (
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              Voce ainda nao aparece no ranking desta edicao.
+            </div>
+          )}
+        </section>
+      )}
+
       {ranking.length === 0 ? (
         <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg p-8 border border-slate-100 dark:border-slate-800">
@@ -222,6 +293,8 @@ export default function RankingPage() {
                 player={player}
                 index={index}
                 userCompletions={completionsByUser[player.userId] || []}
+                avatarUrl={buildAvatarUrl(player)}
+                onPreview={(src, alt) => setPreviewImage({ src, alt })}
               />
             ))}
           </section>
@@ -246,15 +319,19 @@ export default function RankingPage() {
                   <tbody>
                     {ranking.map((row, index) => {
                       const userCompletions = completionsByUser[row.userId] || [];
+                      const isCurrentUser = Boolean(user?.id && row.userId === user.id);
 
                       return (
                         <tr
+                          id={`ranking-row-${row.userId}`}
                           key={row.userId}
                           className={`border-t border-slate-100 dark:border-slate-800 align-top ${
-                            index === 0 ? 'bg-amber-50/80 dark:bg-amber-900/20' : index % 2 === 0 ? 'bg-slate-50/70 dark:bg-slate-900/60' : 'bg-white dark:bg-slate-900'
+                            index % 2 === 0 ? 'bg-slate-50/70 dark:bg-slate-900/60' : 'bg-white dark:bg-slate-900'
+                          } ${
+                            isCurrentUser ? 'shadow-[4px_0_0_0_#8b5cf6_inset]' : ''
                           }`}
                         >
-                          <td className="px-8 py-5">
+                          <td className={isCurrentUser ? 'pl-11 pr-8 py-5' : 'px-8 py-5'}>
                             <div className="flex items-center gap-3">
                               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 text-white font-black">
                                 {formatPosition(index)}
@@ -263,7 +340,36 @@ export default function RankingPage() {
                             </div>
                           </td>
                           <td className="px-8 py-5 min-w-[320px]">
-                            <div className="font-bold text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                            <div className="flex items-center gap-2">
+                              {buildAvatarUrl(row) ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewImage({
+                                      src: buildAvatarUrl(row),
+                                      alt: `Avatar de ${row.displayName}`,
+                                    })
+                                  }
+                                  className="inline-block"
+                                >
+                                  <img
+                                    src={buildAvatarUrl(row)}
+                                    alt={`Avatar de ${row.displayName}`}
+                                    className="h-9 w-9 rounded-full object-cover border border-slate-300 dark:border-slate-700 cursor-zoom-in"
+                                  />
+                                </button>
+                              ) : (
+                                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                  {row.displayName?.slice(0, 1)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                              <div className="font-bold text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                              {isCurrentUser && (
+                                <span className="inline-flex rounded-full bg-primary/15 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary dark:bg-primary/25 dark:text-indigo-200">
+                                  Voce
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-slate-500 dark:text-slate-400 mb-4">Usuario {row.userId}</div>
                             <div className="space-y-2">
                               {userCompletions.length > 0 ? (
@@ -350,6 +456,13 @@ export default function RankingPage() {
           </section>
         </>
       )}
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageSrc={previewImage?.src}
+        imageAlt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

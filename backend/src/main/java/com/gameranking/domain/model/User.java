@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -33,4 +34,16 @@ public class User extends AuditableEntity {
 
     @Column(nullable = false)
     private Boolean active;
+
+    @Column(name = "avatar_storage_key", length = 255)
+    private String avatarStorageKey;
+
+    @Column(name = "avatar_content_type", length = 120)
+    private String avatarContentType;
+
+    @Column(name = "avatar_file_size_bytes")
+    private Long avatarFileSizeBytes;
+
+    @Column(name = "avatar_uploaded_at")
+    private OffsetDateTime avatarUploadedAt;
 }
