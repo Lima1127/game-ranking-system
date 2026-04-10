@@ -52,6 +52,9 @@ public class Completion extends AuditableEntity {
     @Column(name = "first_in_edition", nullable = false)
     private boolean firstInEdition;
 
+    @Column(name = "underdog_awarded", nullable = false)
+    private boolean underdogAwarded;
+
     @Column(name = "completed_in_release_year", nullable = false)
     private boolean completedInReleaseYear;
 

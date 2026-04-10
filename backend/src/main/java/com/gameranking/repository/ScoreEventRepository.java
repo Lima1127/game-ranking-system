@@ -1,5 +1,6 @@
 package com.gameranking.repository;
 
+import com.gameranking.domain.enums.ScoreSourceType;
 import com.gameranking.domain.model.ScoreEvent;
 import com.gameranking.web.dto.ranking.RankingRowResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,11 +27,13 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
                 se.user.id,
                 se.user.displayName,
                 coalesce(sum(se.points), 0),
-                coalesce(sum(case when se.ruleCode = 'UNDERDOG_BONUS' then 1 else 0 end), 0)
+                coalesce(sum(case when se.ruleCode = 'UNDERDOG_BONUS' then 1 else 0 end), 0),
+                case when se.user.avatarStorageKey is not null then true else false end,
+                se.user.avatarUploadedAt
             )
             from ScoreEvent se
             where se.edition.id = :editionId
-            group by se.user.id, se.user.displayName
+            group by se.user.id, se.user.displayName, se.user.avatarStorageKey, se.user.avatarUploadedAt
             order by coalesce(sum(se.points), 0) desc
             """)
     List<RankingRowResponse> getRanking(UUID editionId);
@@ -80,7 +83,15 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
     @Modifying
     @Query("""
             delete from ScoreEvent se
-            where se.edition.id = :editionId
+            where se.obligation.id = :obligationId
             """)
-    void deleteByEditionId(UUID editionId);
+    void deleteByObligationId(UUID obligationId);
+
+    @Modifying
+    @Query("""
+            delete from ScoreEvent se
+            where se.edition.id = :editionId
+              and se.sourceType = :sourceType
+            """)
+    void deleteByEditionIdAndSourceType(UUID editionId, ScoreSourceType sourceType);
 }
