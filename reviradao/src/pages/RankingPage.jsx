@@ -77,7 +77,7 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
   const medals = ['Top 1', 'Top 2', 'Top 3'];
 
   return (
-    <div className={`rounded-3xl bg-gradient-to-br ${styles[index]} shadow-lg p-6`}>
+    <div className={`relative rounded-3xl bg-gradient-to-br ${styles[index]} shadow-lg p-6`}>
       <div className="text-xs uppercase tracking-[0.3em] opacity-70 mb-3">{medals[index]}</div>
       <div className="mb-2 flex items-center gap-3">
         {avatarUrl ? (
@@ -101,8 +101,15 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
       </div>
       <div className="text-sm opacity-80 mb-4">Pontuacao total acumulada na edicao ativa.</div>
       {player.underdogBonusCount > 0 && (
-        <div className="inline-flex items-center rounded-full bg-black/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] mb-4">
-          UnderDog x{player.underdogBonusCount}
+        <div className="absolute right-4 top-4 inline-flex items-center justify-center rounded-full border border-black/10 bg-white/45 px-2 py-1 text-base shadow-sm">
+          <span className="leading-none" title="UnderDog">
+            {emojiByRuleCode.UNDERDOG_BONUS || '\u{1F436}'}
+          </span>
+          {player.underdogBonusCount > 1 && (
+            <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900/85 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+              x{player.underdogBonusCount}
+            </span>
+          )}
         </div>
       )}
       <div className="flex items-end justify-between mb-4">
