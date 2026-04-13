@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 
 const scoringRules = [
@@ -24,11 +24,20 @@ const emojiByRuleCode = scoringRules.reduce((acc, rule) => {
   return acc;
 }, {});
 
+const pointsByRuleCode = scoringRules.reduce((acc, rule) => {
+  acc[rule.code] = rule.points;
+  return acc;
+}, {});
+
 const platinumBadgeClass =
   'rounded-full border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-[#432200] dark:border-[#163a56] dark:bg-gradient-to-r dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff] dark:text-[#fff6d8]';
 
 function formatPosition(index) {
   return String(index + 1);
+}
+
+function getCompletionPoints(completion) {
+  return (completion.ruleCodes || []).reduce((sum, code) => sum + (pointsByRuleCode[code] || 0), 0);
 }
 
 function RuleEmojiStrip({ ruleCodes = [] }) {
@@ -47,7 +56,7 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
   const orderedGroupedRules = Object.values(groupedRules);
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-2 grid grid-cols-4 gap-2">
       {orderedGroupedRules.map(({ code, count }) => (
         <span key={code} className="relative inline-flex">
           <span
@@ -75,6 +84,18 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
   ];
 
   const medals = ['Top 1', 'Top 2', 'Top 3'];
+  const topScoringCompletions = [...userCompletions]
+    .sort((a, b) => {
+      const pointsA = (a.ruleCodes || []).reduce((sum, code) => sum + (pointsByRuleCode[code] || 0), 0);
+      const pointsB = (b.ruleCodes || []).reduce((sum, code) => sum + (pointsByRuleCode[code] || 0), 0);
+
+      if (pointsB !== pointsA) {
+        return pointsB - pointsA;
+      }
+
+      return String(b.completedAt || '').localeCompare(String(a.completedAt || ''));
+    })
+    .slice(0, 3);
 
   return (
     <div className={`relative rounded-3xl bg-gradient-to-br ${styles[index]} shadow-lg p-6`}>
@@ -117,7 +138,7 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
         <span className="text-sm font-bold uppercase tracking-[0.25em]">pts</span>
       </div>
       <div className="space-y-2">
-        {userCompletions.slice(0, 3).map((completion) => (
+        {topScoringCompletions.map((completion) => (
           <div key={completion.completionId} className="rounded-2xl bg-white/25 dark:bg-black/20 px-4 py-3">
             <div className="font-bold">{completion.gameName}</div>
             <div className="text-xs opacity-80">
@@ -134,6 +155,7 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
 export default function RankingPage() {
   const { user } = useAuth();
   const [previewImage, setPreviewImage] = useState(null);
+  const [playerGamesModal, setPlayerGamesModal] = useState({ userId: null, sortBy: 'date' });
   const { data: ranking = [], isLoading, error } = useQuery({
     queryKey: ['ranking'],
     queryFn: async () => {
@@ -182,6 +204,49 @@ export default function RankingPage() {
     }
   };
 
+  const closePlayerGamesModal = () => setPlayerGamesModal({ userId: null, sortBy: 'date' });
+
+  useEffect(() => {
+    if (!playerGamesModal.userId) {
+      return;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closePlayerGamesModal();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [playerGamesModal.userId]);
+
+  const selectedModalPlayer = playerGamesModal.userId
+    ? ranking.find((row) => row.userId === playerGamesModal.userId)
+    : null;
+
+  const selectedModalCompletions = selectedModalPlayer
+    ? [...(completionsByUser[selectedModalPlayer.userId] || [])]
+    : [];
+
+  selectedModalCompletions.sort((a, b) => {
+    if (playerGamesModal.sortBy === 'hours') {
+      const diff = Number(b.hoursPlayed || 0) - Number(a.hoursPlayed || 0);
+      return diff !== 0 ? diff : String(b.completedAt || '').localeCompare(String(a.completedAt || ''));
+    }
+
+    if (playerGamesModal.sortBy === 'points') {
+      const diff = getCompletionPoints(b) - getCompletionPoints(a);
+      return diff !== 0 ? diff : String(b.completedAt || '').localeCompare(String(a.completedAt || ''));
+    }
+
+    if (playerGamesModal.sortBy === 'alpha') {
+      return String(a.gameName || '').localeCompare(String(b.gameName || ''));
+    }
+
+    return String(b.completedAt || '').localeCompare(String(a.completedAt || ''));
+  });
+
   if (isLoading || completionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -206,7 +271,7 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="mx-auto max-w-[1820px] space-y-8">
       <section className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-primary to-secondary text-white p-8 shadow-2xl">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
@@ -293,7 +358,7 @@ export default function RankingPage() {
         </section>
       ) : (
         <>
-          <section className="grid gap-5 lg:grid-cols-3">
+          <section className="mx-auto grid max-w-[1240px] gap-5 lg:grid-cols-3">
             {ranking.slice(0, 3).map((player, index) => (
               <PodiumCard
                 key={player.userId}
@@ -306,26 +371,29 @@ export default function RankingPage() {
             ))}
           </section>
 
-          <section className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
+          <section className="grid gap-8 xl:grid-cols-[1.9fr_0.7fr]">
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg overflow-hidden border border-slate-100 dark:border-slate-800">
               <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Tabela completa</h2>
                 <p className="text-slate-600 dark:text-slate-300 mt-1">Cada jogador mostra abaixo os jogos e os emojis das categorias que pontuaram.</p>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-hidden">
                 <table className="w-full">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
-                      <th className="px-8 py-4 font-bold">Posicao</th>
-                      <th className="px-8 py-4 font-bold">Jogador</th>
-                      <th className="px-8 py-4 font-bold">Destaque</th>
-                      <th className="px-8 py-4 font-bold text-right">Pontos</th>
+                      <th className="w-[10%] px-8 py-4 font-bold">Posicao</th>
+                      <th className="w-[74%] px-8 py-4 font-bold">Jogador</th>
+                      <th className="w-[16%] px-8 py-4 font-bold text-right">Pontos</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ranking.map((row, index) => {
                       const userCompletions = completionsByUser[row.userId] || [];
+                      const sortedCompletions = [...userCompletions].sort((a, b) =>
+                        String(b.completedAt || '').localeCompare(String(a.completedAt || ''))
+                      );
+                      const visibleCompletions = sortedCompletions.slice(0, 3);
                       const isCurrentUser = Boolean(user?.id && row.userId === user.id);
 
                       return (
@@ -346,7 +414,7 @@ export default function RankingPage() {
                               {index < 3 && <span className="text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Top {index + 1}</span>}
                             </div>
                           </td>
-                          <td className="px-8 py-5 min-w-[320px]">
+                          <td className="px-8 py-5">
                             <div className="flex items-center gap-2">
                               {buildAvatarUrl(row) ? (
                                 <button
@@ -371,19 +439,36 @@ export default function RankingPage() {
                                 </div>
                               )}
                               <div className="font-bold text-slate-900 dark:text-slate-100">{row.displayName}</div>
+                              {row.underdogBonusCount > 0 && (
+                                <span className="relative inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 dark:border-slate-600 bg-slate-100/90 dark:bg-slate-800/90 text-sm shadow-sm" title="UnderDog">
+                                  <span>{emojiByRuleCode.UNDERDOG_BONUS || '\u{1F436}'}</span>
+                                  {row.underdogBonusCount > 1 && (
+                                    <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white dark:bg-slate-700">
+                                      x{row.underdogBonusCount}
+                                    </span>
+                                  )}
+                                </span>
+                              )}
                               {isCurrentUser && (
                                 <span className="inline-flex rounded-full bg-primary/15 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-primary dark:bg-primary/25 dark:text-indigo-200">
                                   Voce
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400 mb-4">Usuario {row.userId}</div>
-                            <div className="space-y-2">
-                              {userCompletions.length > 0 ? (
-                                userCompletions.map((completion) => (
-                                  <div key={completion.completionId} className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-4 py-3">
-                                    <div className="flex items-center justify-between gap-4">
-                                      <span className="font-semibold text-slate-900 dark:text-slate-100">{completion.gameName}</span>
+                            <div className="mb-2 text-sm text-slate-500 dark:text-slate-400 break-all">
+                              Usuario {row.userId}
+                            </div>
+                            <div className="mt-3 grid grid-cols-[repeat(3,minmax(0,1fr))_56px] gap-3">
+                              {visibleCompletions.length > 0 ? (
+                                visibleCompletions.map((completion) => (
+                                  <div
+                                    key={completion.completionId}
+                                    className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-3 py-3"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="truncate font-semibold text-slate-900 dark:text-slate-100" title={completion.gameName}>
+                                        {completion.gameName}
+                                      </span>
                                       {completion.platinum && (
                                         <span className={platinumBadgeClass}>
                                           Platina
@@ -399,20 +484,23 @@ export default function RankingPage() {
                               ) : (
                                 <div className="text-sm text-slate-400 dark:text-slate-500">Nenhum jogo registrado.</div>
                               )}
+                              {sortedCompletions.length > 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPlayerGamesModal({ userId: row.userId, sortBy: 'date' })}
+                                  className="min-h-[120px] rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-100/70 dark:bg-slate-800/70 text-3xl font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                  title="Ver todos os jogos"
+                                  aria-label="Ver todos os jogos"
+                                >
+                                  +
+                                </button>
+                              )}
                             </div>
                           </td>
-                          <td className="px-8 py-5">
-                            {row.underdogBonusCount > 0 ? (
-                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-2 text-emerald-800 font-bold text-sm">
-                                UnderDog +3 x{row.underdogBonusCount}
-                              </span>
-                            ) : (
-                              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
-                            )}
-                          </td>
                           <td className="px-8 py-5 text-right">
-                            <span className="inline-flex items-center rounded-full bg-primary px-4 py-2 text-white font-black shadow-sm">
-                              {row.totalPoints} pts
+                            <span className="inline-flex h-[64px] w-[64px] flex-col items-center justify-center rounded-full bg-primary text-white font-black leading-none shadow-sm">
+                              <span className="text-[20px] leading-none">{row.totalPoints}</span>
+                              <span className="mt-0.5 text-[10px] uppercase tracking-[0.1em]">pts</span>
                             </span>
                           </td>
                         </tr>
@@ -462,6 +550,82 @@ export default function RankingPage() {
             </div>
           </section>
         </>
+      )}
+
+      {selectedModalPlayer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          onClick={closePlayerGamesModal}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-slate-100">
+                  Jogos de {selectedModalPlayer.displayName}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Ordene a lista por data, horas, pontos ou ordem alfabetica.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closePlayerGamesModal}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-1.5 text-sm font-bold text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                Ordenar por
+              </label>
+              <select
+                value={playerGamesModal.sortBy}
+                onChange={(event) =>
+                  setPlayerGamesModal((prev) => ({
+                    ...prev,
+                    sortBy: event.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-700 dark:text-slate-100"
+              >
+                <option value="date">Data (mais recente)</option>
+                <option value="hours">Horas jogadas (maior)</option>
+                <option value="points">Pontos ganhos (maior)</option>
+                <option value="alpha">Ordem alfabetica</option>
+              </select>
+            </div>
+
+            <div className="max-h-[55vh] overflow-y-auto px-6 pb-6">
+              <div className="space-y-3">
+                {selectedModalCompletions.map((completion) => (
+                  <div
+                    key={completion.completionId}
+                    className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{completion.gameName}</span>
+                      <div className="flex items-center gap-2">
+                        {completion.platinum && <span className={platinumBadgeClass}>Platina</span>}
+                        <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-white">
+                          +{getCompletionPoints(completion)} pts
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {completion.completedAt} - {completion.hoursPlayed}h
+                    </div>
+                    <RuleEmojiStrip ruleCodes={completion.ruleCodes} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ImagePreviewModal
