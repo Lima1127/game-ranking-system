@@ -40,7 +40,7 @@ function getCompletionPoints(completion) {
   return (completion.ruleCodes || []).reduce((sum, code) => sum + (pointsByRuleCode[code] || 0), 0);
 }
 
-function RuleEmojiStrip({ ruleCodes = [] }) {
+function RuleEmojiStrip({ ruleCodes = [], columns = 4 }) {
   if (ruleCodes.length === 0) {
     return null;
   }
@@ -55,10 +55,12 @@ function RuleEmojiStrip({ ruleCodes = [] }) {
 
   const orderedGroupedRules = Object.values(groupedRules);
 
+  const columnsClass = columns === 6 ? 'grid-cols-6' : 'grid-cols-4';
+
   return (
-    <div className="mt-2 grid grid-cols-4 gap-2">
+    <div className={`mt-2 grid ${columnsClass} gap-2`}>
       {orderedGroupedRules.map(({ code, count }) => (
-        <span key={code} className="relative inline-flex">
+        <span key={code} className="relative inline-flex h-9 w-9 items-center justify-center justify-self-start">
           <span
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-lg shadow-sm"
             title={count > 1 ? `${code} x${count}` : code}
@@ -455,9 +457,6 @@ export default function RankingPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="mb-2 text-sm text-slate-500 dark:text-slate-400 break-all">
-                              Usuario {row.userId}
-                            </div>
                             <div className="mt-3 grid grid-cols-[repeat(3,minmax(0,1fr))_56px] gap-3">
                               {visibleCompletions.length > 0 ? (
                                 visibleCompletions.map((completion) => (
@@ -619,7 +618,7 @@ export default function RankingPage() {
                     <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                       {completion.completedAt} - {completion.hoursPlayed}h
                     </div>
-                    <RuleEmojiStrip ruleCodes={completion.ruleCodes} />
+                    <RuleEmojiStrip ruleCodes={completion.ruleCodes} columns={6} />
                   </div>
                 ))}
               </div>

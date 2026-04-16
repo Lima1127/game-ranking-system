@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,7 @@ export default function ObligationsPage() {
     gameName: '',
   });
   const [resolutionById, setResolutionById] = useState({});
+  const [reviewModal, setReviewModal] = useState(null);
 
   const { data: overview, isLoading, error } = useQuery({
     queryKey: ['obligations'],
@@ -113,16 +114,48 @@ export default function ObligationsPage() {
   });
 
   const submitReviewMutation = useMutation({
-    mutationFn: async ({ obligationId, outcome }) =>
-      api.post(`/obligations/${obligationId}/submit-review`, {
-        outcome,
-        partialHours: null,
-      }),
+    mutationFn: async (payload) => {
+      if (!payload.proofFile) {
+        throw new Error('Envie uma imagem para comprovar a solicitacao.');
+      }
+
+      const formData = new FormData();
+      formData.append('file', payload.proofFile);
+      const uploadResponse = await api.post('/uploads/platinum', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const uploadedProofId = uploadResponse.data.proofId;
+
+      if (payload.outcome === 'COMPLETED') {
+        await api.post('/completions', {
+          gameId: payload.gameId,
+          completedAt: payload.completedAt,
+          hoursPlayed: Number(payload.hoursPlayed),
+          firstTimeEver: payload.firstTimeEver,
+          completedInReleaseYear: payload.completedInReleaseYear,
+          platinum: payload.platinum,
+          // Backend exige anexo em toda solicitacao de conclusao, independente de platina.
+          platinumProofId: uploadedProofId,
+          coop: false,
+          coopPlayers: null,
+          hypeParticipation: false,
+          hypeCompletedBonus: false,
+          rotativeList: false,
+          notes: `Conclusao enviada via obrigacao (${payload.outcome}).`,
+        });
+      }
+
+      return api.post(`/obligations/${payload.obligationId}/submit-review`, {
+        outcome: payload.outcome,
+        partialHours: payload.outcome === 'PARTIAL' ? Number(payload.hoursPlayed) : null,
+      });
+    },
     onSuccess: () => {
       setResolutionById({});
+      setReviewModal(null);
       refresh();
     },
-    onError: (error) => alert(error.response?.data?.message || error.message),
+    onError: (error) => alert(error.response?.data?.message || error.message || 'Erro ao enviar revisão.'),
   });
 
   const approveReviewMutation = useMutation({
@@ -190,6 +223,59 @@ export default function ObligationsPage() {
       },
     }));
   };
+
+  useEffect(() => {
+    if (!reviewModal) {
+      return;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setReviewModal(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [reviewModal]);
+
+  const openReviewModal = (item, outcome) => {
+    setReviewModal({
+      obligationId: item.obligationId,
+      gameId: item.gameId,
+      gameName: item.gameName,
+      outcome,
+      completedAt: new Date().toISOString().slice(0, 10),
+      hoursPlayed: '',
+      firstTimeEver: false,
+      completedInReleaseYear: false,
+      platinum: false,
+      proofFile: null,
+    });
+  };
+
+  const handleSubmitReviewWithModal = (event) => {
+    event.preventDefault();
+    if (!reviewModal) return;
+
+    if (!reviewModal.completedAt) {
+      alert('Informe a data de conclusao.');
+      return;
+    }
+
+    if (reviewModal.hoursPlayed === '' || Number(reviewModal.hoursPlayed) < 0) {
+      alert('Informe as horas jogadas.');
+      return;
+    }
+
+    if (!reviewModal.proofFile) {
+      alert('Toda solicitacao exige envio de imagem.');
+      return;
+    }
+
+    submitReviewMutation.mutate(reviewModal);
+  };
+  const isPartialReview = reviewModal?.outcome === 'PARTIAL';
 
   if (isLoading) {
     return <div className="text-slate-600 dark:text-slate-300">Carregando obrigacoes...</div>;
@@ -425,12 +511,7 @@ export default function ObligationsPage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          submitReviewMutation.mutate({
-                            obligationId: item.obligationId,
-                            outcome: resolution.outcome,
-                          })
-                        }
+                        onClick={() => openReviewModal(item, resolution.outcome)}
                         disabled={submitReviewMutation.isPending}
                         className="w-full rounded-lg bg-primary px-4 py-2 font-bold text-white hover:bg-secondary disabled:opacity-50"
                       >
@@ -493,6 +574,179 @@ export default function ObligationsPage() {
           ))
         )}
       </section>
+
+      {reviewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+          onClick={() => setReviewModal(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  Revisao da obrigacao - {reviewModal.gameName}
+                </h3>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Preencha os dados da conclusao para enviar para revisao.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewModal(null)}
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitReviewWithModal} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block font-bold text-gray-700 dark:text-slate-200">Data de Conclusao <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={reviewModal.completedAt}
+                    onChange={(e) => setReviewModal((prev) => ({ ...prev, completedAt: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block font-bold text-gray-700 dark:text-slate-200">Horas Jogadas <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={reviewModal.hoursPlayed}
+                    onChange={(e) => setReviewModal((prev) => ({ ...prev, hoursPlayed: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    placeholder="Ex: 35.5"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={`grid grid-cols-1 ${isPartialReview ? 'md:grid-cols-1' : 'md:grid-cols-2'} gap-4`}>
+                {!isPartialReview && (
+                  <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                    <input
+                      type="checkbox"
+                      checked={reviewModal.firstTimeEver}
+                      onChange={(e) => setReviewModal((prev) => ({ ...prev, firstTimeEver: e.target.checked }))}
+                      className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+                      Primeira Experiencia
+                      <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Primeira vez na vida completando este jogo</span>
+                    </span>
+                  </label>
+                )}
+                <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                  <input
+                    type="checkbox"
+                    checked={reviewModal.completedInReleaseYear}
+                    onChange={(e) => setReviewModal((prev) => ({ ...prev, completedInReleaseYear: e.target.checked }))}
+                    className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+                    Em Dia
+                    <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
+                  </span>
+                </label>
+              </div>
+
+              {!isPartialReview && (
+                <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                  <input
+                    type="checkbox"
+                    checked={reviewModal.platinum}
+                    onChange={(e) =>
+                      setReviewModal((prev) => ({
+                        ...prev,
+                        platinum: e.target.checked,
+                      }))
+                    }
+                    className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+                  />
+                  <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+                    Platina (100%)
+                    <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando o anexo enviado comprovar a platina.</span>
+                  </span>
+                </label>
+              )}
+
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-400/35 dark:bg-[#243247]">
+                <label className="block text-indigo-900 dark:text-indigo-100 font-bold mb-2">
+                  Anexo da Solicitacao <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setReviewModal((prev) => ({ ...prev, proofFile: e.target.files?.[0] || null }))
+                  }
+                  className="block w-full text-sm text-indigo-900 dark:text-indigo-100 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-indigo-700"
+                  required
+                />
+                <p className="mt-2 text-sm text-indigo-800 dark:text-indigo-200">
+                  Toda solicitacao exige uma imagem anexada.
+                </p>
+                {reviewModal.proofFile && (
+                  <p className="mt-2 text-sm text-indigo-900 dark:text-indigo-100">
+                    Arquivo selecionado: <strong>{reviewModal.proofFile.name}</strong>
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/70">
+                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    checked={reviewModal.outcome === 'PARTIAL'}
+                    onChange={() =>
+                      setReviewModal((prev) => ({
+                        ...prev,
+                        outcome: 'PARTIAL',
+                        firstTimeEver: false,
+                        platinum: false,
+                      }))
+                    }
+                  />
+                  25% do jogo
+                </label>
+                <label className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  <input
+                    type="radio"
+                    checked={reviewModal.outcome === 'COMPLETED'}
+                    onChange={() => setReviewModal((prev) => ({ ...prev, outcome: 'COMPLETED' }))}
+                  />
+                  Jogo finalizado
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewModal(null)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitReviewMutation.isPending}
+                  className="rounded-lg bg-primary px-4 py-2 font-bold text-white hover:bg-secondary disabled:opacity-50"
+                >
+                  {submitReviewMutation.isPending ? 'Enviando...' : 'Enviar para revisao'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

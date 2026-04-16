@@ -254,7 +254,10 @@ public class ObligationService {
         }
 
         if (normalizedOutcome.equals("PARTIAL")) {
-            obligation.setPartialHours(null);
+            if (request.partialHours() == null) {
+                throw new BusinessException("Informe as horas jogadas para envio parcial");
+            }
+            obligation.setPartialHours(request.partialHours());
             obligation.setStatus(ObligationStatus.REVIEW_PENDING_PARTIAL);
         } else {
             obligation.setPartialHours(null);
