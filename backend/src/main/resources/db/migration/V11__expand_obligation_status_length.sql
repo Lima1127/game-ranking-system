@@ -1,0 +1,2 @@
+ALTER TABLE obligations
+ALTER COLUMN status TYPE VARCHAR(40);
