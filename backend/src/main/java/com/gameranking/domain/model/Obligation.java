@@ -37,7 +37,7 @@ public class Obligation {
     private Game game;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 40)
     private ObligationStatus status;
 
     private Boolean accepted;
