@@ -143,4 +143,12 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
             where c.id = :completionId
             """)
     Optional<CompletionDetailsResponse> findDetailsById(UUID completionId);
+
+    @Query("""
+            select distinct c.game.id
+            from Completion c
+            where c.edition.id = :editionId
+              and c.status = com.gameranking.domain.enums.CompletionStatus.APPROVED
+            """)
+    List<UUID> listApprovedGameIdsByEditionId(UUID editionId);
 }
