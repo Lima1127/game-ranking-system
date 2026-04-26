@@ -42,6 +42,7 @@ public class CompletionService {
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
     private final ObligationService obligationService;
+    private final RotativeListService rotativeListService;
 
     @Transactional
     public CompletionResponse create(UUID userId, CreateCompletionRequest request) {
@@ -85,7 +86,7 @@ public class CompletionService {
                 .coopPlayers(request.coopPlayers())
                 .hypeParticipation(request.hypeParticipation())
                 .hypeCompletedBonus(request.hypeCompletedBonus())
-                .rotativeList(request.rotativeList())
+                .rotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()))
                 .notes(request.notes())
                 .status(CompletionStatus.PENDING)
                 .build();
@@ -140,7 +141,7 @@ public class CompletionService {
         completion.setCoopPlayers(request.coopPlayers());
         completion.setHypeParticipation(request.hypeParticipation());
         completion.setHypeCompletedBonus(request.hypeCompletedBonus());
-        completion.setRotativeList(request.rotativeList());
+        completion.setRotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()));
         completion.setNotes(request.notes());
 
         if (completion.getProof() == null) {
@@ -240,6 +241,8 @@ public class CompletionService {
                 .orElse(0L);
         boolean underdogBonus = leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
         completion.setUnderdogAwarded(underdogBonus);
+        boolean rotativeConsumed = rotativeListService.consumeIfActive(edition.getId(), completion.getGame().getId());
+        completion.setRotativeList(rotativeConsumed);
 
         List<ScoreEvent> events = scoringEngine.buildCompletionEvents(completion, edition, completion.getUser(), underdogBonus);
         scoreEventRepository.saveAll(events);
