@@ -13,6 +13,7 @@ const buildInitialForm = () => ({
   firstInEdition: false,
   completedInReleaseYear: false,
   platinum: false,
+  rotativeList: false,
 });
 
 function formatFileSize(size) {
@@ -41,6 +42,13 @@ export default function CompletionPage() {
       return response.data;
     },
     enabled: Boolean(user?.id),
+  });
+  const { data: rotativeEntries = [] } = useQuery({
+    queryKey: ['rotative-list'],
+    queryFn: async () => {
+      const response = await api.get('/rotative-list');
+      return response.data;
+    },
   });
 
   const resolveGameId = async () => {
@@ -103,7 +111,7 @@ export default function CompletionPage() {
           coopPlayers: null,
           hypeParticipation: false,
           hypeCompletedBonus: false,
-          rotativeList: false,
+          rotativeList: form.rotativeList,
           notes: null,
         },
         {
@@ -176,7 +184,12 @@ export default function CompletionPage() {
   };
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+  const rotativeByGameId = useMemo(
+    () => new Map(rotativeEntries.map((entry) => [entry.gameId, entry])),
+    [rotativeEntries]
+  );
   const hasExistingGameSelected = Boolean(matchingGame);
+  const isSelectedGameInRotativeList = matchingGame ? rotativeByGameId.has(matchingGame.id) : false;
   const hasUserCompletionForGame = matchingGame
     ? myCompletionRequests.some((request) => request.gameId === matchingGame.id)
     : false;
@@ -188,24 +201,49 @@ export default function CompletionPage() {
 
     return games
       .filter((game) => game.name.toLowerCase().includes(normalizedQuery))
+      .map((game) => ({
+        ...game,
+        isRotative: rotativeByGameId.has(game.id),
+        quarter: rotativeByGameId.get(game.id)?.quarter ?? null,
+      }))
+      .sort((a, b) => {
+        if (a.isRotative !== b.isRotative) {
+          return a.isRotative ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      })
       .slice(0, 6);
-  }, [games, form.gameName]);
+  }, [games, form.gameName, rotativeByGameId]);
 
-  const handleSelectSuggestion = (gameName) => {
+  const handleSelectSuggestion = (gameSuggestion) => {
     setForm((prev) => ({
       ...prev,
-      gameName,
+      gameName: gameSuggestion.name,
+      rotativeList: gameSuggestion.isRotative,
     }));
   };
 
   useEffect(() => {
-    if (hasExistingGameSelected) {
+    if (hasExistingGameSelected && !isSelectedGameInRotativeList) {
       setForm((prev) => ({
         ...prev,
         firstInEdition: false,
       }));
     }
-  }, [hasExistingGameSelected]);
+  }, [hasExistingGameSelected, isSelectedGameInRotativeList]);
+
+  useEffect(() => {
+    setForm((prev) => {
+      const nextRotative = hasExistingGameSelected ? isSelectedGameInRotativeList : false;
+      if (prev.rotativeList === nextRotative) {
+        return prev;
+      }
+      return {
+        ...prev,
+        rotativeList: nextRotative,
+      };
+    });
+  }, [hasExistingGameSelected, isSelectedGameInRotativeList]);
 
   const resetForm = () => {
     setForm(buildInitialForm());
@@ -248,10 +286,15 @@ export default function CompletionPage() {
                   <button
                     key={game.id}
                     type="button"
-                    onClick={() => handleSelectSuggestion(game.name)}
-                    className="block w-full border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
+                    onClick={() => handleSelectSuggestion(game)}
+                    className="flex w-full items-center justify-between border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
                   >
-                    {game.name}
+                    <span>{game.name}</span>
+                    {game.isRotative && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-primary/25 dark:text-indigo-200">
+                        🔄 Reviradao
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -294,6 +337,10 @@ export default function CompletionPage() {
               hasUserCompletionForGame ? (
                 <p className="text-sm text-red-700">
                   Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.
+                </p>
+              ) : isSelectedGameInRotativeList ? (
+                <p className="text-sm text-indigo-700">
+                  Este jogo esta na <strong>Lista Rotativa</strong> e recebe bonus de <strong>+3 pontos</strong> quando concluido.
                 </p>
               ) : matchingGame ? (
                 <p className="text-sm text-green-700">
@@ -345,14 +392,16 @@ export default function CompletionPage() {
               name="firstInEdition"
               checked={form.firstInEdition}
               onChange={handleChange}
-              disabled={hasExistingGameSelected}
+              disabled={hasExistingGameSelected && !isSelectedGameInRotativeList}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Primeiro na Edicao
               <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                {hasExistingGameSelected
+                {hasExistingGameSelected && !isSelectedGameInRotativeList
                   ? 'Desabilitado porque este jogo ja existe no sistema.'
+                  : hasExistingGameSelected && isSelectedGameInRotativeList
+                    ? 'Habilitado porque este jogo pertence a lista rotativa.'
                   : 'Primeiro participante a completar nesta edicao'}
               </span>
             </span>
