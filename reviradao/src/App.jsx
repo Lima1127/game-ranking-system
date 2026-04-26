@@ -11,6 +11,7 @@ import CompletionSubmissionEditPage from './pages/CompletionSubmissionEditPage';
 import CompletionUpdatePage from './pages/CompletionUpdatePage';
 import RequestsPage from './pages/RequestsPage';
 import ObligationsPage from './pages/ObligationsPage';
+import RotativeListPage from './pages/RotativeListPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 
@@ -84,6 +85,9 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
             </Link>
             <Link to="/obligations" className="hover:opacity-80">
               Obrigacoes
+            </Link>
+            <Link to="/rotative-list" className="hover:opacity-80">
+              Lista Rotativa
             </Link>
             {user?.role === 'ADMIN' && (
               <>
@@ -212,6 +216,16 @@ function AppContent({ isDarkMode, onToggleTheme }) {
           <ProtectedRoute>
             <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <ObligationsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/rotative-list"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <RotativeListPage />
             </MainLayout>
           </ProtectedRoute>
         }
