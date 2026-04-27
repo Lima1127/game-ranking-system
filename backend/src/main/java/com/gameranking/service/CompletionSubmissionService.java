@@ -59,6 +59,7 @@ public class CompletionSubmissionService {
                 request.approvedAt(),
                 request.proofId(),
                 request.proofContentType(),
+                request.coopGroupId(),
                 request.status() == CompletionStatus.PENDING
                         && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN)
         )));
@@ -79,6 +80,7 @@ public class CompletionSubmissionService {
                 request.approvedAt(),
                 request.proofId(),
                 request.proofContentType(),
+                null,
                 "PENDING".equals(request.status().name())
                         && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN)
         )));
@@ -148,7 +150,8 @@ public class CompletionSubmissionService {
                             request.hypeParticipation(),
                             request.hypeCompletedBonus(),
                             request.rotativeList(),
-                            request.notes()
+                            request.notes(),
+                            List.of()
                     )
             );
 
@@ -186,3 +189,5 @@ public class CompletionSubmissionService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao cancelada nao encontrada"));
     }
 }
+
+

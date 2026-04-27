@@ -14,6 +14,8 @@ const buildInitialForm = () => ({
   completedInReleaseYear: false,
   platinum: false,
   rotativeList: false,
+  coop: false,
+  coopPlayerUserIds: [],
 });
 
 function formatFileSize(size) {
@@ -39,6 +41,14 @@ export default function CompletionPage() {
       const response = await api.get('/completions/requests', {
         headers: { 'X-User-Id': user.id },
       });
+      return response.data;
+    },
+    enabled: Boolean(user?.id),
+  });
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await api.get('/users');
       return response.data;
     },
     enabled: Boolean(user?.id),
@@ -107,8 +117,9 @@ export default function CompletionPage() {
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           platinumProofId,
-          coop: false,
-          coopPlayers: null,
+          coop: form.coop,
+          coopPlayers: form.coop ? form.coopPlayerUserIds.length + 1 : null,
+          coopPlayerUserIds: form.coop ? form.coopPlayerUserIds : [],
           hypeParticipation: false,
           hypeCompletedBonus: false,
           rotativeList: form.rotativeList,
@@ -120,7 +131,11 @@ export default function CompletionPage() {
       );
     },
     onSuccess: () => {
-      alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
+      if (form.coop) {
+        alert(`Solicitacao de coop enviada para voce e mais ${form.coopPlayerUserIds.length} jogador(es). Todas contarao pontos apenas apos aprovacao.`);
+      } else {
+        alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
+      }
       setForm(buildInitialForm());
       setPlatinumFile(null);
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
@@ -178,6 +193,18 @@ export default function CompletionPage() {
     if (!platinumFile) {
       alert('Anexe uma imagem para enviar a solicitacao.');
       return;
+    }
+
+    if (form.coop) {
+      if (form.coopPlayerUserIds.length === 0) {
+        alert('Selecione ao menos um jogador para o cooperativo.');
+        return;
+      }
+
+      if (form.coopPlayerUserIds.length + 1 > 4) {
+        alert('Cooperativo permite no maximo 4 jogadores contando com voce.');
+        return;
+      }
     }
 
     mutation.mutate();
@@ -248,6 +275,28 @@ export default function CompletionPage() {
   const resetForm = () => {
     setForm(buildInitialForm());
     setPlatinumFile(null);
+  };
+
+  const toggleCoopPlayer = (selectedUserId) => {
+    setForm((prev) => {
+      const isSelected = prev.coopPlayerUserIds.includes(selectedUserId);
+      if (isSelected) {
+        return {
+          ...prev,
+          coopPlayerUserIds: prev.coopPlayerUserIds.filter((id) => id !== selectedUserId),
+        };
+      }
+
+      if (prev.coopPlayerUserIds.length >= 3) {
+        alert('Voce pode selecionar no maximo 3 jogadores (com voce, totaliza 4).');
+        return prev;
+      }
+
+      return {
+        ...prev,
+        coopPlayerUserIds: [...prev.coopPlayerUserIds, selectedUserId],
+      };
+    });
   };
 
   return (
@@ -420,6 +469,61 @@ export default function CompletionPage() {
               <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
             </span>
           </label>
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="coop"
+              checked={form.coop}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  coop: event.target.checked,
+                  coopPlayerUserIds: event.target.checked ? prev.coopPlayerUserIds : [],
+                }))
+              }
+              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+            />
+            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+              Jogo em Cooperativo
+              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                Se marcado, selecione os jogadores que jogaram com voce (maximo de 4 contando com voce).
+              </span>
+            </span>
+          </label>
+
+          {form.coop && (
+            <div>
+              <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Jogadores do coop ({form.coopPlayerUserIds.length + 1}/4)</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {users
+                  .filter((candidate) => candidate.id !== user.id)
+                  .map((candidate) => {
+                    const checked = form.coopPlayerUserIds.includes(candidate.id);
+                    return (
+                      <label
+                        key={candidate.id}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${
+                          checked
+                            ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20'
+                            : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCoopPlayer(candidate.id)}
+                          className="h-4 w-4 rounded"
+                        />
+                        <span className="text-sm font-semibold">{candidate.displayName}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-400/35 dark:bg-[#243247]">
