@@ -18,31 +18,36 @@ public class ScoringEngine {
 
     public List<ScoreEvent> buildCompletionEvents(Completion completion, Edition edition, User user, boolean underdogBonus) {
         List<ScoreEvent> events = new ArrayList<>();
+        boolean hypeParticipationOnly = completion.isHypeParticipation() && !completion.isHypeCompletedBonus();
 
-        events.add(event(edition, user, completion, "GAME_COMPLETED", 1, "Jogo fechado"));
+        if (!hypeParticipationOnly) {
+            events.add(event(edition, user, completion, "GAME_COMPLETED", 1, "Jogo fechado"));
+        }
 
-        if (completion.isFirstTimeEver()) {
+        if (!hypeParticipationOnly && completion.isFirstTimeEver()) {
             events.add(event(edition, user, completion, "FIRST_EXPERIENCE", 1, "Primeira experiencia"));
         }
 
-        if (completion.isFirstInEdition()) {
+        if (!hypeParticipationOnly && completion.isFirstInEdition()) {
             events.add(event(edition, user, completion, "FIRST_IN_EDITION", 1, "Primeiro no Reviradao"));
         }
 
-        if (completion.isCompletedInReleaseYear()) {
+        if (!hypeParticipationOnly && completion.isCompletedInReleaseYear()) {
             events.add(event(edition, user, completion, "IN_RELEASE_YEAR", 1, "Em dia"));
         }
 
-        int blocks = completion.getHoursPlayed().divide(BigDecimal.valueOf(25), 0, java.math.RoundingMode.DOWN).intValue();
-        for (int i = 0; i < blocks; i++) {
-            events.add(event(edition, user, completion, "TIME_VALUABLE_BLOCK", 2, "Tempo valioso (25h)"));
+        if (!hypeParticipationOnly) {
+            int blocks = completion.getHoursPlayed().divide(BigDecimal.valueOf(25), 0, java.math.RoundingMode.DOWN).intValue();
+            for (int i = 0; i < blocks; i++) {
+                events.add(event(edition, user, completion, "TIME_VALUABLE_BLOCK", 2, "Tempo valioso (25h)"));
+            }
         }
 
-        if (completion.isPlatinum()) {
+        if (!hypeParticipationOnly && completion.isPlatinum()) {
             events.add(event(edition, user, completion, "PLATINUM", 3, "Platina de jogo"));
         }
 
-        if (completion.isCoop() && completion.getCoopPlayers() != null && completion.getCoopPlayers() <= 4) {
+        if (!hypeParticipationOnly && completion.isCoop() && completion.getCoopPlayers() != null && completion.getCoopPlayers() <= 4) {
             events.add(event(edition, user, completion, "COOP_RIGHT_HAND", 2, "Braco Direito"));
         }
 
@@ -54,11 +59,11 @@ public class ScoringEngine {
             events.add(event(edition, user, completion, "HYPE_COMPLETION_BONUS", 2, "Bonus por completar Hype"));
         }
 
-        if (completion.isRotativeList()) {
+        if (!hypeParticipationOnly && completion.isRotativeList()) {
             events.add(event(edition, user, completion, "ROTATIVE_LIST_BONUS", 3, "Bonus lista rotativa"));
         }
 
-        if (underdogBonus) {
+        if (!hypeParticipationOnly && underdogBonus) {
             events.add(event(edition, user, completion, "UNDERDOG_BONUS", 3, "Cafe com leite"));
         }
 

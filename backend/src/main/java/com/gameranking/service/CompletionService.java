@@ -58,6 +58,7 @@ public class CompletionService {
         Game game = gameService.getById(request.gameId());
         List<User> coopParticipants = resolveCoopParticipants(user, request);
         int coopPlayersCount = request.coop() ? coopParticipants.size() + 1 : 0;
+        boolean hypeParticipationOnly = request.hypeParticipation() && !request.hypeCompletedBonus();
         UUID coopGroupId = request.coop() ? UUID.randomUUID() : null;
         Set<UUID> involvedUserIds = request.coop()
                 ? java.util.stream.Stream.concat(
@@ -82,6 +83,14 @@ public class CompletionService {
 
         if (!request.coop() && request.coopPlayers() != null) {
             throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
+        }
+
+        if (request.hypeCompletedBonus() && !request.hypeParticipation()) {
+            throw new BusinessException("Bonus de conclusao do hype exige participacao do hype");
+        }
+
+        if (hypeParticipationOnly && request.coop()) {
+            throw new BusinessException("Participacao de hype sem conclusao nao permite cooperativo");
         }
 
         if (request.coop() && coopPlayersCount < 2) {
@@ -171,6 +180,14 @@ public class CompletionService {
 
         if (!request.coop() && request.coopPlayers() != null) {
             throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
+        }
+
+        if (request.hypeCompletedBonus() && !request.hypeParticipation()) {
+            throw new BusinessException("Bonus de conclusao do hype exige participacao do hype");
+        }
+
+        if (request.hypeParticipation() && !request.hypeCompletedBonus() && request.coop()) {
+            throw new BusinessException("Participacao de hype sem conclusao nao permite cooperativo");
         }
 
         if (request.coop() && request.coopPlayers() == null) {

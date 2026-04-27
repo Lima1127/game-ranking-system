@@ -10,12 +10,13 @@ const buildInitialForm = () => ({
   completedAt: new Date().toISOString().split('T')[0],
   hoursPlayed: '',
   firstTimeEver: false,
-  firstInEdition: false,
   completedInReleaseYear: false,
   platinum: false,
   rotativeList: false,
   coop: false,
   coopPlayerUserIds: [],
+  hypeParticipation: false,
+  hypeCompletedBonus: false,
 });
 
 function formatFileSize(size) {
@@ -112,7 +113,7 @@ export default function CompletionPage() {
         {
           gameId,
           completedAt: form.completedAt,
-          hoursPlayed: form.hoursPlayed,
+          hoursPlayed: isHypeParticipationOnly ? 0 : form.hoursPlayed,
           firstTimeEver: form.firstTimeEver,
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
@@ -120,8 +121,8 @@ export default function CompletionPage() {
           coop: form.coop,
           coopPlayers: form.coop ? form.coopPlayerUserIds.length + 1 : null,
           coopPlayerUserIds: form.coop ? form.coopPlayerUserIds : [],
-          hypeParticipation: false,
-          hypeCompletedBonus: false,
+          hypeParticipation: form.hypeParticipation,
+          hypeCompletedBonus: form.hypeCompletedBonus,
           rotativeList: form.rotativeList,
           notes: null,
         },
@@ -180,7 +181,7 @@ export default function CompletionPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.gameName.trim() || !form.hoursPlayed) {
+    if (!form.gameName.trim() || (!isHypeParticipationOnly && !form.hoursPlayed)) {
       alert('Preencha nome do jogo e horas jogadas.');
       return;
     }
@@ -217,6 +218,7 @@ export default function CompletionPage() {
   );
   const hasExistingGameSelected = Boolean(matchingGame);
   const isSelectedGameInRotativeList = matchingGame ? rotativeByGameId.has(matchingGame.id) : false;
+  const isHypeParticipationOnly = form.hypeParticipation && !form.hypeCompletedBonus;
   const hasUserCompletionForGame = matchingGame
     ? myCompletionRequests.some((request) => request.gameId === matchingGame.id)
     : false;
@@ -249,15 +251,6 @@ export default function CompletionPage() {
       rotativeList: gameSuggestion.isRotative,
     }));
   };
-
-  useEffect(() => {
-    if (hasExistingGameSelected && !isSelectedGameInRotativeList) {
-      setForm((prev) => ({
-        ...prev,
-        firstInEdition: false,
-      }));
-    }
-  }, [hasExistingGameSelected, isSelectedGameInRotativeList]);
 
   useEffect(() => {
     setForm((prev) => {
@@ -297,6 +290,34 @@ export default function CompletionPage() {
         coopPlayerUserIds: [...prev.coopPlayerUserIds, selectedUserId],
       };
     });
+  };
+
+  const handleHypeParticipationToggle = (checked) => {
+    setForm((prev) => ({
+      ...prev,
+      hypeParticipation: checked,
+      hypeCompletedBonus: checked ? prev.hypeCompletedBonus : false,
+      hoursPlayed: checked && !prev.hypeCompletedBonus ? '' : prev.hoursPlayed,
+      firstTimeEver: checked ? false : prev.firstTimeEver,
+      completedInReleaseYear: checked ? false : prev.completedInReleaseYear,
+      platinum: checked ? false : prev.platinum,
+      coop: checked ? false : prev.coop,
+      coopPlayerUserIds: checked ? [] : prev.coopPlayerUserIds,
+    }));
+  };
+
+  const handleHypeCompletedToggle = (checked) => {
+    setForm((prev) => ({
+      ...prev,
+      hypeParticipation: checked ? true : prev.hypeParticipation,
+      hypeCompletedBonus: checked,
+      hoursPlayed: checked ? prev.hoursPlayed : '',
+      firstTimeEver: checked ? prev.firstTimeEver : false,
+      completedInReleaseYear: checked ? prev.completedInReleaseYear : false,
+      platinum: checked ? prev.platinum : false,
+      coop: checked ? prev.coop : false,
+      coopPlayerUserIds: checked ? prev.coopPlayerUserIds : [],
+    }));
   };
 
   return (
@@ -377,7 +398,8 @@ export default function CompletionPage() {
               min="0"
               className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ex: 35.5"
-              required
+              required={!isHypeParticipationOnly}
+              disabled={isHypeParticipationOnly}
             />
           </div>
 
@@ -414,6 +436,7 @@ export default function CompletionPage() {
               checked={form.firstTimeEver}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Primeira Experiencia
@@ -428,6 +451,7 @@ export default function CompletionPage() {
               checked={form.platinum}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
               <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
                 Platina (100%)
@@ -438,37 +462,51 @@ export default function CompletionPage() {
           <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
             <input
               type="checkbox"
-              name="firstInEdition"
-              checked={form.firstInEdition}
-              onChange={handleChange}
-              disabled={hasExistingGameSelected && !isSelectedGameInRotativeList}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
-            />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Primeiro na Edicao
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                {hasExistingGameSelected && !isSelectedGameInRotativeList
-                  ? 'Desabilitado porque este jogo ja existe no sistema.'
-                  : hasExistingGameSelected && isSelectedGameInRotativeList
-                    ? 'Habilitado porque este jogo pertence a lista rotativa.'
-                  : 'Primeiro participante a completar nesta edicao'}
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-            <input
-              type="checkbox"
               name="completedInReleaseYear"
               checked={form.completedInReleaseYear}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Em Dia
               <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
             </span>
           </label>
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.hypeParticipation}
+              onChange={(event) => handleHypeParticipationToggle(event.target.checked)}
+              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+            />
+            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+              Participacao do Hype
+              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                Marca participacao e garante +1 ponto. Sem concluir, os demais campos ficam desabilitados.
+              </span>
+            </span>
+          </label>
+
+          {form.hypeParticipation && (
+            <label className="flex items-center cursor-pointer rounded-lg border border-gray-300 dark:border-slate-700 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+              <input
+                type="checkbox"
+                checked={form.hypeCompletedBonus}
+                onChange={(event) => handleHypeCompletedToggle(event.target.checked)}
+                className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              />
+              <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+                Concluiu jogo do hype?
+                <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                  Ao marcar, os demais campos voltam e o sistema soma +2 pontos extras de conclusao do hype.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
@@ -485,6 +523,7 @@ export default function CompletionPage() {
                 }))
               }
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Jogo em Cooperativo
