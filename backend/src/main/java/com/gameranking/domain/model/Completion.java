@@ -67,6 +67,9 @@ public class Completion extends AuditableEntity {
     @Column(name = "coop_players")
     private Integer coopPlayers;
 
+    @Column(name = "coop_group_id")
+    private UUID coopGroupId;
+
     @Column(name = "hype_participation", nullable = false)
     private boolean hypeParticipation;
 
@@ -89,3 +92,6 @@ public class Completion extends AuditableEntity {
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
 }
+
+
+
