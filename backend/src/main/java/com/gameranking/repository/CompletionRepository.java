@@ -51,7 +51,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.createdAt,
                 c.approvedAt,
                 p.id,
-                p.contentType
+                p.contentType,
+                c.coopGroupId
             )
             from Completion c
             left join c.proof p
@@ -74,7 +75,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.createdAt,
                 c.approvedAt,
                 p.id,
-                p.contentType
+                p.contentType,
+                c.coopGroupId
             )
             from Completion c
             left join c.proof p
@@ -152,3 +154,6 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
             """)
     List<UUID> listApprovedGameIdsByEditionId(UUID editionId);
 }
+
+
+

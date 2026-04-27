@@ -23,6 +23,8 @@ public record CompletionSubmissionItemResponse(
         OffsetDateTime approvedAt,
         UUID proofId,
         String proofContentType,
+        UUID coopGroupId,
         boolean editable
 ) {
 }
+

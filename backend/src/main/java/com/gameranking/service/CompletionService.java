@@ -23,11 +23,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,9 +56,24 @@ public class CompletionService {
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
         Game game = gameService.getById(request.gameId());
+        List<User> coopParticipants = resolveCoopParticipants(user, request);
+        int coopPlayersCount = request.coop() ? coopParticipants.size() + 1 : 0;
+        UUID coopGroupId = request.coop() ? UUID.randomUUID() : null;
+        Set<UUID> involvedUserIds = request.coop()
+                ? java.util.stream.Stream.concat(
+                                java.util.stream.Stream.of(user.getId()),
+                                coopParticipants.stream().map(User::getId)
+                        )
+                        .collect(Collectors.toSet())
+                : Set.of(user.getId());
 
-        if (completionRepository.existsByUserIdAndGameId(user.getId(), game.getId())) {
-            throw new BusinessException("Voce ja registrou uma conclusao para este jogo");
+        List<String> duplicatedUsers = involvedUserIds.stream()
+                .map(involvedUserId -> userRepository.findById(involvedUserId).orElse(null))
+                .filter(involvedUser -> involvedUser != null && completionRepository.existsByUserIdAndGameId(involvedUser.getId(), game.getId()))
+                .map(User::getDisplayName)
+                .toList();
+        if (!duplicatedUsers.isEmpty()) {
+            throw new BusinessException("Ja existe conclusao registrada para este jogo para: " + String.join(", ", duplicatedUsers));
         }
 
         if (request.platinumProofId() == null) {
@@ -66,11 +84,11 @@ public class CompletionService {
             throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
         }
 
-        if (request.coop() && request.coopPlayers() == null) {
-            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
+        if (request.coop() && coopPlayersCount < 2) {
+            throw new BusinessException("Informe ao menos um jogador para o cooperativo");
         }
 
-        Completion completion = Completion.builder()
+        Completion requesterCompletion = Completion.builder()
                 .id(UUID.randomUUID())
                 .edition(edition)
                 .user(user)
@@ -83,7 +101,8 @@ public class CompletionService {
                 .completedInReleaseYear(request.completedInReleaseYear())
                 .platinum(request.platinum())
                 .coop(request.coop())
-                .coopPlayers(request.coopPlayers())
+                .coopPlayers(request.coop() ? coopPlayersCount : null)
+                .coopGroupId(coopGroupId)
                 .hypeParticipation(request.hypeParticipation())
                 .hypeCompletedBonus(request.hypeCompletedBonus())
                 .rotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()))
@@ -91,9 +110,37 @@ public class CompletionService {
                 .status(CompletionStatus.PENDING)
                 .build();
 
-        Completion saved = completionRepository.save(completion);
+        Completion saved = completionRepository.save(requesterCompletion);
 
         platinumProofService.attachToCompletion(request.platinumProofId(), saved);
+
+        if (request.coop()) {
+            List<Completion> additionalRequests = new ArrayList<>();
+            for (User participant : coopParticipants) {
+                additionalRequests.add(Completion.builder()
+                        .id(UUID.randomUUID())
+                        .edition(edition)
+                        .user(participant)
+                        .game(game)
+                        .completedAt(request.completedAt() == null ? LocalDate.now() : request.completedAt())
+                        .hoursPlayed(request.hoursPlayed())
+                        .firstTimeEver(false)
+                        .firstInEdition(false)
+                        .underdogAwarded(false)
+                        .completedInReleaseYear(request.completedInReleaseYear())
+                        .platinum(false)
+                        .coop(true)
+                        .coopPlayers(coopPlayersCount)
+                        .coopGroupId(coopGroupId)
+                        .hypeParticipation(false)
+                        .hypeCompletedBonus(false)
+                        .rotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()))
+                        .notes("Conclusao de coop registrada por " + user.getDisplayName())
+                        .status(CompletionStatus.PENDING)
+                        .build());
+            }
+            completionRepository.saveAll(additionalRequests);
+        }
 
         return new CompletionResponse(saved.getId(), user.getId(), game.getId(), 0, CompletionStatus.PENDING);
     }
@@ -130,6 +177,10 @@ public class CompletionService {
             throw new BusinessException("Informe quantidade de jogadores para cooperativo");
         }
 
+        if (request.coopPlayerUserIds() != null && !request.coopPlayerUserIds().isEmpty()) {
+            throw new BusinessException("Nao e permitido alterar participantes de coop nesta solicitacao");
+        }
+
         Game game = gameService.getById(request.gameId());
         completion.setGame(game);
         completion.setCompletedAt(request.completedAt() == null ? LocalDate.now() : request.completedAt());
@@ -151,6 +202,41 @@ public class CompletionService {
         }
 
         return new CompletionResponse(completion.getId(), completion.getUser().getId(), completion.getGame().getId(), 0, completion.getStatus());
+    }
+
+    private List<User> resolveCoopParticipants(User requester, CreateCompletionRequest request) {
+        if (!request.coop()) {
+            if (request.coopPlayerUserIds() != null && !request.coopPlayerUserIds().isEmpty()) {
+                throw new BusinessException("Nao informe jogadores quando o jogo nao for cooperativo");
+            }
+            return List.of();
+        }
+
+        List<UUID> participantIds = request.coopPlayerUserIds() == null
+                ? List.of()
+                : request.coopPlayerUserIds().stream().distinct().toList();
+
+        if (participantIds.isEmpty()) {
+            throw new BusinessException("Selecione os jogadores do cooperativo");
+        }
+
+        if (participantIds.contains(requester.getId())) {
+            throw new BusinessException("Nao inclua voce mesmo na lista do coop");
+        }
+
+        if (participantIds.size() + 1 > 4) {
+            throw new BusinessException("Cooperativo permite no maximo 4 jogadores contando com voce");
+        }
+
+        List<User> participants = userRepository.findAllById(participantIds).stream()
+                .filter(candidate -> Boolean.TRUE.equals(candidate.getActive()))
+                .toList();
+
+        if (participants.size() != participantIds.size()) {
+            throw new BusinessException("Um ou mais jogadores selecionados nao foram encontrados");
+        }
+
+        return participants;
     }
 
     @Transactional(readOnly = true)
@@ -302,3 +388,4 @@ public class CompletionService {
                 .orElseThrow(() -> new NotFoundException("Edicao ativa nao encontrada"));
     }
 }
+
