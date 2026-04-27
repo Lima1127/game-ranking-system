@@ -20,6 +20,8 @@ public record CompletionRequestResponse(
         OffsetDateTime createdAt,
         OffsetDateTime approvedAt,
         UUID proofId,
-        String proofContentType
+        String proofContentType,
+        UUID coopGroupId
 ) {
 }
+
