@@ -61,7 +61,9 @@ public class CompletionSubmissionService {
                 request.proofContentType(),
                 request.coopGroupId(),
                 request.status() == CompletionStatus.PENDING
-                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN)
+                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN),
+                request.fromObligation(),
+                request.ruleCodes()
         )));
 
         updateRequests.forEach(request -> items.add(new CompletionSubmissionItemResponse(
@@ -82,7 +84,9 @@ public class CompletionSubmissionService {
                 request.proofContentType(),
                 null,
                 "PENDING".equals(request.status().name())
-                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN)
+                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN),
+                request.fromObligation(),
+                request.ruleCodes()
         )));
 
         items.sort(Comparator.comparing(CompletionSubmissionItemResponse::createdAt).reversed());

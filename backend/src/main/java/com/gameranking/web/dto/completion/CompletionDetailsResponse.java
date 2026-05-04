@@ -22,6 +22,7 @@ public record CompletionDetailsResponse(
         boolean hypeParticipation,
         boolean hypeCompletedBonus,
         boolean rotativeList,
+        boolean fromObligation,
         String notes,
         CompletionStatus status,
         UUID proofId,

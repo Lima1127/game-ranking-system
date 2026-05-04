@@ -79,6 +79,9 @@ public class Completion extends AuditableEntity {
     @Column(name = "rotative_list", nullable = false)
     private boolean rotativeList;
 
+    @Column(name = "from_obligation", nullable = false)
+    private boolean fromObligation;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 
