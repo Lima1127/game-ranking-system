@@ -1,6 +1,7 @@
 package com.gameranking.repository;
 
 import com.gameranking.domain.enums.ObligationStatus;
+import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.Obligation;
 import com.gameranking.web.dto.obligation.ObligationItemResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,6 +22,15 @@ public interface ObligationRepository extends JpaRepository<Obligation, UUID> {
             UUID gameId,
             ObligationStatus status
     );
+
+    Optional<Obligation> findFirstByEditionIdAndAssignedToIdAndGameIdAndStatusInOrderByCreatedAtAsc(
+            UUID editionId,
+            UUID assignedToId,
+            UUID gameId,
+            List<ObligationStatus> statuses
+    );
+
+    List<Obligation> findByLinkedCompletion(Completion completion);
 
     @Query("""
             select new com.gameranking.web.dto.obligation.ObligationItemResponse(

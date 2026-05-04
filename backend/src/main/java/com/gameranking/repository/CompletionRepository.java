@@ -28,7 +28,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.game.name,
                 c.completedAt,
                 c.hoursPlayed,
-                c.platinum
+                c.platinum,
+                c.fromObligation
             )
             from Completion c
             where c.edition.id = :editionId
@@ -47,6 +48,7 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.completedAt,
                 c.hoursPlayed,
                 c.platinum,
+                c.fromObligation,
                 c.status,
                 c.createdAt,
                 c.approvedAt,
@@ -71,6 +73,7 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.completedAt,
                 c.hoursPlayed,
                 c.platinum,
+                c.fromObligation,
                 c.status,
                 c.createdAt,
                 c.approvedAt,
@@ -135,6 +138,7 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.hypeParticipation,
                 c.hypeCompletedBonus,
                 c.rotativeList,
+                c.fromObligation,
                 c.notes,
                 c.status,
                 p.id,

@@ -5,6 +5,7 @@ import com.gameranking.domain.enums.CompletionSubmissionKind;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record CompletionSubmissionItemResponse(
@@ -24,7 +25,9 @@ public record CompletionSubmissionItemResponse(
         UUID proofId,
         String proofContentType,
         UUID coopGroupId,
-        boolean editable
+        boolean editable,
+        boolean fromObligation,
+        List<String> ruleCodes
 ) {
 }
 

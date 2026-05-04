@@ -266,7 +266,7 @@ export default function CompletionSubmissionEditPage() {
             <input type="checkbox" name="firstTimeEver" checked={form.firstTimeEver} onChange={handleChange} className="h-5 w-5" />
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Primeira Experiencia</span>
           </label>
-          <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+          <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4 md:col-span-2">
             <input type="checkbox" name="completedInReleaseYear" checked={form.completedInReleaseYear} onChange={handleChange} className="h-5 w-5" />
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Em Dia</span>
           </label>
