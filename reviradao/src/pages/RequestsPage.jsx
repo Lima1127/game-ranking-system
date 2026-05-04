@@ -5,6 +5,81 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 
+const emojiByRuleCode = {
+  FIRST_EXPERIENCE: '🎮',
+  FIRST_IN_EDITION: '🚀',
+  IN_RELEASE_YEAR: '📅',
+  TIME_VALUABLE_BLOCK: '⏱️',
+  PLATINUM: '👑',
+  COOP_RIGHT_HAND: '🤝',
+  HYPE_PARTICIPATION: '🔥',
+  HYPE_COMPLETION_BONUS: '🎊',
+  ROTATIVE_LIST_BONUS: '🔄',
+  UNDERDOG_BONUS: '🐕',
+  GAME_COMPLETED: '✅',
+  OBLIGATION_COMPLETED: '📋',
+};
+
+const pointsByRuleCode = {
+  FIRST_EXPERIENCE: 1,
+  FIRST_IN_EDITION: 1,
+  IN_RELEASE_YEAR: 1,
+  TIME_VALUABLE_BLOCK: 2,
+  PLATINUM: 3,
+  COOP_RIGHT_HAND: 2,
+  HYPE_PARTICIPATION: 1,
+  HYPE_COMPLETION_BONUS: 2,
+  ROTATIVE_LIST_BONUS: 3,
+  UNDERDOG_BONUS: 3,
+  GAME_COMPLETED: 1,
+  OBLIGATION_COMPLETED: 3,
+};
+
+function RuleEmojiStrip({ ruleCodes = [], columns = 4 }) {
+  if (ruleCodes.length === 0) {
+    return null;
+  }
+
+  const groupedRules = ruleCodes.reduce((acc, ruleCode) => {
+    if (!acc[ruleCode]) {
+      acc[ruleCode] = { code: ruleCode, count: 0 };
+    }
+    acc[ruleCode].count += 1;
+    return acc;
+  }, {});
+
+  const orderedGroupedRules = Object.values(groupedRules);
+
+  const columnsClass = columns === 6 ? 'grid-cols-6' : 'grid-cols-4';
+
+  return (
+    <div className={`mt-2 grid ${columnsClass} gap-2`}>
+      {orderedGroupedRules.map(({ code, count }) => (
+        <span key={code} className="relative inline-flex h-9 w-9 items-center justify-center justify-self-start">
+          <span
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-lg shadow-sm"
+            title={count > 1 ? `${code} x${count}` : code}
+          >
+            {emojiByRuleCode[code] || '⭐'}
+          </span>
+          {count > 1 && (
+            <span className="absolute -right-2 -top-2 inline-flex min-w-5 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow">
+              x{count}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function hasObligationBadge(submission) {
+  return Boolean(
+    submission?.fromObligation ||
+    (submission?.ruleCodes || []).includes('OBLIGATION_COMPLETED')
+  );
+}
+
 function statusClasses(status) {
   if (status === 'APPROVED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
   if (status === 'CANCELLED') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
@@ -133,7 +208,10 @@ export default function RequestsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{submission.gameName}</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                {submission.gameName}
+                {hasObligationBadge(submission) && <span title="Jogo de obrigação">📋</span>}
+              </h2>
               <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] ${statusClasses(submission.status)}`}>
                 {submission.status}
               </span>
@@ -148,8 +226,11 @@ export default function RequestsPage() {
             </div>
             <div className="text-sm text-slate-600 dark:text-slate-300">
               <strong>Data:</strong> {submission.completedAt} Â· <strong>Horas:</strong> {submission.hoursPlayed}
-            </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            </div>            {submission.ruleCodes && submission.ruleCodes.length > 0 && (
+              <div>
+                <RuleEmojiStrip ruleCodes={submission.ruleCodes} columns={6} />
+              </div>
+            )}            <div className="text-sm text-slate-500 dark:text-slate-400">
               <strong>Enviado em:</strong> {submission.createdAt}
             </div>
             {isUpdate && (

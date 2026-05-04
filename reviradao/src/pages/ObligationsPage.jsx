@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 function statusClasses(status) {
   if (status === 'COMPLETED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
@@ -373,7 +374,8 @@ export default function ObligationsPage() {
             <p>Se aceitar e desistir depois, o cancelamento do recebedor aplica a mesma penalidade de recusa e o slot segue consumido.</p>
             <p>O emissor tambem pode cancelar uma obrigacao ativa, e nesse caso o slot volta para ele sem penalidade.</p>
             <p>Depois do aceite, o alvo escolhe entre 25% ou jogo finalizado e envia para revisao.</p>
-            <p>Admin aprova a revisao e o ranking e atualizado com -1 no parcial ou +3 no finalizado.</p>
+            <p>Admin aprova a revisao de 25% aqui em Obrigacoes (-1 ponto).</p>
+            <p>Para revisao de jogo finalizado, a aprovacao deve ser feita em Solicitacoes, somando os pontos da conclusao + bonus da obrigacao.</p>
           </div>
         </div>
       </div>
@@ -406,14 +408,23 @@ export default function ObligationsPage() {
                     )}
                   </div>
                   <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => approveReviewMutation.mutate(item.obligationId)}
-                      disabled={approveReviewMutation.isPending}
-                      className="rounded-lg bg-green-600 px-4 py-2 font-bold text-white hover:bg-green-700 disabled:opacity-50"
-                    >
-                      Aprovar
-                    </button>
+                    {item.status === 'REVIEW_PENDING_COMPLETION' ? (
+                      <Link
+                        to="/requests"
+                        className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700"
+                      >
+                        Aprovar em Solicitacoes
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => approveReviewMutation.mutate(item.obligationId)}
+                        disabled={approveReviewMutation.isPending}
+                        className="rounded-lg bg-green-600 px-4 py-2 font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Aprovar
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => rejectReviewMutation.mutate(item.obligationId)}
@@ -424,6 +435,11 @@ export default function ObligationsPage() {
                     </button>
                   </div>
                 </div>
+                {item.status === 'REVIEW_PENDING_COMPLETION' && (
+                  <p className="mt-3 text-sm text-indigo-700 dark:text-indigo-300">
+                    Esta revisao finalizada deve ser aprovada na aba <strong>Solicitacoes</strong> para consolidar todos os pontos de uma vez.
+                  </p>
+                )}
               </div>
             ))
           )}
@@ -644,7 +660,7 @@ export default function ObligationsPage() {
                     </span>
                   </label>
                 )}
-                <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition md:col-span-2">
                   <input
                     type="checkbox"
                     checked={reviewModal.completedInReleaseYear}

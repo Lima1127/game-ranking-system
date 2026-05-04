@@ -13,6 +13,7 @@ import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.CompletionUpdateRequestRepository;
 import com.gameranking.repository.EditionRepository;
+import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.completion.CompletionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionSubmissionDetailsResponse;
@@ -36,6 +37,7 @@ public class CompletionUpdateService {
     private final CompletionUpdateRequestRepository completionUpdateRequestRepository;
     private final EditionRepository editionRepository;
     private final UserRepository userRepository;
+    private final ScoreEventRepository scoreEventRepository;
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
     private final EditionScoreRecalculationService editionScoreRecalculationService;
@@ -61,25 +63,42 @@ public class CompletionUpdateService {
         Edition edition = resolveEdition(editionId);
         User requester = findUser(requesterId);
 
-        List<CompletionUpdateRequestResponse> items = requester.getRole() == UserRole.ADMIN
+        List<CompletionUpdateRequestRepository.UpdateRequestProjection> projections = requester.getRole() == UserRole.ADMIN
                 ? completionUpdateRequestRepository.listByEditionId(edition.getId())
                 : completionUpdateRequestRepository.listByEditionIdAndUserId(edition.getId(), requesterId);
 
-        return items.stream()
-                .map(item -> new CompletionUpdateRequestResponse(
-                        item.updateRequestId(),
-                        item.completionId(),
-                        item.userId(),
-                        item.userDisplayName(),
-                        item.gameName(),
-                        item.completedAt(),
-                        item.hoursPlayed(),
-                        item.platinum(),
-                        item.status(),
-                        item.createdAt(),
-                        item.approvedAt(),
-                        item.proofId(),
-                        platinumProofService.getContentTypeIfExists(item.proofId())
+        if (projections.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.List<UUID> completionIds = projections.stream()
+                .map(CompletionUpdateRequestRepository.UpdateRequestProjection::getCompletionId)
+                .toList();
+
+        java.util.Map<UUID, java.util.List<String>> ruleCodesByCompletionId = new java.util.LinkedHashMap<>();
+        scoreEventRepository.listRuleCodesByCompletionIds(completionIds).forEach(projection ->
+                ruleCodesByCompletionId
+                        .computeIfAbsent(projection.getCompletionId(), ignored -> new java.util.ArrayList<>())
+                        .add(projection.getRuleCode())
+        );
+
+        return projections.stream()
+                .map(p -> new CompletionUpdateRequestResponse(
+                        p.getId(),
+                        p.getCompletionId(),
+                        p.getUserId(),
+                        p.getUserDisplayName(),
+                        p.getGameName(),
+                        p.getCompletedAt(),
+                        p.getHoursPlayed(),
+                        p.isPlatinum(),
+                        p.getStatus(),
+                        p.getCreatedAt(),
+                        p.getApprovedAt(),
+                        p.getProofId(),
+                        platinumProofService.getContentTypeIfExists(p.getProofId()),
+                        p.isFromObligation(),
+                        ruleCodesByCompletionId.getOrDefault(p.getCompletionId(), java.util.Collections.emptyList())
                 ))
                 .toList();
     }
@@ -150,7 +169,9 @@ public class CompletionUpdateService {
                 saved.getCreatedAt(),
                 saved.getApprovedAt(),
                 saved.getProofId(),
-                platinumProofService.getContentTypeIfExists(saved.getProofId())
+                platinumProofService.getContentTypeIfExists(saved.getProofId()),
+                completion.isFromObligation(),
+                java.util.Collections.emptyList()
         );
     }
 
@@ -245,7 +266,9 @@ public class CompletionUpdateService {
                 updateRequest.getCreatedAt(),
                 updateRequest.getApprovedAt(),
                 updateRequest.getProofId(),
-                platinumProofService.getContentTypeIfExists(updateRequest.getProofId())
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getCompletion().isFromObligation(),
+                java.util.Collections.emptyList()
         );
     }
 
@@ -342,7 +365,9 @@ public class CompletionUpdateService {
                 updateRequest.getCreatedAt(),
                 updateRequest.getApprovedAt(),
                 updateRequest.getProofId(),
-                platinumProofService.getContentTypeIfExists(updateRequest.getProofId())
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getCompletion().isFromObligation(),
+                java.util.Collections.emptyList()
         );
     }
 

@@ -14,48 +14,62 @@ public interface CompletionUpdateRequestRepository extends JpaRepository<Complet
     boolean existsByCompletionIdAndStatus(UUID completionId, CompletionUpdateStatus status);
     Optional<CompletionUpdateRequest> findByIdAndCompletionEditionId(UUID updateRequestId, UUID editionId);
 
+    interface UpdateRequestProjection {
+        java.util.UUID getId();
+        java.util.UUID getCompletionId();
+        java.util.UUID getUserId();
+        String getUserDisplayName();
+        String getGameName();
+        java.time.LocalDate getCompletedAt();
+        java.math.BigDecimal getHoursPlayed();
+        boolean isPlatinum();
+        CompletionUpdateStatus getStatus();
+        java.time.OffsetDateTime getCreatedAt();
+        java.time.OffsetDateTime getApprovedAt();
+        java.util.UUID getProofId();
+        boolean isFromObligation();
+    }
+
     @Query("""
-            select new com.gameranking.web.dto.completion.CompletionUpdateRequestResponse(
-                u.id,
-                u.completion.id,
-                u.requestedBy.id,
-                u.requestedBy.displayName,
-                u.completion.game.name,
-                u.completedAt,
-                u.hoursPlayed,
-                u.platinum,
-                u.status,
-                u.createdAt,
-                u.approvedAt,
-                u.proofId,
-                null
-            )
+            select 
+                u.id as id,
+                u.completion.id as completionId,
+                u.requestedBy.id as userId,
+                u.requestedBy.displayName as userDisplayName,
+                u.completion.game.name as gameName,
+                u.completedAt as completedAt,
+                u.hoursPlayed as hoursPlayed,
+                u.platinum as platinum,
+                u.status as status,
+                u.createdAt as createdAt,
+                u.approvedAt as approvedAt,
+                u.proofId as proofId,
+                u.completion.fromObligation as fromObligation
             from CompletionUpdateRequest u
             where u.completion.edition.id = :editionId
             order by u.createdAt desc
             """)
-    List<CompletionUpdateRequestResponse> listByEditionId(UUID editionId);
+    List<UpdateRequestProjection> listByEditionId(UUID editionId);
 
     @Query("""
-            select new com.gameranking.web.dto.completion.CompletionUpdateRequestResponse(
-                u.id,
-                u.completion.id,
-                u.requestedBy.id,
-                u.requestedBy.displayName,
-                u.completion.game.name,
-                u.completedAt,
-                u.hoursPlayed,
-                u.platinum,
-                u.status,
-                u.createdAt,
-                u.approvedAt,
-                u.proofId,
-                null
-            )
+            select 
+                u.id as id,
+                u.completion.id as completionId,
+                u.requestedBy.id as userId,
+                u.requestedBy.displayName as userDisplayName,
+                u.completion.game.name as gameName,
+                u.completedAt as completedAt,
+                u.hoursPlayed as hoursPlayed,
+                u.platinum as platinum,
+                u.status as status,
+                u.createdAt as createdAt,
+                u.approvedAt as approvedAt,
+                u.proofId as proofId,
+                u.completion.fromObligation as fromObligation
             from CompletionUpdateRequest u
             where u.completion.edition.id = :editionId
               and u.requestedBy.id = :userId
             order by u.createdAt desc
             """)
-    List<CompletionUpdateRequestResponse> listByEditionIdAndUserId(UUID editionId, UUID userId);
+    List<UpdateRequestProjection> listByEditionIdAndUserId(UUID editionId, UUID userId);
 }
