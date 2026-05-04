@@ -3,14 +3,17 @@ package com.gameranking.service;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.CompletionStatus;
+import com.gameranking.domain.enums.ObligationStatus;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.Edition;
 import com.gameranking.domain.model.Game;
+import com.gameranking.domain.model.Obligation;
 import com.gameranking.domain.model.ScoreEvent;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.EditionRepository;
+import com.gameranking.repository.ObligationRepository;
 import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.service.scoring.ScoringEngine;
@@ -24,10 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,6 +46,7 @@ public class CompletionService {
     private final UserRepository userRepository;
     private final GameService gameService;
     private final ScoreEventRepository scoreEventRepository;
+    private final ObligationRepository obligationRepository;
     private final ScoringEngine scoringEngine;
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
@@ -133,16 +139,16 @@ public class CompletionService {
                         .game(game)
                         .completedAt(request.completedAt() == null ? LocalDate.now() : request.completedAt())
                         .hoursPlayed(request.hoursPlayed())
-                        .firstTimeEver(false)
+                        .firstTimeEver(request.firstTimeEver())
                         .firstInEdition(false)
                         .underdogAwarded(false)
                         .completedInReleaseYear(request.completedInReleaseYear())
-                        .platinum(false)
+                        .platinum(request.platinum())
                         .coop(true)
                         .coopPlayers(coopPlayersCount)
                         .coopGroupId(coopGroupId)
-                        .hypeParticipation(false)
-                        .hypeCompletedBonus(false)
+                        .hypeParticipation(request.hypeParticipation())
+                        .hypeCompletedBonus(request.hypeCompletedBonus())
                         .rotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()))
                         .notes("Conclusao de coop registrada por " + user.getDisplayName())
                         .status(CompletionStatus.PENDING)
@@ -291,6 +297,7 @@ public class CompletionService {
                         completion.completedAt(),
                         completion.hoursPlayed(),
                         completion.platinum(),
+                        completion.fromObligation(),
                         ruleCodesByCompletionId.getOrDefault(completion.completionId(), Collections.emptyList())
                 ))
                 .toList();
@@ -302,11 +309,63 @@ public class CompletionService {
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
+        List<CompletionRequestResponse> requests;
         if (requester.getRole() == UserRole.ADMIN) {
-            return completionRepository.listRequestsByEditionId(edition.getId());
+            requests = completionRepository.listRequestsByEditionId(edition.getId());
+        } else {
+            requests = completionRepository.listRequestsByEditionIdAndUserId(edition.getId(), requesterId);
         }
 
-        return completionRepository.listRequestsByEditionIdAndUserId(edition.getId(), requesterId);
+        if (requests.isEmpty()) {
+            return requests;
+        }
+
+        Map<UUID, Completion> completionById = completionRepository.findAllById(
+                        requests.stream().map(CompletionRequestResponse::completionId).toList()
+                )
+                .stream()
+                .collect(Collectors.toMap(Completion::getId, completion -> completion));
+
+        List<UUID> completionIds = requests.stream()
+                .map(CompletionRequestResponse::completionId)
+                .toList();
+
+        Map<UUID, List<String>> ruleCodesByCompletionId = new LinkedHashMap<>();
+        scoreEventRepository.listRuleCodesByCompletionIds(completionIds).forEach(projection ->
+                ruleCodesByCompletionId
+                        .computeIfAbsent(projection.getCompletionId(), ignored -> new java.util.ArrayList<>())
+                        .add(projection.getRuleCode())
+        );
+
+        return requests.stream()
+                .map(request -> {
+                    Completion completion = completionById.get(request.completionId());
+                    List<String> persistedRuleCodes = ruleCodesByCompletionId.getOrDefault(request.completionId(), Collections.emptyList());
+                    List<String> previewRuleCodes = request.status() == CompletionStatus.PENDING && completion != null
+                            ? buildPreviewRuleCodes(edition, completion)
+                            : persistedRuleCodes;
+                    boolean fromObligation = request.fromObligation() || (request.status() == CompletionStatus.PENDING && completion != null && isPendingObligationCompletion(completion));
+
+                    return new CompletionRequestResponse(
+                            request.completionId(),
+                            request.userId(),
+                            request.userDisplayName(),
+                            request.gameId(),
+                            request.gameName(),
+                            request.completedAt(),
+                            request.hoursPlayed(),
+                            request.platinum(),
+                            fromObligation,
+                            request.status(),
+                            request.createdAt(),
+                            request.approvedAt(),
+                            request.proofId(),
+                            request.proofContentType(),
+                            request.coopGroupId(),
+                            previewRuleCodes
+                    );
+                })
+                .toList();
     }
 
     @Transactional
@@ -337,6 +396,21 @@ public class CompletionService {
         completion.setApprovedBy(approver);
         completion.setApprovedAt(java.time.OffsetDateTime.now());
 
+        // Check if there's an obligation for this user/game and link it
+        Optional<Obligation> linkedObligation = obligationRepository
+                .findFirstByEditionIdAndAssignedToIdAndGameIdAndStatusInOrderByCreatedAtAsc(
+                        edition.getId(),
+                        completion.getUser().getId(),
+                        completion.getGame().getId(),
+                        List.of(ObligationStatus.PENDING, ObligationStatus.ACCEPTED, ObligationStatus.REVIEW_PENDING_COMPLETION)
+                );
+
+        if (linkedObligation.isPresent()) {
+            completion.setFromObligation(true);
+            linkedObligation.get().setLinkedCompletion(completion);
+            obligationRepository.save(linkedObligation.get());
+        }
+
         Long userCurrentScore = scoreEventRepository.getTotalPointsForUser(edition.getId(), completion.getUser().getId());
         Long leaderScore = scoreEventRepository.getRanking(edition.getId()).stream()
                 .mapToLong(row -> row.totalPoints() == null ? 0L : row.totalPoints())
@@ -349,7 +423,9 @@ public class CompletionService {
 
         List<ScoreEvent> events = scoringEngine.buildCompletionEvents(completion, edition, completion.getUser(), underdogBonus);
         scoreEventRepository.saveAll(events);
-        obligationService.resolveWithApprovedCompletion(completion);
+        
+        Completion saved = completionRepository.save(completion);
+        obligationService.resolveWithApprovedCompletion(saved);
 
         int total = events.stream().mapToInt(ScoreEvent::getPoints).sum();
         adminAuditLogService.log(
@@ -403,6 +479,79 @@ public class CompletionService {
 
         return editionRepository.findByActiveTrue()
                 .orElseThrow(() -> new NotFoundException("Edicao ativa nao encontrada"));
+    }
+
+    private boolean isPendingObligationCompletion(Completion completion) {
+        return obligationRepository.findFirstByEditionIdAndAssignedToIdAndGameIdAndStatusInOrderByCreatedAtAsc(
+                        completion.getEdition().getId(),
+                        completion.getUser().getId(),
+                        completion.getGame().getId(),
+                        List.of(ObligationStatus.ACCEPTED, ObligationStatus.REVIEW_PENDING_COMPLETION)
+                )
+                .isPresent();
+    }
+
+    private List<String> buildPreviewRuleCodes(Edition edition, Completion completion) {
+        List<String> preview = new ArrayList<>();
+        boolean hypeParticipationOnly = completion.isHypeParticipation() && !completion.isHypeCompletedBonus();
+
+        if (!hypeParticipationOnly) {
+            preview.add("GAME_COMPLETED");
+        }
+        if (!hypeParticipationOnly && completion.isFirstTimeEver()) {
+            preview.add("FIRST_EXPERIENCE");
+        }
+        if (!hypeParticipationOnly && isFirstInEditionPreview(edition.getId(), completion)) {
+            preview.add("FIRST_IN_EDITION");
+        }
+        if (!hypeParticipationOnly && completion.isCompletedInReleaseYear()) {
+            preview.add("IN_RELEASE_YEAR");
+        }
+        if (!hypeParticipationOnly) {
+            int blocks = completion.getHoursPlayed()
+                    .divide(java.math.BigDecimal.valueOf(25), 0, java.math.RoundingMode.DOWN)
+                    .intValue();
+            for (int i = 0; i < blocks; i++) {
+                preview.add("TIME_VALUABLE_BLOCK");
+            }
+        }
+        if (!hypeParticipationOnly && completion.isPlatinum()) {
+            preview.add("PLATINUM");
+        }
+        if (!hypeParticipationOnly && completion.isCoop() && completion.getCoopPlayers() != null && completion.getCoopPlayers() <= 4) {
+            preview.add("COOP_RIGHT_HAND");
+        }
+        if (completion.isHypeParticipation()) {
+            preview.add("HYPE_PARTICIPATION");
+        }
+        if (completion.isHypeCompletedBonus()) {
+            preview.add("HYPE_COMPLETION_BONUS");
+        }
+        if (!hypeParticipationOnly && completion.isRotativeList()) {
+            preview.add("ROTATIVE_LIST_BONUS");
+        }
+        if (!hypeParticipationOnly && hasUnderdogPreview(edition.getId(), completion.getUser().getId())) {
+            preview.addAll(Arrays.asList("UNDERDOG_BONUS", "UNDERDOG_BONUS", "UNDERDOG_BONUS"));
+        }
+        if (isPendingObligationCompletion(completion)) {
+            preview.add("OBLIGATION_COMPLETED");
+        }
+
+        return preview;
+    }
+
+    private boolean isFirstInEditionPreview(UUID editionId, Completion completion) {
+        return completionRepository.listApprovedGameIdsByEditionId(editionId).stream()
+                .noneMatch(gameId -> gameId.equals(completion.getGame().getId()));
+    }
+
+    private boolean hasUnderdogPreview(UUID editionId, UUID userId) {
+        Long userCurrentScore = scoreEventRepository.getTotalPointsForUser(editionId, userId);
+        Long leaderScore = scoreEventRepository.getRanking(editionId).stream()
+                .mapToLong(row -> row.totalPoints() == null ? 0L : row.totalPoints())
+                .max()
+                .orElse(0L);
+        return leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
     }
 }
 

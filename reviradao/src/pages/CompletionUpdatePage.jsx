@@ -53,11 +53,11 @@ export default function CompletionUpdatePage() {
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           proofId,
-          coop: false,
-          coopPlayers: null,
-          hypeParticipation: false,
-          hypeCompletedBonus: false,
-          rotativeList: false,
+          coop: form.coop,
+          coopPlayers: form.coopPlayers,
+          hypeParticipation: form.hypeParticipation,
+          hypeCompletedBonus: form.hypeCompletedBonus,
+          rotativeList: form.rotativeList,
           notes: form.notes,
         },
         {
@@ -82,6 +82,11 @@ export default function CompletionUpdatePage() {
         firstTimeEver: completion.firstTimeEver,
         completedInReleaseYear: completion.completedInReleaseYear,
         platinum: completion.platinum,
+        coop: completion.coop,
+        coopPlayers: completion.coopPlayers,
+        hypeParticipation: completion.hypeParticipation,
+        hypeCompletedBonus: completion.hypeCompletedBonus,
+        rotativeList: completion.rotativeList,
         notes: completion.notes || '',
       });
     }
@@ -197,7 +202,7 @@ export default function CompletionUpdatePage() {
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Primeira Experiencia</span>
           </label>
 
-          <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+          <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4 md:col-span-2">
             <input type="checkbox" name="completedInReleaseYear" checked={form.completedInReleaseYear} onChange={handleChange} className="h-5 w-5" />
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Em Dia</span>
           </label>
@@ -206,6 +211,49 @@ export default function CompletionUpdatePage() {
             <input type="checkbox" name="platinum" checked={form.platinum} onChange={handleChange} className="h-5 w-5" />
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Platina (100%)</span>
           </label>
+
+          {completion.coop && (
+            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+              <input type="checkbox" name="coop" checked={form.coop} onChange={handleChange} className="h-5 w-5" />
+              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Cooperativo</span>
+            </label>
+          )}
+
+          {form.coop && (
+            <div>
+              <label className="mb-2 block font-bold text-slate-700 dark:text-slate-200">Jogadores Cooperativos</label>
+              <input
+                type="number"
+                name="coopPlayers"
+                value={form.coopPlayers || ''}
+                onChange={handleChange}
+                min="2"
+                max="4"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          )}
+
+          {completion.hypeParticipation && (
+            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+              <input type="checkbox" name="hypeParticipation" checked={form.hypeParticipation} onChange={handleChange} className="h-5 w-5" />
+              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Hype Participacao</span>
+            </label>
+          )}
+
+          {completion.hypeCompletedBonus && (
+            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+              <input type="checkbox" name="hypeCompletedBonus" checked={form.hypeCompletedBonus} onChange={handleChange} className="h-5 w-5" />
+              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Hype Conclusao Bonus</span>
+            </label>
+          )}
+
+          {completion.rotativeList && (
+            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
+              <input type="checkbox" name="rotativeList" checked={form.rotativeList} onChange={handleChange} className="h-5 w-5" />
+              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Lista Rotativa</span>
+            </label>
+          )}
         </div>
 
         <div>

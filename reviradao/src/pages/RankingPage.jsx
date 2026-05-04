@@ -17,6 +17,7 @@ const scoringRules = [
   { code: 'HYPE_COMPLETION_BONUS', emoji: '⚡', points: 2, description: 'Completar o objetivo relacionado ao Hype soma mais 2 pontos.', active: true },
   { code: 'ROTATIVE_LIST_BONUS', emoji: '🔄', points: 3, description: 'Completar um item da lista rotativa adiciona 3 pontos.', active: true },
   { code: 'UNDERDOG_BONUS', emoji: '🐶', points: 3, description: 'Bonus de 3 pontos para quem inicia a jogada estando 20 pontos ou mais atras do lider da edicao.', active: true },
+  { code: 'OBLIGATION_COMPLETED', emoji: '📋', points: 3, description: 'Conclusao de obrigacao aprovada soma 3 pontos.', active: true },
 ];
 
 const emojiByRuleCode = scoringRules.reduce((acc, rule) => {
@@ -75,6 +76,13 @@ function RuleEmojiStrip({ ruleCodes = [], columns = 4 }) {
         </span>
       ))}
     </div>
+  );
+}
+
+function hasObligationBadge(completion) {
+  return Boolean(
+    completion?.fromObligation ||
+    (completion?.ruleCodes || []).includes('OBLIGATION_COMPLETED')
   );
 }
 
@@ -142,7 +150,10 @@ function PodiumCard({ player, index, userCompletions, avatarUrl, onPreview }) {
       <div className="space-y-2">
         {topScoringCompletions.map((completion) => (
           <div key={completion.completionId} className="rounded-2xl bg-white/25 dark:bg-black/20 px-4 py-3">
-            <div className="font-bold">{completion.gameName}</div>
+            <div className="font-bold flex items-center gap-2">
+              {completion.gameName}
+              {hasObligationBadge(completion) && <span title="Jogo de obrigação">📋</span>}
+            </div>
             <div className="text-xs opacity-80">
               {completion.completedAt} - {completion.hoursPlayed}h{completion.platinum ? ' - platina' : ''}
             </div>
@@ -465,8 +476,9 @@ export default function RankingPage() {
                                     className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800 px-3 py-3"
                                   >
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="truncate font-semibold text-slate-900 dark:text-slate-100" title={completion.gameName}>
+                                      <span className="truncate font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1" title={completion.gameName}>
                                         {completion.gameName}
+                                        {hasObligationBadge(completion) && <span title="Jogo de obrigação" className="flex-shrink-0">📋</span>}
                                       </span>
                                       {completion.platinum && (
                                         <span className={platinumBadgeClass}>
@@ -607,7 +619,10 @@ export default function RankingPage() {
                     className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{completion.gameName}</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        {completion.gameName}
+                        {hasObligationBadge(completion) && <span title="Jogo de obrigação">📋</span>}
+                      </span>
                       <div className="flex items-center gap-2">
                         {completion.platinum && <span className={platinumBadgeClass}>Platina</span>}
                         <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-white">

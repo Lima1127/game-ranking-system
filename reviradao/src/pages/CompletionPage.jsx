@@ -459,7 +459,7 @@ export default function CompletionPage() {
             </span>
           </label>
 
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition md:col-span-2">
             <input
               type="checkbox"
               name="completedInReleaseYear"

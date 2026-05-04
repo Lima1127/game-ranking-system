@@ -306,23 +306,7 @@ public class ObligationService {
                     .createdAt(OffsetDateTime.now())
                     .build());
         } else {
-            obligation.setCompleted(true);
-            obligation.setStatus(ObligationStatus.COMPLETED);
-            obligation.setRewardPoints(3);
-            obligation.setResolvedAt(OffsetDateTime.now());
-            obligation.setSlotConsumed(true);
-
-            scoreEventRepository.save(ScoreEvent.builder()
-                    .id(UUID.randomUUID())
-                    .edition(obligation.getEdition())
-                    .user(obligation.getAssignedTo())
-                    .obligation(obligation)
-                    .sourceType(ScoreSourceType.OBLIGATION)
-                    .ruleCode("OBLIGATION_COMPLETED")
-                    .points(3)
-                    .reason("Obrigacao concluida com sucesso")
-                    .createdAt(OffsetDateTime.now())
-                    .build());
+            throw new BusinessException("Aprovacao de conclusao de obrigacao deve ser feita em Solicitacoes");
         }
 
         adminAuditLogService.log(
@@ -365,7 +349,42 @@ public class ObligationService {
         if (completion == null || completion.getStatus() != CompletionStatus.APPROVED) {
             return;
         }
-        // Fluxo de obrigacao concluida agora depende de revisao dedicada na tela de obrigacoes.
+
+        // Find any obligation that is being resolved by this completion
+        List<Obligation> linkedObligations = obligationRepository.findByLinkedCompletion(completion);
+        
+        for (Obligation obligation : linkedObligations) {
+            // Only resolve if obligation is in an active state waiting for completion
+            if (obligation.getStatus() == ObligationStatus.ACCEPTED || 
+                obligation.getStatus() == ObligationStatus.REVIEW_PENDING_COMPLETION ||
+                obligation.getStatus() == ObligationStatus.PENDING) {
+                
+                obligation.setCompleted(true);
+                obligation.setStatus(ObligationStatus.COMPLETED);
+                obligation.setRewardPoints(3);
+                obligation.setResolvedAt(OffsetDateTime.now());
+                obligation.setSlotConsumed(true);
+                obligationRepository.save(obligation);
+
+                // Generate score event for obligation completion
+                scoreEventRepository.save(ScoreEvent.builder()
+                        .id(UUID.randomUUID())
+                        .edition(obligation.getEdition())
+                        .user(obligation.getAssignedTo())
+                        .completion(completion)
+                        .obligation(obligation)
+                        .sourceType(ScoreSourceType.OBLIGATION)
+                        .ruleCode("OBLIGATION_COMPLETED")
+                        .points(3)
+                        .reason("Obrigacao concluida com sucesso")
+                        .createdAt(OffsetDateTime.now())
+                        .build());
+            }
+        }
+
+        if (!linkedObligations.isEmpty() && !completion.isFromObligation()) {
+            completion.setFromObligation(true);
+        }
     }
 
     private int calculateAvailableAssignments(UUID editionId, UUID userId) {
