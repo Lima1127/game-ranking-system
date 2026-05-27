@@ -16,6 +16,7 @@ import java.util.UUID;
 public interface CompletionRepository extends JpaRepository<Completion, UUID> {
     boolean existsByEditionIdAndGameIdAndStatus(UUID editionId, UUID gameId, CompletionStatus status);
     boolean existsByUserIdAndGameId(UUID userId, UUID gameId);
+    boolean existsByUserIdAndGameIdAndStatus(UUID userId, UUID gameId, CompletionStatus status);
     Optional<Completion> findByIdAndEditionId(UUID completionId, UUID editionId);
 
     @Query("""
@@ -27,7 +28,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.game.name,
                 c.completedAt,
                 c.hoursPlayed,
-                c.platinum
+                c.platinum,
+                c.fromObligation
             )
             from Completion c
             where c.edition.id = :editionId
@@ -46,11 +48,13 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.completedAt,
                 c.hoursPlayed,
                 c.platinum,
+                c.fromObligation,
                 c.status,
                 c.createdAt,
                 c.approvedAt,
                 p.id,
-                p.contentType
+                p.contentType,
+                c.coopGroupId
             )
             from Completion c
             left join c.proof p
@@ -69,11 +73,13 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.completedAt,
                 c.hoursPlayed,
                 c.platinum,
+                c.fromObligation,
                 c.status,
                 c.createdAt,
                 c.approvedAt,
                 p.id,
-                p.contentType
+                p.contentType,
+                c.coopGroupId
             )
             from Completion c
             left join c.proof p
@@ -132,6 +138,7 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.hypeParticipation,
                 c.hypeCompletedBonus,
                 c.rotativeList,
+                c.fromObligation,
                 c.notes,
                 c.status,
                 p.id,
@@ -142,4 +149,15 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
             where c.id = :completionId
             """)
     Optional<CompletionDetailsResponse> findDetailsById(UUID completionId);
+
+    @Query("""
+            select distinct c.game.id
+            from Completion c
+            where c.edition.id = :editionId
+              and c.status = com.gameranking.domain.enums.CompletionStatus.APPROVED
+            """)
+    List<UUID> listApprovedGameIdsByEditionId(UUID editionId);
 }
+
+
+

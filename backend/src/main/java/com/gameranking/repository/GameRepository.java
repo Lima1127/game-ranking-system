@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface GameRepository extends JpaRepository<Game, UUID> {
     Optional<Game> findByNameIgnoreCaseAndReleaseYear(String name, Integer releaseYear);
+    Optional<Game> findFirstByNameIgnoreCase(String name);
 }

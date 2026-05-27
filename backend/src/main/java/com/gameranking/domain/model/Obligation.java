@@ -37,7 +37,7 @@ public class Obligation {
     private Game game;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 40)
     private ObligationStatus status;
 
     private Boolean accepted;
@@ -56,6 +56,9 @@ public class Obligation {
 
     @Column(name = "reward_points", nullable = false)
     private Integer rewardPoints;
+
+    @Column(name = "slot_consumed", nullable = false)
+    private Boolean slotConsumed;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import ImagePreviewModal from '../components/ImagePreviewModal';
 
 function StatusBadge({ status }) {
   const styles = {
@@ -19,7 +21,7 @@ function StatusBadge({ status }) {
 const platinumBadgeClass =
   'inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-[#432200] border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] dark:text-[#fff6d8] dark:border-[#163a56] dark:bg-gradient-to-r dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff]';
 
-function AdminCompletionCard({ item, onDelete, isPending, proofUrl }) {
+function AdminCompletionCard({ item, onDelete, isPending, proofUrl, onPreview }) {
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -51,11 +53,17 @@ function AdminCompletionCard({ item, onDelete, isPending, proofUrl }) {
             <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4">
               <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Anexo</div>
               {item.proofContentType?.startsWith('image/') && (
-                <img
-                  src={proofUrl}
-                  alt={`Anexo de ${item.gameName}`}
-                  className="max-h-52 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 object-contain"
-                />
+                <button
+                  type="button"
+                  onClick={() => onPreview(proofUrl, `Anexo de ${item.gameName}`)}
+                  className="inline-block"
+                >
+                  <img
+                    src={proofUrl}
+                    alt={`Anexo de ${item.gameName}`}
+                    className="max-h-52 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 object-contain cursor-zoom-in"
+                  />
+                </button>
               )}
               <a
                 href={proofUrl}
@@ -85,6 +93,7 @@ function AdminCompletionCard({ item, onDelete, isPending, proofUrl }) {
 export default function AdminRecordsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [previewImage, setPreviewImage] = useState(null);
 
   const { data: items = [], isLoading, error } = useQuery({
     queryKey: ['admin-completions'],
@@ -200,6 +209,7 @@ export default function AdminRecordsPage() {
               proofUrl={`${api.defaults.baseURL}/uploads/proofs/${item.proofId}`}
               isPending={deleteMutation.isPending}
               onDelete={() => handleDelete(item)}
+              onPreview={(src, alt) => setPreviewImage({ src, alt })}
             />
           ))
         )}
@@ -221,10 +231,18 @@ export default function AdminRecordsPage() {
               proofUrl={`${api.defaults.baseURL}/uploads/proofs/${item.proofId}`}
               isPending={deleteMutation.isPending}
               onDelete={() => handleDelete(item)}
+              onPreview={(src, alt) => setPreviewImage({ src, alt })}
             />
           ))
         )}
       </section>
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageSrc={previewImage?.src}
+        imageAlt={previewImage?.alt}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

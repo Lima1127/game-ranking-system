@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record CreateCompletionRequest(
@@ -19,6 +20,7 @@ public record CreateCompletionRequest(
         boolean hypeParticipation,
         boolean hypeCompletedBonus,
         boolean rotativeList,
-        String notes
+        String notes,
+        List<UUID> coopPlayerUserIds
 ) {
 }

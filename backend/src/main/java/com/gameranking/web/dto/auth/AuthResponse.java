@@ -2,6 +2,7 @@ package com.gameranking.web.dto.auth;
 
 import com.gameranking.domain.enums.UserRole;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record AuthResponse(
@@ -10,6 +11,7 @@ public record AuthResponse(
         Long expiresIn,
         UUID userId,
         String displayName,
-        UserRole role
+        UserRole role,
+        OffsetDateTime avatarUploadedAt
 ) {
 }

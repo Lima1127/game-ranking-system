@@ -10,9 +10,13 @@ const buildInitialForm = () => ({
   completedAt: new Date().toISOString().split('T')[0],
   hoursPlayed: '',
   firstTimeEver: false,
-  firstInEdition: false,
   completedInReleaseYear: false,
   platinum: false,
+  rotativeList: false,
+  coop: false,
+  coopPlayerUserIds: [],
+  hypeParticipation: false,
+  hypeCompletedBonus: false,
 });
 
 function formatFileSize(size) {
@@ -41,6 +45,21 @@ export default function CompletionPage() {
       return response.data;
     },
     enabled: Boolean(user?.id),
+  });
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const response = await api.get('/users');
+      return response.data;
+    },
+    enabled: Boolean(user?.id),
+  });
+  const { data: rotativeEntries = [] } = useQuery({
+    queryKey: ['rotative-list'],
+    queryFn: async () => {
+      const response = await api.get('/rotative-list');
+      return response.data;
+    },
   });
 
   const resolveGameId = async () => {
@@ -94,16 +113,17 @@ export default function CompletionPage() {
         {
           gameId,
           completedAt: form.completedAt,
-          hoursPlayed: form.hoursPlayed,
+          hoursPlayed: isHypeParticipationOnly ? 0 : form.hoursPlayed,
           firstTimeEver: form.firstTimeEver,
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           platinumProofId,
-          coop: false,
-          coopPlayers: null,
-          hypeParticipation: false,
-          hypeCompletedBonus: false,
-          rotativeList: false,
+          coop: form.coop,
+          coopPlayers: form.coop ? form.coopPlayerUserIds.length + 1 : null,
+          coopPlayerUserIds: form.coop ? form.coopPlayerUserIds : [],
+          hypeParticipation: form.hypeParticipation,
+          hypeCompletedBonus: form.hypeCompletedBonus,
+          rotativeList: form.rotativeList,
           notes: null,
         },
         {
@@ -112,10 +132,15 @@ export default function CompletionPage() {
       );
     },
     onSuccess: () => {
-      alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
+      if (form.coop) {
+        alert(`Solicitacao de coop enviada para voce e mais ${form.coopPlayerUserIds.length} jogador(es). Todas contarao pontos apenas apos aprovacao.`);
+      } else {
+        alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
+      }
       setForm(buildInitialForm());
       setPlatinumFile(null);
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
     },
     onError: (error) => {
       alert(`Erro ao registrar: ${error.response?.data?.message || error.message}`);
@@ -156,7 +181,7 @@ export default function CompletionPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.gameName.trim() || !form.hoursPlayed) {
+    if (!form.gameName.trim() || (!isHypeParticipationOnly && !form.hoursPlayed)) {
       alert('Preencha nome do jogo e horas jogadas.');
       return;
     }
@@ -171,11 +196,29 @@ export default function CompletionPage() {
       return;
     }
 
+    if (form.coop) {
+      if (form.coopPlayerUserIds.length === 0) {
+        alert('Selecione ao menos um jogador para o cooperativo.');
+        return;
+      }
+
+      if (form.coopPlayerUserIds.length + 1 > 4) {
+        alert('Cooperativo permite no maximo 4 jogadores contando com voce.');
+        return;
+      }
+    }
+
     mutation.mutate();
   };
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+  const rotativeByGameId = useMemo(
+    () => new Map(rotativeEntries.map((entry) => [entry.gameId, entry])),
+    [rotativeEntries]
+  );
   const hasExistingGameSelected = Boolean(matchingGame);
+  const isSelectedGameInRotativeList = matchingGame ? rotativeByGameId.has(matchingGame.id) : false;
+  const isHypeParticipationOnly = form.hypeParticipation && !form.hypeCompletedBonus;
   const hasUserCompletionForGame = matchingGame
     ? myCompletionRequests.some((request) => request.gameId === matchingGame.id)
     : false;
@@ -187,28 +230,94 @@ export default function CompletionPage() {
 
     return games
       .filter((game) => game.name.toLowerCase().includes(normalizedQuery))
+      .map((game) => ({
+        ...game,
+        isRotative: rotativeByGameId.has(game.id),
+        quarter: rotativeByGameId.get(game.id)?.quarter ?? null,
+      }))
+      .sort((a, b) => {
+        if (a.isRotative !== b.isRotative) {
+          return a.isRotative ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      })
       .slice(0, 6);
-  }, [games, form.gameName]);
+  }, [games, form.gameName, rotativeByGameId]);
 
-  const handleSelectSuggestion = (gameName) => {
+  const handleSelectSuggestion = (gameSuggestion) => {
     setForm((prev) => ({
       ...prev,
-      gameName,
+      gameName: gameSuggestion.name,
+      rotativeList: gameSuggestion.isRotative,
     }));
   };
 
   useEffect(() => {
-    if (hasExistingGameSelected) {
-      setForm((prev) => ({
+    setForm((prev) => {
+      const nextRotative = hasExistingGameSelected ? isSelectedGameInRotativeList : false;
+      if (prev.rotativeList === nextRotative) {
+        return prev;
+      }
+      return {
         ...prev,
-        firstInEdition: false,
-      }));
-    }
-  }, [hasExistingGameSelected]);
+        rotativeList: nextRotative,
+      };
+    });
+  }, [hasExistingGameSelected, isSelectedGameInRotativeList]);
 
   const resetForm = () => {
     setForm(buildInitialForm());
     setPlatinumFile(null);
+  };
+
+  const toggleCoopPlayer = (selectedUserId) => {
+    setForm((prev) => {
+      const isSelected = prev.coopPlayerUserIds.includes(selectedUserId);
+      if (isSelected) {
+        return {
+          ...prev,
+          coopPlayerUserIds: prev.coopPlayerUserIds.filter((id) => id !== selectedUserId),
+        };
+      }
+
+      if (prev.coopPlayerUserIds.length >= 3) {
+        alert('Voce pode selecionar no maximo 3 jogadores (com voce, totaliza 4).');
+        return prev;
+      }
+
+      return {
+        ...prev,
+        coopPlayerUserIds: [...prev.coopPlayerUserIds, selectedUserId],
+      };
+    });
+  };
+
+  const handleHypeParticipationToggle = (checked) => {
+    setForm((prev) => ({
+      ...prev,
+      hypeParticipation: checked,
+      hypeCompletedBonus: checked ? prev.hypeCompletedBonus : false,
+      hoursPlayed: checked && !prev.hypeCompletedBonus ? '' : prev.hoursPlayed,
+      firstTimeEver: checked ? false : prev.firstTimeEver,
+      completedInReleaseYear: checked ? false : prev.completedInReleaseYear,
+      platinum: checked ? false : prev.platinum,
+      coop: checked ? false : prev.coop,
+      coopPlayerUserIds: checked ? [] : prev.coopPlayerUserIds,
+    }));
+  };
+
+  const handleHypeCompletedToggle = (checked) => {
+    setForm((prev) => ({
+      ...prev,
+      hypeParticipation: checked ? true : prev.hypeParticipation,
+      hypeCompletedBonus: checked,
+      hoursPlayed: checked ? prev.hoursPlayed : '',
+      firstTimeEver: checked ? prev.firstTimeEver : false,
+      completedInReleaseYear: checked ? prev.completedInReleaseYear : false,
+      platinum: checked ? prev.platinum : false,
+      coop: checked ? prev.coop : false,
+      coopPlayerUserIds: checked ? prev.coopPlayerUserIds : [],
+    }));
   };
 
   return (
@@ -247,10 +356,15 @@ export default function CompletionPage() {
                   <button
                     key={game.id}
                     type="button"
-                    onClick={() => handleSelectSuggestion(game.name)}
-                    className="block w-full border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
+                    onClick={() => handleSelectSuggestion(game)}
+                    className="flex w-full items-center justify-between border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
                   >
-                    {game.name}
+                    <span>{game.name}</span>
+                    {game.isRotative && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-primary/25 dark:text-indigo-200">
+                        🔄 Reviradao
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -284,7 +398,8 @@ export default function CompletionPage() {
               min="0"
               className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ex: 35.5"
-              required
+              required={!isHypeParticipationOnly}
+              disabled={isHypeParticipationOnly}
             />
           </div>
 
@@ -293,6 +408,10 @@ export default function CompletionPage() {
               hasUserCompletionForGame ? (
                 <p className="text-sm text-red-700">
                   Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.
+                </p>
+              ) : isSelectedGameInRotativeList ? (
+                <p className="text-sm text-indigo-700">
+                  Este jogo esta na <strong>Lista Rotativa</strong> e recebe bonus de <strong>+3 pontos</strong> quando concluido.
                 </p>
               ) : matchingGame ? (
                 <p className="text-sm text-green-700">
@@ -317,6 +436,7 @@ export default function CompletionPage() {
               checked={form.firstTimeEver}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Primeira Experiencia
@@ -331,6 +451,7 @@ export default function CompletionPage() {
               checked={form.platinum}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
               <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
                 Platina (100%)
@@ -338,38 +459,110 @@ export default function CompletionPage() {
             </span>
           </label>
 
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-            <input
-              type="checkbox"
-              name="firstInEdition"
-              checked={form.firstInEdition}
-              onChange={handleChange}
-              disabled={hasExistingGameSelected}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
-            />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Primeiro na Edicao
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                {hasExistingGameSelected
-                  ? 'Desabilitado porque este jogo ja existe no sistema.'
-                  : 'Primeiro participante a completar nesta edicao'}
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition md:col-span-2">
             <input
               type="checkbox"
               name="completedInReleaseYear"
               checked={form.completedInReleaseYear}
               onChange={handleChange}
               className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
             />
             <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
               Em Dia
               <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
             </span>
           </label>
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.hypeParticipation}
+              onChange={(event) => handleHypeParticipationToggle(event.target.checked)}
+              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+            />
+            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+              Participacao do Hype
+              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                Marca participacao e garante +1 ponto. Sem concluir, os demais campos ficam desabilitados.
+              </span>
+            </span>
+          </label>
+
+          {form.hypeParticipation && (
+            <label className="flex items-center cursor-pointer rounded-lg border border-gray-300 dark:border-slate-700 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+              <input
+                type="checkbox"
+                checked={form.hypeCompletedBonus}
+                onChange={(event) => handleHypeCompletedToggle(event.target.checked)}
+                className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              />
+              <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+                Concluiu jogo do hype?
+                <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                  Ao marcar, os demais campos voltam e o sistema soma +2 pontos extras de conclusao do hype.
+                </span>
+              </span>
+            </label>
+          )}
+        </div>
+
+        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="coop"
+              checked={form.coop}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  coop: event.target.checked,
+                  coopPlayerUserIds: event.target.checked ? prev.coopPlayerUserIds : [],
+                }))
+              }
+              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              disabled={isHypeParticipationOnly}
+            />
+            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
+              Jogo em Cooperativo
+              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
+                Se marcado, selecione os jogadores que jogaram com voce (maximo de 4 contando com voce).
+              </span>
+            </span>
+          </label>
+
+          {form.coop && (
+            <div>
+              <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Jogadores do coop ({form.coopPlayerUserIds.length + 1}/4)</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {users
+                  .filter((candidate) => candidate.id !== user.id)
+                  .map((candidate) => {
+                    const checked = form.coopPlayerUserIds.includes(candidate.id);
+                    return (
+                      <label
+                        key={candidate.id}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${
+                          checked
+                            ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20'
+                            : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleCoopPlayer(candidate.id)}
+                          className="h-4 w-4 rounded"
+                        />
+                        <span className="text-sm font-semibold">{candidate.displayName}</span>
+                      </label>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-400/35 dark:bg-[#243247]">

@@ -5,6 +5,7 @@ import com.gameranking.domain.enums.CompletionUpdateStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record CompletionUpdateRequestResponse(
@@ -20,6 +21,8 @@ public record CompletionUpdateRequestResponse(
         OffsetDateTime createdAt,
         OffsetDateTime approvedAt,
         UUID proofId,
-        String proofContentType
+        String proofContentType,
+        boolean fromObligation,
+        List<String> ruleCodes
 ) {
 }

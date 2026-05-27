@@ -3,6 +3,7 @@ package com.gameranking.service;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.CompletionStatus;
+import com.gameranking.domain.enums.CompletionSubmissionKind;
 import com.gameranking.domain.enums.CompletionUpdateStatus;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
@@ -12,11 +13,14 @@ import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.CompletionUpdateRequestRepository;
 import com.gameranking.repository.EditionRepository;
+import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.completion.CompletionDetailsResponse;
+import com.gameranking.web.dto.completion.CompletionSubmissionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionResponse;
 import com.gameranking.web.dto.completion.CompletionUpdateRequestResponse;
 import com.gameranking.web.dto.completion.CreateCompletionUpdateRequest;
+import com.gameranking.web.dto.completion.UpsertCompletionSubmissionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +37,7 @@ public class CompletionUpdateService {
     private final CompletionUpdateRequestRepository completionUpdateRequestRepository;
     private final EditionRepository editionRepository;
     private final UserRepository userRepository;
+    private final ScoreEventRepository scoreEventRepository;
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
     private final EditionScoreRecalculationService editionScoreRecalculationService;
@@ -58,25 +63,42 @@ public class CompletionUpdateService {
         Edition edition = resolveEdition(editionId);
         User requester = findUser(requesterId);
 
-        List<CompletionUpdateRequestResponse> items = requester.getRole() == UserRole.ADMIN
+        List<CompletionUpdateRequestRepository.UpdateRequestProjection> projections = requester.getRole() == UserRole.ADMIN
                 ? completionUpdateRequestRepository.listByEditionId(edition.getId())
                 : completionUpdateRequestRepository.listByEditionIdAndUserId(edition.getId(), requesterId);
 
-        return items.stream()
-                .map(item -> new CompletionUpdateRequestResponse(
-                        item.updateRequestId(),
-                        item.completionId(),
-                        item.userId(),
-                        item.userDisplayName(),
-                        item.gameName(),
-                        item.completedAt(),
-                        item.hoursPlayed(),
-                        item.platinum(),
-                        item.status(),
-                        item.createdAt(),
-                        item.approvedAt(),
-                        item.proofId(),
-                        platinumProofService.getContentTypeIfExists(item.proofId())
+        if (projections.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.List<UUID> completionIds = projections.stream()
+                .map(CompletionUpdateRequestRepository.UpdateRequestProjection::getCompletionId)
+                .toList();
+
+        java.util.Map<UUID, java.util.List<String>> ruleCodesByCompletionId = new java.util.LinkedHashMap<>();
+        scoreEventRepository.listRuleCodesByCompletionIds(completionIds).forEach(projection ->
+                ruleCodesByCompletionId
+                        .computeIfAbsent(projection.getCompletionId(), ignored -> new java.util.ArrayList<>())
+                        .add(projection.getRuleCode())
+        );
+
+        return projections.stream()
+                .map(p -> new CompletionUpdateRequestResponse(
+                        p.getId(),
+                        p.getCompletionId(),
+                        p.getUserId(),
+                        p.getUserDisplayName(),
+                        p.getGameName(),
+                        p.getCompletedAt(),
+                        p.getHoursPlayed(),
+                        p.isPlatinum(),
+                        p.getStatus(),
+                        p.getCreatedAt(),
+                        p.getApprovedAt(),
+                        p.getProofId(),
+                        platinumProofService.getContentTypeIfExists(p.getProofId()),
+                        p.isFromObligation(),
+                        ruleCodesByCompletionId.getOrDefault(p.getCompletionId(), java.util.Collections.emptyList())
                 ))
                 .toList();
     }
@@ -147,7 +169,9 @@ public class CompletionUpdateService {
                 saved.getCreatedAt(),
                 saved.getApprovedAt(),
                 saved.getProofId(),
-                platinumProofService.getContentTypeIfExists(saved.getProofId())
+                platinumProofService.getContentTypeIfExists(saved.getProofId()),
+                completion.isFromObligation(),
+                java.util.Collections.emptyList()
         );
     }
 
@@ -242,7 +266,108 @@ public class CompletionUpdateService {
                 updateRequest.getCreatedAt(),
                 updateRequest.getApprovedAt(),
                 updateRequest.getProofId(),
-                platinumProofService.getContentTypeIfExists(updateRequest.getProofId())
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getCompletion().isFromObligation(),
+                java.util.Collections.emptyList()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public CompletionSubmissionDetailsResponse getSubmission(UUID requesterId, UUID updateRequestId) {
+        User requester = findUser(requesterId);
+        CompletionUpdateRequest updateRequest = completionUpdateRequestRepository.findById(updateRequestId)
+                .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
+
+        boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!ownsRequest && !isAdmin) {
+            throw new BusinessException("Voce nao pode visualizar esta solicitacao");
+        }
+
+        return new CompletionSubmissionDetailsResponse(
+                CompletionSubmissionKind.UPDATE_COMPLETION,
+                updateRequest.getId(),
+                updateRequest.getCompletion().getId(),
+                updateRequest.getRequestedBy().getId(),
+                updateRequest.getRequestedBy().getDisplayName(),
+                updateRequest.getCompletion().getGame().getId(),
+                updateRequest.getCompletion().getGame().getName(),
+                updateRequest.getCompletedAt(),
+                updateRequest.getHoursPlayed(),
+                updateRequest.isFirstTimeEver(),
+                updateRequest.isCompletedInReleaseYear(),
+                updateRequest.isPlatinum(),
+                updateRequest.isCoop(),
+                updateRequest.getCoopPlayers(),
+                updateRequest.isHypeParticipation(),
+                updateRequest.isHypeCompletedBonus(),
+                updateRequest.isRotativeList(),
+                updateRequest.getNotes(),
+                updateRequest.getStatus().name(),
+                updateRequest.getProofId(),
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getStatus() == CompletionUpdateStatus.PENDING && (ownsRequest || isAdmin)
+        );
+    }
+
+    @Transactional
+    public CompletionUpdateRequestResponse updatePending(UUID requesterId, UUID updateRequestId, UpsertCompletionSubmissionRequest request) {
+        Edition edition = resolveEdition(null);
+        User requester = findUser(requesterId);
+        CompletionUpdateRequest updateRequest = completionUpdateRequestRepository.findByIdAndCompletionEditionId(updateRequestId, edition.getId())
+                .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
+
+        boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
+        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+
+        if (!ownsRequest && !isAdmin) {
+            throw new BusinessException("Voce nao pode editar esta solicitacao");
+        }
+
+        if (updateRequest.getStatus() != CompletionUpdateStatus.PENDING) {
+            throw new BusinessException("Apenas atualizacoes pendentes podem ser editadas");
+        }
+
+        if (!request.coop() && request.coopPlayers() != null) {
+            throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
+        }
+
+        if (request.coop() && request.coopPlayers() == null) {
+            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
+        }
+
+        platinumProofService.findById(request.proofId());
+
+        updateRequest.setCompletedAt(request.completedAt());
+        updateRequest.setHoursPlayed(request.hoursPlayed());
+        updateRequest.setFirstTimeEver(request.firstTimeEver());
+        updateRequest.setCompletedInReleaseYear(request.completedInReleaseYear());
+        updateRequest.setPlatinum(request.platinum());
+        updateRequest.setProofId(request.proofId());
+        updateRequest.setCoop(request.coop());
+        updateRequest.setCoopPlayers(request.coopPlayers());
+        updateRequest.setHypeParticipation(request.hypeParticipation());
+        updateRequest.setHypeCompletedBonus(request.hypeCompletedBonus());
+        updateRequest.setRotativeList(request.rotativeList());
+        updateRequest.setNotes(request.notes());
+
+        return new CompletionUpdateRequestResponse(
+                updateRequest.getId(),
+                updateRequest.getCompletion().getId(),
+                updateRequest.getRequestedBy().getId(),
+                updateRequest.getRequestedBy().getDisplayName(),
+                updateRequest.getCompletion().getGame().getName(),
+                updateRequest.getCompletedAt(),
+                updateRequest.getHoursPlayed(),
+                updateRequest.isPlatinum(),
+                updateRequest.getStatus(),
+                updateRequest.getCreatedAt(),
+                updateRequest.getApprovedAt(),
+                updateRequest.getProofId(),
+                platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
+                updateRequest.getCompletion().isFromObligation(),
+                java.util.Collections.emptyList()
         );
     }
 
