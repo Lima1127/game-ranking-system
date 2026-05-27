@@ -43,7 +43,7 @@ A full-stack application for tracking and ranking game completions with sophisti
 ```
 ┌─────────────────────────────────────────┐
 │         Frontend (React + Vite)         │
-│  Port: 5173 | http://localhost:5173    │
+│  Port: 5173 | http://localhost:5173     │
 │  ├─ Authentication Context              │
 │  ├─ Game Ranking Pages                  │
 │  └─ User Dashboard                      │
@@ -51,8 +51,8 @@ A full-stack application for tracking and ranking game completions with sophisti
                  │ HTTP/REST (CORS enabled)
                  │
 ┌────────────────▼────────────────────────┐
-│      Backend (Spring Boot)               │
-│  Port: 8080 | http://localhost:8080    │
+│      Backend (Spring Boot)              │
+│  Port: 8080 | http://localhost:8080     │
 │  ├─ Authentication Service (JWT)        │
 │  ├─ Game Management API                 │
 │  ├─ Ranking Engine                      │
