@@ -52,6 +52,9 @@ public class Completion extends AuditableEntity {
     @Column(name = "first_in_edition", nullable = false)
     private boolean firstInEdition;
 
+    @Column(name = "underdog_awarded", nullable = false)
+    private boolean underdogAwarded;
+
     @Column(name = "completed_in_release_year", nullable = false)
     private boolean completedInReleaseYear;
 
@@ -64,6 +67,9 @@ public class Completion extends AuditableEntity {
     @Column(name = "coop_players")
     private Integer coopPlayers;
 
+    @Column(name = "coop_group_id")
+    private UUID coopGroupId;
+
     @Column(name = "hype_participation", nullable = false)
     private boolean hypeParticipation;
 
@@ -72,6 +78,9 @@ public class Completion extends AuditableEntity {
 
     @Column(name = "rotative_list", nullable = false)
     private boolean rotativeList;
+
+    @Column(name = "from_obligation", nullable = false)
+    private boolean fromObligation;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -86,3 +95,6 @@ public class Completion extends AuditableEntity {
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
 }
+
+
+

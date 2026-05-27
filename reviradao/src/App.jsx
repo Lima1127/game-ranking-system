@@ -7,8 +7,11 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import RankingPage from './pages/RankingPage';
 import CompletionPage from './pages/CompletionPage';
+import CompletionSubmissionEditPage from './pages/CompletionSubmissionEditPage';
 import CompletionUpdatePage from './pages/CompletionUpdatePage';
 import RequestsPage from './pages/RequestsPage';
+import ObligationsPage from './pages/ObligationsPage';
+import RotativeListPage from './pages/RotativeListPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 
@@ -79,6 +82,12 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
             </Link>
             <Link to="/requests" className="hover:opacity-80">
               Solicitacoes
+            </Link>
+            <Link to="/obligations" className="hover:opacity-80">
+              Obrigacoes
+            </Link>
+            <Link to="/rotative-list" className="hover:opacity-80">
+              Lista Rotativa
             </Link>
             {user?.role === 'ADMIN' && (
               <>
@@ -202,6 +211,36 @@ function AppContent({ isDarkMode, onToggleTheme }) {
         }
       />
       <Route
+        path="/obligations"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <ObligationsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/rotative-list"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <RotativeListPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/requests/:kind/:submissionId/edit"
+        element={
+          <ProtectedRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <CompletionSubmissionEditPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/records"
         element={
           <AdminRoute>
@@ -227,7 +266,7 @@ function AppContent({ isDarkMode, onToggleTheme }) {
 }
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
