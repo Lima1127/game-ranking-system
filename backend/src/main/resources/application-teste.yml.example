@@ -1,0 +1,6 @@
+# Modelo do perfil "teste". Copie para application-teste.yml (mesma pasta).
+# Ativado pela configuracao "Backend (TESTE)" do VS Code (--spring.profiles.active=teste).
+# Tudo que nao estiver aqui vem do application.yml; so o banco muda.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/game_ranking_teste

@@ -1,12 +1,11 @@
 package com.gameranking.web.controller;
 
+import com.gameranking.common.upload.ImageFileType;
 import com.gameranking.domain.model.PlatinumProof;
 import com.gameranking.service.PlatinumProofService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,7 +35,6 @@ public class UploadController {
         PlatinumProof proof = platinumProofService.upload(file);
         return Map.of(
                 "proofId", proof.getId(),
-                "storageKey", proof.getStorageKey(),
                 "contentType", proof.getContentType(),
                 "size", proof.getFileSizeBytes()
         );
@@ -48,15 +46,9 @@ public class UploadController {
         Path path = Path.of(proof.getStorageKey());
         ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
 
-        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        if (proof.getContentType() != null) {
-            mediaType = MediaType.parseMediaType(proof.getContentType());
-        }
-
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .contentLength(proof.getFileSizeBytes())
-                .contentType(mediaType)
+                .headers(ImageFileType.safeServingHeaders(proof.getContentType()))
+                .contentLength(resource.contentLength())
                 .body(resource);
     }
 }

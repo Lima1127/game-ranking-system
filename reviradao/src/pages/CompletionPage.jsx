@@ -72,7 +72,7 @@ export default function CompletionPage() {
 
     const response = await api.post('/games', {
       name: form.gameName.trim(),
-      releaseYear: Number(form.completedAt.slice(0, 4)),
+      releaseYear: null,
       estimatedHoursMain: null,
       estimatedHoursPlatinum: null,
       genres: ['Nao informado'],
@@ -220,7 +220,7 @@ export default function CompletionPage() {
   const isSelectedGameInRotativeList = matchingGame ? rotativeByGameId.has(matchingGame.id) : false;
   const isHypeParticipationOnly = form.hypeParticipation && !form.hypeCompletedBonus;
   const hasUserCompletionForGame = matchingGame
-    ? myCompletionRequests.some((request) => request.gameId === matchingGame.id)
+    ? myCompletionRequests.some((request) => request.gameId === matchingGame.id && request.status !== 'CANCELLED')
     : false;
   const gameSuggestions = useMemo(() => {
     const normalizedQuery = form.gameName.trim().toLowerCase();

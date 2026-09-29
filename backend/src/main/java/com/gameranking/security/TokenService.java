@@ -8,22 +8,43 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class TokenService {
 
+    static final int MIN_SECRET_BYTES = 32;
+    private static final Set<String> KNOWN_PLACEHOLDER_SECRETS = Set.of(
+            "reviradao-dev-secret-change-me",
+            "troque-esta-chave-em-producao",
+            "change-me-in-env"
+    );
+
     private final byte[] secretBytes;
     private final long expirationSeconds;
 
     public TokenService(
-            @Value("${app.auth.token-secret:reviradao-dev-secret-change-me}") String secret,
-            @Value("${app.auth.token-expiration-seconds:7200}") long expirationSeconds
+            @Value("${app.jwt.secret:}") String secret,
+            @Value("${app.jwt.expiration-seconds:7200}") long expirationSeconds
     ) {
-        this.secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secret == null || secret.isBlank() || KNOWN_PLACEHOLDER_SECRETS.contains(secret.trim())) {
+            throw new IllegalStateException(
+                    "app.jwt.secret nao configurado (ou ainda com o valor de exemplo). "
+                            + "Defina um segredo aleatorio no application.yml ou na variavel de ambiente APP_JWT_SECRET."
+            );
+        }
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret precisa ter pelo menos " + MIN_SECRET_BYTES + " bytes (atual: " + bytes.length + ")."
+            );
+        }
+        this.secretBytes = bytes;
         this.expirationSeconds = expirationSeconds;
     }
 
@@ -44,7 +65,9 @@ public class TokenService {
 
             String encodedPayload = parts[0];
             String expectedSignature = sign(encodedPayload);
-            if (!expectedSignature.equals(parts[1])) {
+            if (!MessageDigest.isEqual(
+                    expectedSignature.getBytes(StandardCharsets.UTF_8),
+                    parts[1].getBytes(StandardCharsets.UTF_8))) {
                 return Optional.empty();
             }
 

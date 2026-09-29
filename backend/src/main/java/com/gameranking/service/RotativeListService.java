@@ -10,7 +10,6 @@ import com.gameranking.domain.model.RotativeSourceGame;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.EditionRepository;
-import com.gameranking.repository.GameRepository;
 import com.gameranking.repository.RotativeListEntryRepository;
 import com.gameranking.repository.RotativeSourceGameRepository;
 import com.gameranking.repository.UserRepository;
@@ -48,7 +47,6 @@ public class RotativeListService {
     private final CompletionRepository completionRepository;
     private final EditionRepository editionRepository;
     private final UserRepository userRepository;
-    private final GameRepository gameRepository;
     private final GameService gameService;
 
     @Transactional(readOnly = true)
@@ -71,19 +69,11 @@ public class RotativeListService {
 
         int imported = 0;
         for (String gameName : parsedNames) {
-            Game game = gameRepository.findFirstByNameIgnoreCase(gameName)
-                    .orElseGet(() -> {
-                        int technicalYear = java.time.LocalDate.now().getYear();
-                        return gameService.getById(
-                                gameService.create(new CreateGameRequest(
-                                        gameName,
-                                        technicalYear,
-                                        null,
-                                        null,
-                                        Set.of("Nao informado")
-                                )).id()
-                        );
-                    });
+            // Ano de lancamento fica vazio: o arquivo nao informa e um ano inventado corrompe o catalogo.
+            Game game = gameService.findOrCreate(
+                    new CreateGameRequest(gameName, null, null, null, Set.of("Nao informado")),
+                    null
+            );
 
             if (rotativeSourceGameRepository.findByEditionIdAndGameId(edition.getId(), game.getId()).isPresent()) {
                 continue;

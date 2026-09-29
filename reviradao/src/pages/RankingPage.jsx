@@ -386,7 +386,7 @@ export default function RankingPage() {
 
           <section className="grid gap-8 xl:grid-cols-[1.9fr_0.7fr]">
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-lg overflow-hidden border border-slate-100 dark:border-slate-800">
-              <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="px-4 py-5 sm:px-8 sm:py-6 border-b border-slate-100 dark:border-slate-800">
                 <h2 className="text-2xl font-black text-slate-900 dark:text-slate-100">Tabela completa</h2>
                 <p className="text-slate-600 dark:text-slate-300 mt-1">Cada jogador mostra abaixo os jogos e os emojis das categorias que pontuaram.</p>
               </div>
@@ -394,10 +394,10 @@ export default function RankingPage() {
               <div className="overflow-x-hidden">
                 <table className="w-full">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
-                      <th className="w-[10%] px-8 py-4 font-bold">Posicao</th>
-                      <th className="w-[74%] px-8 py-4 font-bold">Jogador</th>
-                      <th className="w-[16%] px-8 py-4 font-bold text-right">Pontos</th>
+                    <tr className="text-left text-xs uppercase tracking-[0.15em] sm:tracking-[0.25em] text-slate-500 dark:text-slate-400">
+                      <th className="w-[10%] px-3 py-4 sm:px-8 font-bold">Pos.</th>
+                      <th className="w-[74%] px-3 py-4 sm:px-8 font-bold">Jogador</th>
+                      <th className="w-[16%] px-3 py-4 sm:px-8 font-bold text-right">Pontos</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -419,15 +419,15 @@ export default function RankingPage() {
                             isCurrentUser ? 'shadow-[4px_0_0_0_#8b5cf6_inset]' : ''
                           }`}
                         >
-                          <td className={isCurrentUser ? 'pl-11 pr-8 py-5' : 'px-8 py-5'}>
+                          <td className={isCurrentUser ? 'pl-4 pr-2 py-4 sm:pl-11 sm:pr-8 sm:py-5' : 'px-3 py-4 sm:px-8 sm:py-5'}>
                             <div className="flex items-center gap-3">
-                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 text-white font-black">
+                              <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-700 text-white font-black">
                                 {formatPosition(index)}
                               </span>
-                              {index < 3 && <span className="text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Top {index + 1}</span>}
+                              {index < 3 && <span className="hidden sm:inline text-xs uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Top {index + 1}</span>}
                             </div>
                           </td>
-                          <td className="px-8 py-5">
+                          <td className="px-3 py-4 sm:px-8 sm:py-5">
                             <div className="flex items-center gap-2">
                               {buildAvatarUrl(row) ? (
                                 <button
@@ -468,7 +468,7 @@ export default function RankingPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="mt-3 grid grid-cols-[repeat(3,minmax(0,1fr))_56px] gap-3">
+                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))_56px] sm:gap-3">
                               {visibleCompletions.length > 0 ? (
                                 visibleCompletions.map((completion) => (
                                   <div
@@ -499,7 +499,7 @@ export default function RankingPage() {
                                 <button
                                   type="button"
                                   onClick={() => setPlayerGamesModal({ userId: row.userId, sortBy: 'date' })}
-                                  className="min-h-[120px] rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-100/70 dark:bg-slate-800/70 text-3xl font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                  className="min-h-[44px] sm:min-h-[120px] rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 bg-slate-100/70 dark:bg-slate-800/70 text-3xl font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                   title="Ver todos os jogos"
                                   aria-label="Ver todos os jogos"
                                 >
@@ -508,9 +508,9 @@ export default function RankingPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-8 py-5 text-right">
-                            <span className="inline-flex h-[64px] w-[64px] flex-col items-center justify-center rounded-full bg-primary text-white font-black leading-none shadow-sm">
-                              <span className="text-[20px] leading-none">{row.totalPoints}</span>
+                          <td className="px-3 py-4 sm:px-8 sm:py-5 text-right">
+                            <span className="inline-flex h-12 w-12 sm:h-[64px] sm:w-[64px] flex-col items-center justify-center rounded-full bg-primary text-white font-black leading-none shadow-sm">
+                              <span className="text-base sm:text-[20px] leading-none">{row.totalPoints}</span>
                               <span className="mt-0.5 text-[10px] uppercase tracking-[0.1em]">pts</span>
                             </span>
                           </td>

@@ -33,7 +33,8 @@ storage/
 
 # IDE / OS
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
 *.iml
 *.iws
 *.ipr
@@ -42,3 +43,7 @@ storage/
 .settings/
 .DS_Store
 Thumbs.db
+
+# Backups do banco (contem dados pessoais)
+backup*.sql
+*.dump

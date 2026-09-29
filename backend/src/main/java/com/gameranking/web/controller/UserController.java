@@ -1,14 +1,13 @@
 package com.gameranking.web.controller;
 
+import com.gameranking.common.upload.ImageFileType;
 import com.gameranking.domain.model.User;
 import com.gameranking.security.AuthenticatedUser;
 import com.gameranking.service.UserService;
 import com.gameranking.web.dto.user.UserSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -62,14 +61,10 @@ public class UserController {
 
         Path path = Path.of(user.getAvatarStorageKey());
         ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
-        MediaType mediaType = user.getAvatarContentType() == null
-                ? MediaType.APPLICATION_OCTET_STREAM
-                : MediaType.parseMediaType(user.getAvatarContentType());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .contentLength(user.getAvatarFileSizeBytes() == null ? resource.contentLength() : user.getAvatarFileSizeBytes())
-                .contentType(mediaType)
+                .headers(ImageFileType.safeServingHeaders(user.getAvatarContentType()))
+                .contentLength(resource.contentLength())
                 .body(resource);
     }
 }

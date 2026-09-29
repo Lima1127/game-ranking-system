@@ -2,12 +2,16 @@ package com.gameranking.service;
 
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
+import com.gameranking.common.upload.ImageFileType;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.PlatinumProof;
 import com.gameranking.repository.PlatinumProofRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -20,6 +24,7 @@ import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlatinumProofService {
@@ -28,13 +33,13 @@ public class PlatinumProofService {
 
     @Transactional
     public PlatinumProof upload(MultipartFile file) {
+        ImageFileType imageType = ImageFileType.detect(file);
         try {
             UUID id = UUID.randomUUID();
             Path storageDir = Path.of("storage", "platinum");
             Files.createDirectories(storageDir);
 
-            String extension = getExtension(file.getOriginalFilename());
-            String key = id + extension;
+            String key = id + imageType.extension();
             Path target = storageDir.resolve(key);
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
@@ -42,7 +47,7 @@ public class PlatinumProofService {
                     .id(id)
                     .completion(null)
                     .storageKey(target.toString())
-                    .contentType(file.getContentType() == null ? "application/octet-stream" : file.getContentType())
+                    .contentType(imageType.contentType())
                     .fileSizeBytes(file.getSize())
                     .sha256(sha256(target))
                     .uploadedAt(OffsetDateTime.now())
@@ -85,6 +90,9 @@ public class PlatinumProofService {
 
     @Transactional
     public void replaceCompletionProof(UUID proofId, Completion completion) {
+        if (completion.getProof() != null && completion.getProof().getId().equals(proofId)) {
+            return;
+        }
         completion.setProof(null);
         deleteByCompletionId(completion.getId());
         attachToCompletion(proofId, completion);
@@ -93,21 +101,35 @@ public class PlatinumProofService {
     @Transactional
     public void deleteByCompletionId(UUID completionId) {
         platinumProofRepository.findByCompletionId(completionId).ifPresent(proof -> {
-            try {
-                Files.deleteIfExists(Path.of(proof.getStorageKey()));
-            } catch (IOException ex) {
-                throw new RuntimeException("Falha ao remover anexo do disco", ex);
-            }
             platinumProofRepository.delete(proof);
             platinumProofRepository.flush();
+            deleteFileAfterCommit(Path.of(proof.getStorageKey()));
         });
     }
 
-    private String getExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) {
-            return ".bin";
+    /**
+     * O disco nao participa da transacao: apagar o arquivo antes do commit fazia o arquivo
+     * sumir mesmo quando a operacao no banco era desfeita.
+     */
+    private void deleteFileAfterCommit(Path path) {
+        Runnable delete = () -> {
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException ex) {
+                log.warn("Nao foi possivel remover o arquivo {} do disco", path, ex);
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    delete.run();
+                }
+            });
+        } else {
+            delete.run();
         }
-        return fileName.substring(fileName.lastIndexOf('.'));
     }
 
     private String sha256(Path path) {

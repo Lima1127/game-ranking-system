@@ -23,7 +23,8 @@ server:
 
 app:
   jwt:
-    # Troque este valor em ambientes reais
+    # Obrigatorio: segredo aleatorio com pelo menos 32 bytes (o backend nao sobe sem ele).
+    # Gere um com: openssl rand -base64 48   (ou defina a variavel de ambiente APP_JWT_SECRET)
     secret: troque-esta-chave-em-producao
     expiration-seconds: 7200
   storage:

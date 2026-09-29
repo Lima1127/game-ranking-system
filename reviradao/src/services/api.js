@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+// Padrao relativo: usa o proxy do Vite (vite.config.js), funcionando em localhost e via tunel.
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -18,11 +19,18 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptador de resposta: trata erros 401
+// Interceptador de resposta: trata erros 401 e usa a mensagem do backend nas telas
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const backendMessage = error.response?.data?.message;
+    if (typeof backendMessage === 'string' && backendMessage.trim()) {
+      // Telas que exibem error.message passam a mostrar "Usuario nao encontrado"
+      // em vez de "Request failed with status code 404".
+      error.message = backendMessage;
+    }
+
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_id');
       localStorage.removeItem('user_email');

@@ -68,9 +68,9 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
           <h1 className="text-2xl font-bold">Game Ranking</h1>
-          <nav className="flex gap-4 items-center flex-wrap">
+          <nav className="flex gap-x-4 gap-y-2 items-center flex-wrap text-sm sm:text-base">
             <Link to="/dashboard" className="hover:opacity-80">
               Dashboard
             </Link>

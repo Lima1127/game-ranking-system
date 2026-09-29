@@ -181,17 +181,16 @@ export default function RequestsPage() {
 
     setGroupActionKey(`${action}-${group.key}`);
     try {
-      await Promise.all(
-        pendingEntries.map((entry) =>
-          api.post(`/completions/submissions/${entry.kind}/${entry.submissionId}/${action}`, null, {
-            headers: { 'X-User-Id': user.id },
-          }),
-        ),
-      );
-      refresh();
+      // Sequencial de proposito: cada aprovacao depende do estado deixado pela anterior.
+      for (const entry of pendingEntries) {
+        await api.post(`/completions/submissions/${entry.kind}/${entry.submissionId}/${action}`, null, {
+          headers: { 'X-User-Id': user.id },
+        });
+      }
     } catch (error) {
       alert(error.response?.data?.message || error.message);
     } finally {
+      refresh();
       setGroupActionKey(null);
     }
   };
@@ -225,9 +224,14 @@ export default function RequestsPage() {
               <strong>Jogador:</strong> {submission.userDisplayName}
             </div>
             <div className="text-sm text-slate-600 dark:text-slate-300">
-              <strong>Data:</strong> {submission.completedAt} Â· <strong>Horas:</strong> {submission.hoursPlayed}
+              <strong>Data:</strong> {submission.completedAt} · <strong>Horas:</strong> {submission.hoursPlayed}
             </div>            {submission.ruleCodes && submission.ruleCodes.length > 0 && (
               <div>
+                {isUpdate && submission.status === 'PENDING' && (
+                  <div className="text-xs font-bold uppercase tracking-[0.15em] text-amber-700 dark:text-amber-300">
+                    Previa dos pontos se a atualizacao for aprovada
+                  </div>
+                )}
                 <RuleEmojiStrip ruleCodes={submission.ruleCodes} columns={6} />
               </div>
             )}            <div className="text-sm text-slate-500 dark:text-slate-400">
@@ -378,7 +382,7 @@ export default function RequestsPage() {
                       <strong>Participantes:</strong> {participantNames}
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-300">
-                      <strong>Data:</strong> {firstSubmission.completedAt} Â· <strong>Horas:</strong> {firstSubmission.hoursPlayed}
+                      <strong>Data:</strong> {firstSubmission.completedAt} · <strong>Horas:</strong> {firstSubmission.hoursPlayed}
                     </div>
                     <div className="text-sm text-slate-500 dark:text-slate-400">
                       <strong>Enviado em:</strong> {firstSubmission.createdAt}

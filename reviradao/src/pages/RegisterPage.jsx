@@ -32,7 +32,7 @@ export default function RegisterPage() {
       await register(displayName, email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao criar conta');
+      setError(err.response?.data?.message || `Erro ao criar conta${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
     } finally {
       setIsLoading(false);
     }

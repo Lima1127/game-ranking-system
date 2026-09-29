@@ -3,12 +3,15 @@ package com.gameranking.service;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.CompletionStatus;
+import com.gameranking.domain.enums.ObligationStatus;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.Edition;
+import com.gameranking.domain.model.Obligation;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.EditionRepository;
+import com.gameranking.repository.ObligationRepository;
 import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.admin.AdminAuditLogResponse;
@@ -30,6 +33,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final CompletionRepository completionRepository;
     private final EditionRepository editionRepository;
+    private final ObligationRepository obligationRepository;
     private final ScoreEventRepository scoreEventRepository;
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
@@ -82,25 +86,43 @@ public class AdminService {
         User admin = ensureAdmin(adminUserId);
         Completion completion = completionRepository.findById(completionId)
                 .orElseThrow(() -> new NotFoundException("Registro nao encontrado"));
+        boolean wasApproved = completion.getStatus() == CompletionStatus.APPROVED;
+        Edition edition = completion.getEdition();
 
-        long removedPoints = completion.getStatus() == CompletionStatus.APPROVED
+        if (wasApproved) {
+            editionRepository.lockById(edition.getId());
+        }
+
+        long removedPoints = wasApproved
                 ? scoreEventRepository.getTotalPointsForCompletion(completionId)
                 : 0L;
 
-        if (completion.getStatus() == CompletionStatus.APPROVED) {
+        if (wasApproved) {
+            // Remove tambem o OBLIGATION_COMPLETED, que referencia o registro.
             scoreEventRepository.deleteByCompletionId(completionId);
         }
 
+        List<String> reopenedObligations = reopenObligationsLinkedTo(completion);
+
         platinumProofService.deleteByCompletionId(completionId);
         completionRepository.delete(completion);
+        completionRepository.flush();
 
-        String actionCode = completion.getStatus() == CompletionStatus.APPROVED
+        if (wasApproved) {
+            // Sem recalculo, o "primeiro na edicao" do proximo jogador so apareceria num recalculo futuro.
+            editionScoreRecalculationService.recalculateEdition(edition);
+        }
+
+        String actionCode = wasApproved
                 ? "COMPLETION_DELETED"
                 : "REQUEST_HISTORY_DELETED";
 
-        String details = completion.getStatus() == CompletionStatus.APPROVED
-                ? "Registro aprovado excluido pelo admin. Pontos removidos: " + removedPoints + "."
+        String details = wasApproved
+                ? "Registro aprovado excluido pelo admin. Pontos removidos: " + removedPoints + ". Edicao recalculada."
                 : "Historico de solicitacao excluido pelo admin com status original " + completion.getStatus() + ".";
+        if (!reopenedObligations.isEmpty()) {
+            details += " Obrigacoes reabertas (voltaram para ACEITA): " + String.join(", ", reopenedObligations) + ".";
+        }
 
         adminAuditLogService.log(admin, actionCode, completion, details);
 
@@ -126,6 +148,26 @@ public class AdminService {
         );
 
         return new AdminRecalculationResponse(edition.getId(), result.processedCompletions(), result.regeneratedScoreEvents());
+    }
+
+    /**
+     * Obrigacoes concluidas por este registro voltam para ACEITA (sem o +3), para o jogador
+     * poder concluir de novo. Sem isso a exclusao violava a FK obligations.linked_completion_id.
+     */
+    private List<String> reopenObligationsLinkedTo(Completion completion) {
+        List<Obligation> linked = obligationRepository.findByLinkedCompletion(completion);
+        for (Obligation obligation : linked) {
+            obligation.setLinkedCompletion(null);
+            if (obligation.getStatus() == ObligationStatus.COMPLETED) {
+                obligation.setStatus(ObligationStatus.ACCEPTED);
+                obligation.setAccepted(true);
+                obligation.setCompleted(false);
+                obligation.setRewardPoints(0);
+                obligation.setResolvedAt(null);
+            }
+        }
+        obligationRepository.saveAllAndFlush(linked);
+        return linked.stream().map(obligation -> obligation.getGame().getName()).toList();
     }
 
     private User ensureAdmin(UUID adminUserId) {

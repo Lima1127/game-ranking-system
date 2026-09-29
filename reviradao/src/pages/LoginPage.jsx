@@ -19,7 +19,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao fazer login');
+      setError(err.response?.data?.message || `Erro ao fazer login${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
     } finally {
       setIsLoading(false);
     }

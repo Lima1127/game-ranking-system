@@ -23,7 +23,7 @@ public class Game extends AuditableEntity {
     @Column(nullable = false, length = 180)
     private String name;
 
-    @Column(name = "release_year", nullable = false)
+    @Column(name = "release_year")
     private Integer releaseYear;
 
     @Column(name = "estimated_hours_main", precision = 6, scale = 2)

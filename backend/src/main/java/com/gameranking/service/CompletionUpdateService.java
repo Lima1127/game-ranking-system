@@ -9,12 +9,14 @@ import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.CompletionUpdateRequest;
 import com.gameranking.domain.model.Edition;
+import com.gameranking.domain.model.ScoreEvent;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
 import com.gameranking.repository.CompletionUpdateRequestRepository;
 import com.gameranking.repository.EditionRepository;
 import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
+import com.gameranking.service.scoring.ScoringEngine;
 import com.gameranking.web.dto.completion.CompletionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionSubmissionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionResponse;
@@ -41,6 +43,7 @@ public class CompletionUpdateService {
     private final PlatinumProofService platinumProofService;
     private final AdminAuditLogService adminAuditLogService;
     private final EditionScoreRecalculationService editionScoreRecalculationService;
+    private final ScoringEngine scoringEngine;
 
     @Transactional(readOnly = true)
     public CompletionDetailsResponse getCompletion(UUID requesterId, UUID completionId) {
@@ -82,6 +85,21 @@ public class CompletionUpdateService {
                         .add(projection.getRuleCode())
         );
 
+        java.util.Map<UUID, List<String>> previewByUpdateRequestId = new java.util.HashMap<>();
+        List<UUID> pendingIds = projections.stream()
+                .filter(p -> p.getStatus() == CompletionUpdateStatus.PENDING)
+                .map(CompletionUpdateRequestRepository.UpdateRequestProjection::getId)
+                .toList();
+        completionUpdateRequestRepository.findAllById(pendingIds).forEach(updateRequest ->
+                previewByUpdateRequestId.put(
+                        updateRequest.getId(),
+                        previewRuleCodes(
+                                updateRequest,
+                                ruleCodesByCompletionId.getOrDefault(updateRequest.getCompletion().getId(), List.of())
+                        )
+                )
+        );
+
         return projections.stream()
                 .map(p -> new CompletionUpdateRequestResponse(
                         p.getId(),
@@ -98,7 +116,10 @@ public class CompletionUpdateService {
                         p.getProofId(),
                         platinumProofService.getContentTypeIfExists(p.getProofId()),
                         p.isFromObligation(),
-                        ruleCodesByCompletionId.getOrDefault(p.getCompletionId(), java.util.Collections.emptyList())
+                        previewByUpdateRequestId.getOrDefault(
+                                p.getId(),
+                                ruleCodesByCompletionId.getOrDefault(p.getCompletionId(), java.util.Collections.emptyList())
+                        )
                 ))
                 .toList();
     }
@@ -120,13 +141,15 @@ public class CompletionUpdateService {
             throw new BusinessException("Ja existe uma solicitacao de atualizacao pendente para este registro");
         }
 
-        if (!request.coop() && request.coopPlayers() != null) {
-            throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
-        }
-
-        if (request.coop() && request.coopPlayers() == null) {
-            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
-        }
+        validateRequestedChanges(
+                completion,
+                request.completedAt(),
+                request.coop(),
+                request.coopPlayers(),
+                request.rotativeList(),
+                request.hypeParticipation(),
+                request.hypeCompletedBonus()
+        );
 
         platinumProofService.findById(request.proofId());
 
@@ -192,17 +215,7 @@ public class CompletionUpdateService {
         }
 
         Completion completion = updateRequest.getCompletion();
-        completion.setCompletedAt(updateRequest.getCompletedAt());
-        completion.setHoursPlayed(updateRequest.getHoursPlayed());
-        completion.setFirstTimeEver(updateRequest.isFirstTimeEver());
-        completion.setCompletedInReleaseYear(updateRequest.isCompletedInReleaseYear());
-        completion.setPlatinum(updateRequest.isPlatinum());
-        completion.setCoop(updateRequest.isCoop());
-        completion.setCoopPlayers(updateRequest.getCoopPlayers());
-        completion.setHypeParticipation(updateRequest.isHypeParticipation());
-        completion.setHypeCompletedBonus(updateRequest.isHypeCompletedBonus());
-        completion.setRotativeList(updateRequest.isRotativeList());
-        completion.setNotes(updateRequest.getNotes());
+        applyUpdate(completion, updateRequest);
 
         platinumProofService.replaceCompletionProof(updateRequest.getProofId(), completion);
 
@@ -329,13 +342,15 @@ public class CompletionUpdateService {
             throw new BusinessException("Apenas atualizacoes pendentes podem ser editadas");
         }
 
-        if (!request.coop() && request.coopPlayers() != null) {
-            throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
-        }
-
-        if (request.coop() && request.coopPlayers() == null) {
-            throw new BusinessException("Informe quantidade de jogadores para cooperativo");
-        }
+        validateRequestedChanges(
+                updateRequest.getCompletion(),
+                request.completedAt(),
+                request.coop(),
+                request.coopPlayers(),
+                request.rotativeList(),
+                request.hypeParticipation(),
+                request.hypeCompletedBonus()
+        );
 
         platinumProofService.findById(request.proofId());
 
@@ -369,6 +384,79 @@ public class CompletionUpdateService {
                 updateRequest.getCompletion().isFromObligation(),
                 java.util.Collections.emptyList()
         );
+    }
+
+    /**
+     * Campos que uma atualizacao pode alterar. Coop, quantidade de jogadores e lista rotativa
+     * ficam de fora: sao definidos no registro original (participantes / entrada consumida).
+     */
+    private static void applyUpdate(Completion target, CompletionUpdateRequest updateRequest) {
+        target.setCompletedAt(updateRequest.getCompletedAt());
+        target.setHoursPlayed(updateRequest.getHoursPlayed());
+        target.setFirstTimeEver(updateRequest.isFirstTimeEver());
+        target.setCompletedInReleaseYear(updateRequest.isCompletedInReleaseYear());
+        target.setPlatinum(updateRequest.isPlatinum());
+        target.setHypeParticipation(updateRequest.isHypeParticipation());
+        target.setHypeCompletedBonus(updateRequest.isHypeCompletedBonus());
+        target.setNotes(updateRequest.getNotes());
+    }
+
+    private static void validateRequestedChanges(
+            Completion completion,
+            java.time.LocalDate completedAt,
+            boolean coop,
+            Integer coopPlayers,
+            boolean rotativeList,
+            boolean hypeParticipation,
+            boolean hypeCompletedBonus
+    ) {
+        CompletionDateRules.validate(completion.getEdition(), completedAt);
+
+        if (coop != completion.isCoop()
+                || (coop && !java.util.Objects.equals(coopPlayers, completion.getCoopPlayers()))) {
+            throw new BusinessException("Nao e permitido alterar o cooperativo por solicitacao de atualizacao");
+        }
+
+        if (rotativeList != completion.isRotativeList()) {
+            throw new BusinessException("Nao e permitido alterar a lista rotativa por solicitacao de atualizacao");
+        }
+
+        if (hypeCompletedBonus && !hypeParticipation) {
+            throw new BusinessException("Bonus de conclusao do hype exige participacao do hype");
+        }
+
+        if (hypeParticipation && !hypeCompletedBonus && coop) {
+            throw new BusinessException("Participacao de hype sem conclusao nao permite cooperativo");
+        }
+    }
+
+    /** Pontos que o registro teria se a atualizacao fosse aprovada (mesmo motor da aprovacao). */
+    private List<String> previewRuleCodes(CompletionUpdateRequest updateRequest, List<String> currentRuleCodes) {
+        Completion current = updateRequest.getCompletion();
+        Completion preview = Completion.builder()
+                .id(current.getId())
+                .edition(current.getEdition())
+                .user(current.getUser())
+                .game(current.getGame())
+                .firstInEdition(current.isFirstInEdition())
+                .underdogAwarded(current.isUnderdogAwarded())
+                .coop(current.isCoop())
+                .coopPlayers(current.getCoopPlayers())
+                .coopGroupId(current.getCoopGroupId())
+                .rotativeList(current.isRotativeList())
+                .fromObligation(current.isFromObligation())
+                .status(current.getStatus())
+                .build();
+        applyUpdate(preview, updateRequest);
+
+        List<String> codes = new java.util.ArrayList<>(scoringEngine
+                .buildCompletionEvents(preview, current.getEdition(), current.getUser(), current.isUnderdogAwarded())
+                .stream()
+                .map(ScoreEvent::getRuleCode)
+                .toList());
+        // Eventos de obrigacao nao sao regerados pelo recalculo; continuam valendo.
+        currentRuleCodes.stream().filter(code -> code.startsWith("OBLIGATION_")).forEach(codes::add);
+        return codes;
     }
 
     private User findUser(UUID userId) {

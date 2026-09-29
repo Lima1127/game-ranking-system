@@ -53,11 +53,11 @@ export default function CompletionUpdatePage() {
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           proofId,
-          coop: form.coop,
-          coopPlayers: form.coopPlayers,
+          coop: completion.coop,
+          coopPlayers: completion.coop ? completion.coopPlayers : null,
           hypeParticipation: form.hypeParticipation,
           hypeCompletedBonus: form.hypeCompletedBonus,
-          rotativeList: form.rotativeList,
+          rotativeList: completion.rotativeList,
           notes: form.notes,
         },
         {
@@ -213,24 +213,9 @@ export default function CompletionUpdatePage() {
           </label>
 
           {completion.coop && (
-            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
-              <input type="checkbox" name="coop" checked={form.coop} onChange={handleChange} className="h-5 w-5" />
-              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Cooperativo</span>
-            </label>
-          )}
-
-          {form.coop && (
-            <div>
-              <label className="mb-2 block font-bold text-slate-700 dark:text-slate-200">Jogadores Cooperativos</label>
-              <input
-                type="number"
-                name="coopPlayers"
-                value={form.coopPlayers || ''}
-                onChange={handleChange}
-                min="2"
-                max="4"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+            <div className="rounded-lg border border-slate-300 dark:border-slate-700 p-4 text-slate-600 dark:text-slate-300">
+              <span className="font-semibold">Cooperativo ({completion.coopPlayers} jogadores)</span>
+              <span className="block text-sm">Nao pode ser alterado por atualizacao.</span>
             </div>
           )}
 
@@ -249,10 +234,10 @@ export default function CompletionUpdatePage() {
           )}
 
           {completion.rotativeList && (
-            <label className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 p-4">
-              <input type="checkbox" name="rotativeList" checked={form.rotativeList} onChange={handleChange} className="h-5 w-5" />
-              <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Lista Rotativa</span>
-            </label>
+            <div className="rounded-lg border border-slate-300 dark:border-slate-700 p-4 text-slate-600 dark:text-slate-300">
+              <span className="font-semibold">Lista Rotativa</span>
+              <span className="block text-sm">Nao pode ser alterada por atualizacao.</span>
+            </div>
           )}
         </div>
 

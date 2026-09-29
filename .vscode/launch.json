@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "type": "java", "name": "Backend (TESTE)", "request": "launch",
+      "mainClass": "com.gameranking.GameRankingApplication",
+      "projectName": "backend", "cwd": "${workspaceFolder}/backend",
+      "args": "--spring.profiles.active=teste" },
+    { "type": "java", "name": "Backend (REAL)", "request": "launch",
+      "mainClass": "com.gameranking.GameRankingApplication",
+      "projectName": "backend", "cwd": "${workspaceFolder}/backend" },
+    { "type": "java", "name": "Anexar (porta 5005)", "request": "attach",
+      "hostName": "localhost", "port": 5005 }
+  ]
+}

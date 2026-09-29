@@ -76,7 +76,7 @@ public class CompletionService {
 
         List<String> duplicatedUsers = involvedUserIds.stream()
                 .map(involvedUserId -> userRepository.findById(involvedUserId).orElse(null))
-                .filter(involvedUser -> involvedUser != null && completionRepository.existsByUserIdAndGameId(involvedUser.getId(), game.getId()))
+                .filter(involvedUser -> involvedUser != null && completionRepository.existsByUserIdAndGameIdAndStatusNot(involvedUser.getId(), game.getId(), CompletionStatus.CANCELLED))
                 .map(User::getDisplayName)
                 .toList();
         if (!duplicatedUsers.isEmpty()) {
@@ -86,6 +86,8 @@ public class CompletionService {
         if (request.platinumProofId() == null) {
             throw new BusinessException("Toda solicitacao exige um anexo");
         }
+
+        CompletionDateRules.validate(edition, request.completedAt());
 
         if (!request.coop() && request.coopPlayers() != null) {
             throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
@@ -184,6 +186,8 @@ public class CompletionService {
             throw new BusinessException("Toda solicitacao exige um anexo");
         }
 
+        CompletionDateRules.validate(edition, request.completedAt());
+
         if (!request.coop() && request.coopPlayers() != null) {
             throw new BusinessException("Quantidade de jogadores cooperativos so deve ser informada quando coop for verdadeiro");
         }
@@ -202,6 +206,11 @@ public class CompletionService {
 
         if (request.coopPlayerUserIds() != null && !request.coopPlayerUserIds().isEmpty()) {
             throw new BusinessException("Nao e permitido alterar participantes de coop nesta solicitacao");
+        }
+
+        if (request.coop() != completion.isCoop()
+                || (request.coop() && !java.util.Objects.equals(request.coopPlayers(), completion.getCoopPlayers()))) {
+            throw new BusinessException("Nao e permitido alterar o cooperativo nesta solicitacao. Cancele e registre novamente.");
         }
 
         Game game = gameService.getById(request.gameId());
@@ -378,6 +387,10 @@ public class CompletionService {
             throw new BusinessException("Apenas usuarios ADMIN podem aprovar solicitacoes");
         }
 
+        // Serializa aprovacoes da edicao: sem isso, aprovacoes simultaneas enxergam o mesmo
+        // estado e distribuem bonus exclusivos (primeiro na edicao, lista rotativa) em dobro.
+        editionRepository.lockById(edition.getId());
+
         Completion completion = completionRepository.findByIdAndEditionId(completionId, edition.getId())
                 .orElseThrow(() -> new NotFoundException("Solicitacao nao encontrada"));
 
@@ -385,11 +398,7 @@ public class CompletionService {
             throw new BusinessException("A solicitacao nao esta pendente");
         }
 
-        boolean firstInEdition = !completionRepository.existsByEditionIdAndGameIdAndStatus(
-                edition.getId(),
-                completion.getGame().getId(),
-                CompletionStatus.APPROVED
-        );
+        boolean firstInEdition = isFirstInEdition(edition.getId(), completion);
 
         completion.setFirstInEdition(firstInEdition);
         completion.setStatus(CompletionStatus.APPROVED);
@@ -418,7 +427,8 @@ public class CompletionService {
                 .orElse(0L);
         boolean underdogBonus = leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
         completion.setUnderdogAwarded(underdogBonus);
-        boolean rotativeConsumed = rotativeListService.consumeIfActive(edition.getId(), completion.getGame().getId());
+        boolean rotativeConsumed = rotativeListService.consumeIfActive(edition.getId(), completion.getGame().getId())
+                || coopGroupAlreadyReceivedRotativeBonus(completion);
         completion.setRotativeList(rotativeConsumed);
 
         List<ScoreEvent> events = scoringEngine.buildCompletionEvents(completion, edition, completion.getUser(), underdogBonus);
@@ -541,8 +551,32 @@ public class CompletionService {
     }
 
     private boolean isFirstInEditionPreview(UUID editionId, Completion completion) {
-        return completionRepository.listApprovedGameIdsByEditionId(editionId).stream()
-                .noneMatch(gameId -> gameId.equals(completion.getGame().getId()));
+        return isFirstInEdition(editionId, completion);
+    }
+
+    /**
+     * Primeiro na edicao = primeiro registro aprovado do jogo na edicao (mesma ordem usada no
+     * recalculo). Membros do mesmo grupo coop compartilham o bonus.
+     */
+    private boolean isFirstInEdition(UUID editionId, Completion completion) {
+        return completionRepository
+                .findFirstByEditionIdAndGameIdAndStatusOrderByApprovedAtAscCreatedAtAscIdAsc(
+                        editionId,
+                        completion.getGame().getId(),
+                        CompletionStatus.APPROVED
+                )
+                .map(first -> EditionScoreRecalculationService.firstInEditionOwner(first)
+                        .equals(EditionScoreRecalculationService.firstInEditionOwner(completion)))
+                .orElse(true);
+    }
+
+    /** Bonus da lista rotativa e compartilhado pelo grupo coop que consumiu a entrada. */
+    private boolean coopGroupAlreadyReceivedRotativeBonus(Completion completion) {
+        return completion.getCoopGroupId() != null
+                && completionRepository.existsByCoopGroupIdAndStatusAndRotativeListTrue(
+                        completion.getCoopGroupId(),
+                        CompletionStatus.APPROVED
+                );
     }
 
     private boolean hasUnderdogPreview(UUID editionId, UUID userId) {

@@ -1,5 +1,6 @@
 package com.gameranking.security;
 
+import com.gameranking.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,9 +19,11 @@ import java.util.List;
 public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
+    private final UserRepository userRepository;
 
-    public BearerTokenAuthenticationFilter(TokenService tokenService) {
+    public BearerTokenAuthenticationFilter(TokenService tokenService, UserRepository userRepository) {
         this.tokenService = tokenService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -29,7 +32,11 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
-            tokenService.parse(authorization.substring(7)).ifPresent(user -> {
+            tokenService.parse(authorization.substring(7))
+                    // Token valido de usuario que nao existe (ex.: veio de outro banco) ou foi
+                    // desativado: trata como nao autenticado -> 401 -> o site volta para o login.
+                    .filter(user -> userRepository.existsByIdAndActiveTrue(user.userId()))
+                    .ifPresent(user -> {
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         user,
                         null,

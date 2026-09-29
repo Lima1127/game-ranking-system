@@ -2,6 +2,7 @@ package com.gameranking.service;
 
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
+import com.gameranking.common.upload.ImageFileType;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.user.UserSummaryResponse;
@@ -37,7 +38,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
-        validateAvatar(file);
+        ImageFileType imageType = validateAvatar(file);
 
         try {
             Path storageDir = Path.of("storage", "avatars");
@@ -47,13 +48,12 @@ public class UserService {
                 Files.deleteIfExists(Path.of(user.getAvatarStorageKey()));
             }
 
-            String extension = getExtension(file.getOriginalFilename());
-            String fileName = user.getId() + "-" + UUID.randomUUID() + extension;
+            String fileName = user.getId() + "-" + UUID.randomUUID() + imageType.extension();
             Path target = storageDir.resolve(fileName);
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
 
             user.setAvatarStorageKey(target.toString());
-            user.setAvatarContentType(file.getContentType());
+            user.setAvatarContentType(imageType.contentType());
             user.setAvatarFileSizeBytes(file.getSize());
             user.setAvatarUploadedAt(OffsetDateTime.now());
             return userRepository.save(user);
@@ -68,22 +68,11 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
     }
 
-    private void validateAvatar(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("Envie um arquivo de imagem");
-        }
-        if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
-            throw new BusinessException("Avatar deve ser uma imagem");
-        }
+    private ImageFileType validateAvatar(MultipartFile file) {
+        ImageFileType imageType = ImageFileType.detect(file);
         if (file.getSize() > MAX_AVATAR_SIZE_BYTES) {
             throw new BusinessException("Avatar excede o limite de 5MB");
         }
-    }
-
-    private String getExtension(String fileName) {
-        if (fileName == null || !fileName.contains(".")) {
-            return ".bin";
-        }
-        return fileName.substring(fileName.lastIndexOf('.'));
+        return imageType;
     }
 }

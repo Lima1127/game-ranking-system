@@ -65,7 +65,7 @@ export default function CompletionSubmissionEditPage() {
 
     const response = await api.post('/games', {
       name: form.gameName.trim(),
-      releaseYear: Number(form.completedAt.slice(0, 4)),
+      releaseYear: null,
       estimatedHoursMain: null,
       estimatedHoursPlatinum: null,
       genres: ['Nao informado'],
@@ -105,11 +105,12 @@ export default function CompletionSubmissionEditPage() {
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           proofId,
-          coop: false,
-          coopPlayers: null,
-          hypeParticipation: false,
-          hypeCompletedBonus: false,
-          rotativeList: false,
+          // Campos que esta tela nao edita: reenviar os valores atuais para nao apagar os bonus.
+          coop: submission.coop,
+          coopPlayers: submission.coop ? submission.coopPlayers : null,
+          hypeParticipation: submission.hypeParticipation,
+          hypeCompletedBonus: submission.hypeCompletedBonus,
+          rotativeList: submission.rotativeList,
           notes: form.notes,
         },
         {
@@ -275,6 +276,15 @@ export default function CompletionSubmissionEditPage() {
             <span className="ml-3 font-semibold text-slate-700 dark:text-slate-200">Platina (100%)</span>
           </label>
         </div>
+
+        {(submission.coop || submission.hypeParticipation || submission.rotativeList) && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Mantidos sem alteracao:
+            {submission.coop && ` coop (${submission.coopPlayers} jogadores)`}
+            {submission.hypeParticipation && (submission.hypeCompletedBonus ? ' · hype concluido' : ' · participacao no hype')}
+            {submission.rotativeList && ' · lista rotativa'}
+          </p>
+        )}
 
         <div>
           <label className="block text-gray-700 dark:text-slate-200 font-bold mb-2">Observacoes</label>

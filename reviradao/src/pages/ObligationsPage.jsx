@@ -70,7 +70,7 @@ export default function ObligationsPage() {
       if (!gameId) {
         const response = await api.post('/games', {
           name: form.gameName.trim(),
-          releaseYear: new Date().getFullYear(),
+          releaseYear: null,
           estimatedHoursMain: null,
           estimatedHoursPlatinum: null,
           genres: ['Nao informado'],

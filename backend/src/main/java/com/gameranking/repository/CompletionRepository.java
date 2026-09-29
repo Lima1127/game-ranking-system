@@ -15,9 +15,18 @@ import java.util.UUID;
 
 public interface CompletionRepository extends JpaRepository<Completion, UUID> {
     boolean existsByEditionIdAndGameIdAndStatus(UUID editionId, UUID gameId, CompletionStatus status);
-    boolean existsByUserIdAndGameId(UUID userId, UUID gameId);
+    /** Pedidos cancelados nao bloqueiam um novo registro do mesmo jogo. */
+    boolean existsByUserIdAndGameIdAndStatusNot(UUID userId, UUID gameId, CompletionStatus status);
     boolean existsByUserIdAndGameIdAndStatus(UUID userId, UUID gameId, CompletionStatus status);
     Optional<Completion> findByIdAndEditionId(UUID completionId, UUID editionId);
+
+    Optional<Completion> findFirstByEditionIdAndGameIdAndStatusOrderByApprovedAtAscCreatedAtAscIdAsc(
+            UUID editionId,
+            UUID gameId,
+            CompletionStatus status
+    );
+
+    boolean existsByCoopGroupIdAndStatusAndRotativeListTrue(UUID coopGroupId, CompletionStatus status);
 
     @Query("""
             select new com.gameranking.web.dto.completion.CompletionListItemResponse(
