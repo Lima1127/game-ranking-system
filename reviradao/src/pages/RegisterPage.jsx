@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
     try {
       await register(displayName, email, password, inviteCode);
-      navigate('/dashboard');
+      navigate('/menu');
     } catch (err) {
       setError(err.response?.data?.message || `Erro ao criar conta${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
     } finally {

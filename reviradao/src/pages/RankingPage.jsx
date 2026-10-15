@@ -5,30 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 
-const scoringRules = [
-  { code: 'GAME_COMPLETED', emoji: '🎮', points: 1, description: 'Cada conclusao registrada gera 1 ponto base.', active: true },
-  { code: 'FIRST_EXPERIENCE', emoji: '✨', points: 1, description: 'Bonus para a primeira vez que a pessoa fecha aquele jogo.', active: true },
-  { code: 'FIRST_IN_EDITION', emoji: '🚀', points: 1, description: 'Bonus para quem fecha o jogo primeiro dentro da edicao ativa.', active: true },
-  { code: 'IN_RELEASE_YEAR', emoji: '📅', points: 1, description: 'Bonus manual para jogos considerados lancamento do ano na edicao.', active: true },
-  { code: 'TIME_VALUABLE_BLOCK', emoji: '⏱️', points: 2, description: 'A cada bloco completo de 25 horas jogadas, soma 2 pontos.', active: true },
-  { code: 'PLATINUM', emoji: '🏆', points: 3, description: 'Platina confirmada rende 3 pontos.', active: true },
-  { code: 'COOP_RIGHT_HAND', emoji: '🤝', points: 2, description: 'Coop com ate 4 jogadores rende 2 pontos extras.', active: true },
-  { code: 'HYPE_PARTICIPATION', emoji: '🔥', points: 1, description: 'Participar do Hype adiciona 1 ponto.', active: true },
-  { code: 'HYPE_COMPLETION_BONUS', emoji: '⚡', points: 2, description: 'Completar o objetivo relacionado ao Hype soma mais 2 pontos.', active: true },
-  { code: 'ROTATIVE_LIST_BONUS', emoji: '🔄', points: 3, description: 'Completar um item da lista rotativa adiciona 3 pontos.', active: true },
-  { code: 'UNDERDOG_BONUS', emoji: '🐶', points: 3, description: 'Bonus de 3 pontos para quem inicia a jogada estando 20 pontos ou mais atras do lider da edicao.', active: true },
-  { code: 'OBLIGATION_COMPLETED', emoji: '📋', points: 3, description: 'Conclusao de obrigacao aprovada soma 3 pontos.', active: true },
-];
-
-const emojiByRuleCode = scoringRules.reduce((acc, rule) => {
-  acc[rule.code] = rule.emoji;
-  return acc;
-}, {});
-
-const pointsByRuleCode = scoringRules.reduce((acc, rule) => {
-  acc[rule.code] = rule.points;
-  return acc;
-}, {});
+import { scoringRules, emojiByRuleCode, pointsByRuleCode } from '../data/scoringRules';
 
 const platinumBadgeClass =
   'rounded-full border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-[#432200] dark:border-[#163a56] dark:bg-gradient-to-r dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff] dark:text-[#fff6d8]';
