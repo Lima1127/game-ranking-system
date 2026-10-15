@@ -21,3 +21,22 @@ body,
 #root {
   min-height: 100%;
 }
+
+/* Frase sorteada no Menu: reta, dourado suave e um "respiro" discreto no tamanho */
+.splash-text {
+  display: inline-block;
+  color: #fde68a; /* dourado suave (amber-200): legivel no fundo escuro do banner */
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  transform-origin: left center;
+  animation: splash-pulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes splash-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-text { animation: none; }
+}

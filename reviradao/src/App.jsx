@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
+import MenuPage from './pages/MenuPage';
 import RankingPage from './pages/RankingPage';
 import CompletionPage from './pages/CompletionPage';
 import CompletionSubmissionEditPage from './pages/CompletionSubmissionEditPage';
@@ -55,7 +55,7 @@ function AdminRoute({ children }) {
   }
 
   if (user.role !== 'ADMIN') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/menu" replace />;
   }
 
   return children;
@@ -69,11 +69,11 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
         <div className="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
-          <h1 className="text-2xl font-bold">Game Ranking</h1>
+          {/* O nome do site leva ao Menu (pagina inicial) */}
+          <Link to="/menu" className="text-2xl font-bold hover:opacity-80" title="Ir para o Menu">
+            Reviradão
+          </Link>
           <nav className="flex gap-x-4 gap-y-2 items-center flex-wrap text-sm sm:text-base">
-            <Link to="/dashboard" className="hover:opacity-80">
-              Dashboard
-            </Link>
             <Link to="/ranking" className="hover:opacity-80">
               Ranking
             </Link>
@@ -161,11 +161,11 @@ function AppContent({ isDarkMode, onToggleTheme }) {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
-        path="/dashboard"
+        path="/menu"
         element={
           <ProtectedRoute>
             <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
-              <DashboardPage />
+              <MenuPage />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -260,7 +260,9 @@ function AppContent({ isDarkMode, onToggleTheme }) {
           </AdminRoute>
         }
       />
-      <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+      {/* Endereco antigo: quem tiver salvo /dashboard cai no Menu */}
+      <Route path="/dashboard" element={<Navigate to="/menu" replace />} />
+      <Route path="/" element={<Navigate to={user ? '/menu' : '/login'} replace />} />
     </Routes>
   );
 }

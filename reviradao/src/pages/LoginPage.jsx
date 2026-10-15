@@ -17,7 +17,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/menu');
     } catch (err) {
       setError(err.response?.data?.message || `Erro ao fazer login${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
     } finally {

@@ -7,6 +7,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Titulos com cara de jogo (usado no Bem-vindo do Menu)
+        display: ['Fredoka', 'Segoe UI', 'system-ui', 'sans-serif'],
+      },
       colors: {
         primary: '#667eea',
         secondary: '#764ba2',

@@ -39,7 +39,7 @@ VITE_API_URL=/api/v1
 | Rota | Tela |
 |---|---|
 | `/login`, `/register` | Entrar / criar conta |
-| `/dashboard` | Avatar e atalhos |
+| `/menu` | Página inicial: boas-vindas com frase sorteada, perfil (avatar com recorte, posição, pontos, medalhas) e atalhos. `/dashboard` redireciona para cá |
 | `/ranking` | Pódio, tabela da edição e regras de pontuação |
 | `/completion` | Registrar jogo (inclui coop, hype e lista rotativa) |
 | `/requests` | Solicitações: pedidos novos e atualizações; admin aprova aqui |
@@ -49,8 +49,15 @@ VITE_API_URL=/api/v1
 | `/rotative-list` | Lista rotativa (admin importa/gera) |
 | `/admin/records`, `/admin/logs` | Painel admin e log de auditoria |
 
+## Arquivos de conteúdo (fáceis de editar)
+
+| Arquivo | O que tem |
+|---|---|
+| `src/data/frasesBoasVindas.js` | Frases sorteadas no Menu (instruções de edição no topo do arquivo) |
+| `src/data/scoringRules.js` | Nome, emoji e pontos de cada regra (usado no Ranking e nas medalhas do Menu) |
+
 ## Pontos de atenção
 
-- A tabela de regras exibida em `RankingPage.jsx` (`scoringRules`) é uma cópia dos valores do
-  backend (`ScoringEngine`). Se uma regra mudar, atualize os dois.
+- `src/data/scoringRules.js` é uma cópia dos valores do backend (`ScoringEngine`).
+  Se uma regra mudar, atualize os dois.
 - Não há testes automatizados no frontend; valide com `npm.cmd run build`.
