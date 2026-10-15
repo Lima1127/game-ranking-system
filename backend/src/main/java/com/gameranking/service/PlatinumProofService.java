@@ -7,61 +7,53 @@ import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.PlatinumProof;
 import com.gameranking.repository.PlatinumProofRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.io.UncheckedIOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlatinumProofService {
 
     private final PlatinumProofRepository platinumProofRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional
     public PlatinumProof upload(MultipartFile file) {
         ImageFileType imageType = ImageFileType.detect(file);
-        try {
-            UUID id = UUID.randomUUID();
-            Path storageDir = Path.of("storage", "platinum");
-            Files.createDirectories(storageDir);
+        byte[] content = readBytes(file);
 
-            String key = id + imageType.extension();
-            Path target = storageDir.resolve(key);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+        UUID id = UUID.randomUUID();
+        String storageKey = fileStorageService.save("platinum", id + imageType.extension(), content);
 
-            PlatinumProof proof = PlatinumProof.builder()
-                    .id(id)
-                    .completion(null)
-                    .storageKey(target.toString())
-                    .contentType(imageType.contentType())
-                    .fileSizeBytes(file.getSize())
-                    .sha256(sha256(target))
-                    .uploadedAt(OffsetDateTime.now())
-                    .build();
+        PlatinumProof proof = PlatinumProof.builder()
+                .id(id)
+                .completion(null)
+                .storageKey(storageKey)
+                .contentType(imageType.contentType())
+                .fileSizeBytes((long) content.length)
+                .sha256(sha256(content))
+                .uploadedAt(OffsetDateTime.now())
+                .build();
 
-            return platinumProofRepository.save(proof);
-        } catch (IOException ex) {
-            throw new RuntimeException("Falha ao salvar comprovante", ex);
-        }
+        return platinumProofRepository.save(proof);
     }
 
     public PlatinumProof findById(UUID id) {
         return platinumProofRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Comprovante de platina nao encontrado"));
+    }
+
+    public byte[] readContent(PlatinumProof proof) {
+        return fileStorageService.read(proof.getStorageKey());
     }
 
     public String getContentType(UUID proofId) {
@@ -103,42 +95,24 @@ public class PlatinumProofService {
         platinumProofRepository.findByCompletionId(completionId).ifPresent(proof -> {
             platinumProofRepository.delete(proof);
             platinumProofRepository.flush();
-            deleteFileAfterCommit(Path.of(proof.getStorageKey()));
+            fileStorageService.delete(proof.getStorageKey());
         });
     }
 
-    /**
-     * O disco nao participa da transacao: apagar o arquivo antes do commit fazia o arquivo
-     * sumir mesmo quando a operacao no banco era desfeita.
-     */
-    private void deleteFileAfterCommit(Path path) {
-        Runnable delete = () -> {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException ex) {
-                log.warn("Nao foi possivel remover o arquivo {} do disco", path, ex);
-            }
-        };
-
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    delete.run();
-                }
-            });
-        } else {
-            delete.run();
+    private static byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Falha ao ler comprovante", exception);
         }
     }
 
-    private String sha256(Path path) {
+    private static String sha256(byte[] content) {
         try {
-            byte[] bytes = Files.readAllBytes(path);
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (IOException | NoSuchAlgorithmException e) {
-            throw new RuntimeException("Nao foi possivel calcular hash do arquivo", e);
+            return HexFormat.of().formatHex(digest.digest(content));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 indisponivel", exception);
         }
     }
 }

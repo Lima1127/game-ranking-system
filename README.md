@@ -24,7 +24,8 @@ edição do ano, um admin confere cada registro e o sistema calcula os pontos e 
 
 ## O que o sistema faz
 
-- **Cadastro e login** de jogadores; papéis `USER` e `ADMIN`.
+- **Cadastro e login** de jogadores; papéis `USER` e `ADMIN`. O cadastro pode exigir um
+  **código de convite** (ligado na versão publicada na nuvem).
 - **Registro de conclusões**: o jogador envia o jogo zerado com uma imagem de comprovante.
   O pedido fica **pendente** até um admin **aprovar** (e só então gera pontos) ou ser cancelado.
 - **Coop** (2 a 4 jogadores), **Hype**, **Lista Rotativa** e **Obrigações** entre jogadores.
@@ -46,11 +47,16 @@ Frontend — React + Vite (pasta reviradao/)
 Backend — Spring Boot (pasta backend/), porta 8080
     │  Controllers → Services → ScoringEngine → Repositories (JPA)
     ├──────────────► PostgreSQL (banco game_ranking ou game_ranking_teste)
-    │                 estrutura criada/atualizada pelo Flyway (migrations V1…V17)
+    │                 estrutura criada/atualizada pelo Flyway (migrations V1…V18)
     └──────────────► Disco: backend/storage/{platinum,avatars}  (imagens enviadas)
 
 Serviços externos: nenhum.
 ```
+
+**Na nuvem** ([docs/deploy.md](docs/deploy.md)) a estrutura é mais simples: um único serviço no
+**Render** entrega o site e a API (o React vai empacotado dentro do backend, sem Vite nem proxy)
+e o banco fica no **Neon**. Como o disco do servidor grátis é apagado a cada reinício, as imagens
+ficam **dentro do banco** (tabela `file_blobs`).
 
 - O ranking **não é armazenado**: é a soma, em tempo real, da tabela `score_events`
   (cada ponto ganho ou perdido é um evento com código da regra e motivo).
@@ -85,7 +91,7 @@ game-ranking-system/
 │       ├── main/resources/
 │       │   ├── application.yml.example        # modelo de configuração
 │       │   ├── application-teste.yml.example  # modelo do perfil de teste
-│       │   └── db/migration/                  # migrations Flyway V1…V17
+│       │   └── db/migration/                  # migrations Flyway V1…V18
 │       └── test/java/                         # testes automatizados
 ├── reviradao/                # frontend
 │   ├── src/pages/            # telas
@@ -93,9 +99,12 @@ game-ranking-system/
 │   ├── src/contexts/         # sessão do usuário (AuthContext)
 │   └── vite.config.js        # porta, proxy /api e endereços de túnel liberados
 ├── scripts/
-│   └── criar-usuario.ps1     # cadastra usuário (e opcionalmente o torna ADMIN)
+│   ├── criar-usuario.ps1     # cadastra usuário (e opcionalmente o torna ADMIN)
+│   └── migrar-para-nuvem.ps1 # leva o banco REAL + imagens para o Neon
+├── Dockerfile                # monta site + backend numa imagem (usado pelo Render)
 └── docs/
     ├── concept.md            # regras do Reviradão e da pontuação
+    ├── deploy.md             # publicar na nuvem (Render + Neon)
     ├── integration-runbook.md# como rodar, bancos, túnel, backup, problemas comuns
     └── debugging.md          # guia de debug para iniciantes
 ```
@@ -126,7 +135,13 @@ Resumo (passo a passo detalhado em [docs/integration-runbook.md](docs/integratio
 | `app.jwt.expiration-seconds` | não | Duração do login (padrão 7200 = 2h) |
 | `spring.flyway.enabled` | sim (`true`) | Aplica as migrations ao subir |
 | `spring.jpa.hibernate.ddl-auto` | sim (`validate`) | O Hibernate só confere a estrutura; quem altera o banco é o Flyway |
-| `app.storage.root-path` | — | **Ainda não é lido pelo código** (ver limitações) |
+| `app.storage.type` | não | `disk` (padrão, pasta local) ou `database` (imagens no banco; usado na nuvem) |
+| `app.storage.root-path` | não | Pasta das imagens no modo `disk` (padrão `./storage`) |
+| `app.registration.invite-code` | não | Se preenchido, o cadastro exige este código. Vazio = cadastro aberto |
+
+Na nuvem a configuração vem de `application-prod.yml` + variáveis de ambiente do Render
+(`DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `APP_JWT_SECRET`, `APP_INVITE_CODE`).
+Detalhes em [docs/deploy.md](docs/deploy.md).
 
 Gerar um segredo no PowerShell:
 ```powershell
@@ -155,6 +170,8 @@ Rotas marcadas como **admin** verificam o papel do usuário no banco.
 |---|---|---|
 | POST | `/auth/register` | Cadastro (**pública**) |
 | POST | `/auth/login` | Login; devolve `accessToken` (**pública**) |
+| GET | `/auth/config` | Se o cadastro exige código de convite (**pública**) |
+| GET | `/health` | Verificação de funcionamento usada pela hospedagem (**pública**) |
 | GET | `/ranking?editionId=` | Ranking da edição (padrão: edição ativa) |
 | GET | `/games` | Catálogo de jogos |
 | POST | `/games` | Cria jogo (ou devolve o existente com o mesmo nome). O ano só é aceito se enviado por admin |
@@ -209,13 +226,13 @@ Rotas marcadas como **admin** verificam o papel do usuário no banco.
 
 ```powershell
 cd backend
-mvn.cmd test                              # todos (15 testes)
+mvn.cmd test                              # todos (22 testes)
 mvn.cmd test "-Dtest=TokenServiceTest"    # uma classe
 ```
 
 Cobertura atual: token (assinatura, adulteração, expiração, segredo fraco), filtro de
-autenticação, validação de imagens, regra de data da edição e "primeiro na edição" com coop
-no recálculo. O frontend ainda não tem testes automatizados; valide com `npm.cmd run build`.
+autenticação, validação de imagens, regra de data da edição, "primeiro na edição" com coop
+no recálculo, armazenamento de imagens (disco e banco) e código de convite. O frontend ainda não tem testes automatizados; valide com `npm.cmd run build`.
 
 ## Segurança
 
@@ -232,7 +249,6 @@ Levantadas na auditoria de 28/09/2026 e ainda **não corrigidas**:
 
 - Sem tela para criar edições (só existe a "Reviradao 2026", criada pela migration V1).
 - Sem tela para o admin definir o ano de lançamento (só via `PATCH /games/{id}/release-year`).
-- `app.storage.root-path` é ignorado; as imagens vão para `./storage` relativo à pasta de execução.
 - Quem cria uma obrigação pode cancelá-la mesmo durante a revisão da conclusão (anula o +3 do outro jogador).
 - A prévia de pontos não considera obrigações ainda não aceitas.
 - Não há desempate no ranking nem limite de tentativas de login.
@@ -245,6 +261,7 @@ Levantadas na auditoria de 28/09/2026 e ainda **não corrigidas**:
 | [docs/concept.md](docs/concept.md) | Regras do Reviradão, pontuação e ranking |
 | [docs/integration-runbook.md](docs/integration-runbook.md) | Rodar local, bancos REAL/TESTE, túnel para amigos, backup, problemas comuns |
 | [docs/debugging.md](docs/debugging.md) | Guia de debug passo a passo para iniciantes |
+| [docs/deploy.md](docs/deploy.md) | Publicar na nuvem (Render + Neon), passo a passo |
 | [reviradao/README.md](reviradao/README.md) | Detalhes do frontend |
 | `docs/architecture.html` | Documento antigo (março/2026) — **desatualizado**, mantido só como histórico |
 

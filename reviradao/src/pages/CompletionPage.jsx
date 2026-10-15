@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 
-const MAX_PLATINUM_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_PLATINUM_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
 const buildInitialForm = () => ({
   gameName: '',
@@ -92,7 +93,7 @@ export default function CompletionPage() {
     }
 
     const payload = new FormData();
-    payload.append('file', platinumFile);
+    payload.append('file', await compressImage(platinumFile));
 
     const response = await api.post('/uploads/platinum', payload, {
       headers: {

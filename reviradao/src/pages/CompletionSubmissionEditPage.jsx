@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
 function formatFileSize(size) {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
@@ -81,7 +82,7 @@ export default function CompletionSubmissionEditPage() {
     }
 
     const payload = new FormData();
-    payload.append('file', proofFile);
+    payload.append('file', await compressImage(proofFile));
 
     const response = await api.post('/uploads/platinum', payload, {
       headers: { 'Content-Type': 'multipart/form-data' },

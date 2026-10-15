@@ -54,11 +54,12 @@ export function AuthProvider({ children }) {
     return response.data;
   };
 
-  const register = async (displayName, email, password) => {
+  const register = async (displayName, email, password, inviteCode) => {
     await api.post('/auth/register', {
       displayName,
       email,
       password,
+      inviteCode: inviteCode || null,
     });
 
     return login(email, password);

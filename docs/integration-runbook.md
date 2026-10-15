@@ -87,7 +87,7 @@ Como funciona a ligação: o site chama `/api/v1/...` no próprio endereço e o 
 
 ## 5. Migrations (atualizações do banco)
 
-- Ficam em `backend/src/main/resources/db/migration` (`V1` … `V17`) e são aplicadas **sozinhas**
+- Ficam em `backend/src/main/resources/db/migration` (`V1` … `V18`) e são aplicadas **sozinhas**
   quando o backend sobe (Flyway).
 - Ver quais já foram aplicadas:
   ```powershell
@@ -111,6 +111,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex
 
 # no banco REAL
 powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@x.com" -Senha "senha123" -Admin -Banco game_ranking
+
+# se o backend exigir codigo de convite
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123" -Convite "codigo"
 ```
 
 - O cadastro passa pela API (senha criptografada como no site); a promoção a admin é feita no banco.
@@ -143,6 +146,8 @@ Alternativa visual: no **pgAdmin**, botão direito no banco → **Backup...** / 
 ## 8. Liberar o site para os amigos (túnel)
 
 O túnel cria um endereço público `https://...trycloudflare.com` que aponta para o seu PC.
+Bom para testes rápidos. Para deixar o site no ar **sem depender do seu PC**, veja
+[Publicar na nuvem](deploy.md).
 
 **Instalar (uma vez):**
 ```powershell

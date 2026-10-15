@@ -12,9 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.io.UncheckedIOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +23,7 @@ public class UserService {
 
     private static final long MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public List<UserSummaryResponse> listActiveUsers() {
@@ -39,33 +38,32 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
         ImageFileType imageType = validateAvatar(file);
-
+        byte[] content;
         try {
-            Path storageDir = Path.of("storage", "avatars");
-            Files.createDirectories(storageDir);
-
-            if (user.getAvatarStorageKey() != null) {
-                Files.deleteIfExists(Path.of(user.getAvatarStorageKey()));
-            }
-
-            String fileName = user.getId() + "-" + UUID.randomUUID() + imageType.extension();
-            Path target = storageDir.resolve(fileName);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
-            user.setAvatarStorageKey(target.toString());
-            user.setAvatarContentType(imageType.contentType());
-            user.setAvatarFileSizeBytes(file.getSize());
-            user.setAvatarUploadedAt(OffsetDateTime.now());
-            return userRepository.save(user);
+            content = file.getBytes();
         } catch (IOException exception) {
-            throw new RuntimeException("Falha ao salvar avatar", exception);
+            throw new UncheckedIOException("Falha ao ler avatar", exception);
         }
+
+        String previousKey = user.getAvatarStorageKey();
+        String fileName = user.getId() + "-" + UUID.randomUUID() + imageType.extension();
+        user.setAvatarStorageKey(fileStorageService.save("avatars", fileName, content));
+        user.setAvatarContentType(imageType.contentType());
+        user.setAvatarFileSizeBytes((long) content.length);
+        user.setAvatarUploadedAt(OffsetDateTime.now());
+        fileStorageService.delete(previousKey);
+        return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
     public User getById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] readAvatar(User user) {
+        return fileStorageService.read(user.getAvatarStorageKey());
     }
 
     private ImageFileType validateAvatar(MultipartFile file) {

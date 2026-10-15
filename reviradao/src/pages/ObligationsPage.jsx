@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
+import { compressImage } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -121,7 +122,7 @@ export default function ObligationsPage() {
       }
 
       const formData = new FormData();
-      formData.append('file', payload.proofFile);
+      formData.append('file', await compressImage(payload.proofFile));
       const uploadResponse = await api.post('/uploads/platinum', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { compressImage } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 
@@ -17,7 +18,7 @@ export default function DashboardPage() {
   const uploadAvatarMutation = useMutation({
     mutationFn: async (file) => {
       const payload = new FormData();
-      payload.append('file', file);
+      payload.append('file', await compressImage(file, { maxSize: 512 }));
       const response = await api.post('/users/me/avatar', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

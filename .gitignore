@@ -25,6 +25,7 @@ backend/src/main/resources/application-*.properties
 !backend/src/main/resources/application.yml.template
 !backend/src/main/resources/application.properties.example
 !backend/src/main/resources/application.properties.template
+!backend/src/main/resources/application-prod.yml
 
 # Logs and runtime artifacts
 *.log
@@ -47,3 +48,6 @@ Thumbs.db
 # Backups do banco (contem dados pessoais)
 backup*.sql
 *.dump
+
+# Gerado no build da imagem (Dockerfile copia o site React para ca)
+backend/src/main/resources/static/

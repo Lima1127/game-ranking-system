@@ -1,0 +1,50 @@
+# Configuracao de PRODUCAO (nuvem). Ativada por SPRING_PROFILES_ACTIVE=prod (ja definido no Dockerfile).
+# Este arquivo vai para o Git: NENHUM segredo aqui. Os valores ${...} vem das variaveis de
+# ambiente configuradas no painel da hospedagem (Render). Lista completa em docs/deploy.md.
+spring:
+  datasource:
+    # Ex.: jdbc:postgresql://<host-do-neon>/<banco>?sslmode=require
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      # Plano gratis: poucas conexoes e sem manter conexoes ociosas, para o banco (Neon)
+      # poder "dormir" quando ninguem usa o site e nao gastar a cota mensal.
+      maximum-pool-size: 5
+      minimum-idle: 0
+      idle-timeout: 60000
+      max-lifetime: 300000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+server:
+  # O Render informa a porta pela variavel PORT.
+  port: ${PORT:8080}
+  # Atras do proxy HTTPS da hospedagem.
+  forward-headers-strategy: native
+  compression:
+    enabled: true
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    expiration-seconds: ${APP_JWT_EXPIRATION_SECONDS:7200}
+  storage:
+    # O disco do servidor gratis e apagado a cada reinicio: as imagens ficam no banco.
+    type: database
+  registration:
+    # Codigo que os amigos precisam informar para criar conta. Vazio = cadastro aberto.
+    invite-code: ${APP_INVITE_CODE:}
+
+logging:
+  level:
+    root: INFO
