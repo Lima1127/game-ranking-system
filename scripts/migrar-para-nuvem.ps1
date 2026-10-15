@@ -26,6 +26,9 @@ param(
     [switch] $EnviarParaNeon,
     # Opcional: endereco do Neon direto no comando (se vazio, o script pergunta).
     [string] $NeonUrl = '',
+    # Apaga a estrutura do Neon antes de enviar, SOMENTE se ela nao tiver nenhum usuario nem registro
+    # (caso tipico: o site no Render foi ligado antes do envio e criou tabelas vazias).
+    [switch] $LimparNeonVazio,
     [string] $PgBin = 'D:\db\bin',
     [string] $Maven = 'C:\Tools\apache-maven-3.9.9\bin\mvn.cmd',
     [string] $JavaHome = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot',
@@ -103,25 +106,99 @@ if (-not $EnviarParaNeon) {
 }
 
 Passo '5/5 Envio para o Neon'
-Write-Host '   Cole o endereco de conexao do Neon (Dashboard > Connect), comecando com postgresql://'
-Write-Host '   (o texto nao aparece enquanto voce cola; depois aperte Enter)'
-$neon = $NeonUrl
-if (-not $neon) {
-    $seguro = Read-Host -AsSecureString '   Endereco'
-    $neon = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro))
-}
-if (-not $neon.StartsWith('postgres')) { Write-Host '   Endereco invalido.' -ForegroundColor Red; exit 1 }
 
-$tabelas = & $psql $neon -tAc "select count(*) from information_schema.tables where table_schema = 'public'"
-if ($LASTEXITCODE -ne 0) { Write-Host '   Nao consegui conectar ao Neon. Confira o endereco.' -ForegroundColor Red; exit 1 }
-if ([int]$tabelas -gt 0) {
-    Write-Host "   O banco do Neon NAO esta vazio ($tabelas tabelas). Nada foi enviado." -ForegroundColor Red
-    Write-Host '   Use um banco recem-criado e que o site ainda nao tenha usado.'
+# Acha o endereco mesmo "embrulhado" (ex.: psql 'postgresql://...' ou DATABASE_URL=postgresql://...).
+function Extrair-Endereco([string] $texto) {
+    if (-not $texto) { return '' }
+    $achado = [regex]::Match($texto, "postgres(?:ql)?://[^\s'`"]+")
+    if ($achado.Success) { return $achado.Value }
+    return ''
+}
+
+# Mostra o endereco sem a senha, para conferencia.
+function Esconder-Senha([string] $endereco) {
+    return ($endereco -replace '(://[^:/@]+:)[^@]+@', '$1****@')
+}
+
+# Explica o que chegou, sem revelar o conteudo.
+function Descrever-Texto([string] $texto) {
+    if (-not $texto) { return 'nada foi recebido (a colagem nao funcionou)' }
+    if ($texto -match '[\x00-\x1F]') { return 'chegou um caractere de controle: o Ctrl+V nao funcionou nesse campo' }
+    $inicio = $texto.Trim().Substring(0, [Math]::Min(8, $texto.Trim().Length))
+    return "chegou um texto de $($texto.Length) caracteres comecando com '$inicio' (deveria comecar com postgresql://)"
+}
+
+$recebido = $NeonUrl
+if (-not $recebido) {
+    # 1a opcao: o que estiver copiado (botao "copiar" do Neon). Nada precisa ser colado.
+    $copiado = Extrair-Endereco ((Get-Clipboard -Raw -ErrorAction SilentlyContinue) | Out-String)
+    if ($copiado) {
+        Write-Host "   Encontrei este endereco copiado: $(Esconder-Senha $copiado)"
+        $resposta = Read-Host '   Usar este endereco? (S/N)'
+        if ($resposta -match '^[sS]') { $recebido = $copiado }
+    }
+}
+if (-not $recebido) {
+    Write-Host '   Cole o endereco do Neon (Connect) e aperte Enter.'
+    Write-Host '   O texto nao aparece enquanto voce cola. Cole com o BOTAO DIREITO do mouse, uma vez so.'
+    $seguro = Read-Host -AsSecureString '   Endereco'
+    $recebido = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro))
+}
+
+$neon = Extrair-Endereco $recebido
+if (-not $neon) {
+    Write-Host "   Endereco invalido: $(Descrever-Texto $recebido)." -ForegroundColor Red
+    Write-Host '   Dica: no Neon, clique no botao de copiar do endereco e rode o script de novo (ele le o que foi copiado).'
     exit 1
+}
+Write-Host "   Usando: $(Esconder-Senha $neon)"
+
+# Alem do codigo de saida, confere o conteudo das respostas: so segue com numeros reais.
+$tabelas = (& $psql $neon -tAc "select count(*) from information_schema.tables where table_schema = 'public'" | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $tabelas -notmatch '^\d+$') {
+    Write-Host '   Nao consegui conectar ao Neon. Nada foi enviado.' -ForegroundColor Red
+    Write-Host '   Se a mensagem acima diz "password authentication failed", a senha do endereco esta errada:'
+    Write-Host '   copie o endereco de novo no Neon (Connect) e tente outra vez.'
+    exit 1
+}
+if ([int]$tabelas -gt 0) {
+    # Conta o que existe la (sem mostrar dados pessoais) para saber o que aconteceu.
+    $sqlResumo = "select coalesce((select count(*) from users), 0) || ';' || coalesce((select count(*) from completions), 0) || ';' || coalesce((select count(*) from file_blobs), 0)"
+    $resumoNeon = (& $psql $neon -tAc $sqlResumo 2>$null | Out-String).Trim()
+    $partes = $resumoNeon -split ';'
+    if ($partes.Count -ne 3) {
+        Write-Host "   O banco do Neon NAO esta vazio ($tabelas tabelas) e nao reconheci o conteudo. Nada foi enviado." -ForegroundColor Red
+        exit 1
+    }
+    $usuariosNeon = [int]$partes[0]; $registrosNeon = [int]$partes[1]; $imagensNeon = [int]$partes[2]
+    Write-Host "   O Neon ja tem $tabelas tabelas com: $usuariosNeon usuarios, $registrosNeon registros, $imagensNeon imagens." -ForegroundColor Yellow
+
+    if ($usuariosNeon -gt 0 -or $registrosNeon -gt 0) {
+        Write-Host '   Ja existem dados no Neon (provavelmente um envio anterior funcionou). Nada foi enviado.' -ForegroundColor Green
+        Write-Host '   Confira se os numeros acima batem com o "Conteudo" da etapa 4. Se baterem, pode seguir para o Render.'
+        exit 0
+    }
+
+    # Tabelas vazias: o site (Render) foi ligado antes do envio e o Flyway criou a estrutura.
+    if (-not $LimparNeonVazio) {
+        Write-Host '   As tabelas estao VAZIAS: o site no Render provavelmente foi ligado antes do envio.' -ForegroundColor Yellow
+        Write-Host '   Para apagar essa estrutura vazia e enviar os dados, rode de novo com -LimparNeonVazio:'
+        Write-Host '     powershell -ExecutionPolicy Bypass -File .\scripts\migrar-para-nuvem.ps1 -EnviarParaNeon -LimparNeonVazio'
+        Write-Host '   Depois do envio, reinicie o site no Render (Manual Deploy > Restart service).'
+        exit 1
+    }
+
+    Write-Host '   Apagando a estrutura vazia do Neon (nenhum usuario ou registro existe la)...'
+    & $psql $neon -q -v ON_ERROR_STOP=1 -c 'DROP SCHEMA public CASCADE;' -c 'CREATE SCHEMA public;' | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Host '   Nao foi possivel limpar o Neon. Nada foi enviado.' -ForegroundColor Red; exit 1 }
 }
 
 & $psql $neon -q -v ON_ERROR_STOP=1 -f $final | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Host '   Falha no envio. Veja a mensagem acima.' -ForegroundColor Red; exit 1 }
-$conferencia = & $psql $neon -tAc "select (select count(*) from users) || ' usuarios, ' || (select count(*) from completions) || ' registros, ' || (select count(*) from file_blobs) || ' imagens'"
+$conferencia = (& $psql $neon -tAc "select (select count(*) from users) || ' usuarios, ' || (select count(*) from completions) || ' registros, ' || (select count(*) from file_blobs) || ' imagens'" | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $conferencia -notmatch '^\d+ usuarios') {
+    Write-Host '   Nao foi possivel confirmar os dados no Neon. Confira pelo painel (Tables) antes de seguir.' -ForegroundColor Red
+    exit 1
+}
 Write-Host "   Enviado! No Neon agora: $conferencia" -ForegroundColor Green
 Write-Host '   Proximo passo: criar o site no Render (docs/deploy.md).'

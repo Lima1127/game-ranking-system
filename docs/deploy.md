@@ -76,8 +76,16 @@ O script:
 4. pede o endereço do Neon (cole o `postgresql://...` do passo 1 e aperte Enter — o texto não aparece);
 5. envia tudo e mostra a conferência, ex.: `Enviado! No Neon agora: 4 usuarios, 9 registros, 11 imagens`.
 
-Se aparecer `O banco do Neon NAO esta vazio`, nada foi enviado. Isso protege contra rodar duas
-vezes ou depois de o site já ter criado as tabelas.
+Se o Neon já tiver tabelas, nada é enviado e o script mostra o que existe lá:
+
+- **Com usuários/registros** (`O Neon ja tem 17 tabelas com: 4 usuarios, 9 registros...`): um envio
+  anterior já funcionou. Se os números baterem com a etapa 4, siga para o passo 3.
+- **Tabelas vazias** (`0 usuarios, 0 registros`): o site no Render foi ligado antes do envio e criou
+  a estrutura. Rode com `-LimparNeonVazio` (só apaga se não houver nenhum usuário nem registro) e,
+  depois, reinicie o site no Render (**Manual Deploy → Restart service**):
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\scripts\migrar-para-nuvem.ps1 -EnviarParaNeon -LimparNeonVazio
+  ```
 
 ## Passo 3 — Criar o site no Render
 
@@ -159,6 +167,7 @@ inteiro cabe nas 750 h grátis do Render.
 | `app.jwt.secret nao configurado` | `APP_JWT_SECRET` faltando ou curto | Adicione a variável com 32+ caracteres |
 | `Connection to ... refused` / `password authentication failed` | Dados do Neon errados | Confira `DATABASE_URL` (com `jdbc:`), usuário e senha |
 | `relation "..." already exists` ao subir | Banco do Neon foi preenchido duas vezes | Crie um banco novo no Neon e refaça o passo 2 |
+| Script: `O Neon ja tem 17 tabelas com: 0 usuarios...` | Render ligado antes do envio | Rode o script com `-LimparNeonVazio` e reinicie o Render |
 | Flyway travado / erro com pooler | Endereço com `-pooler` no host | Use a conexão direta (pooling desmarcado) |
 | Site abre mas demora ~1 min | Serviço estava dormindo | Normal no plano grátis (veja "Evitar a espera") |
 | Imagens antigas não aparecem | Passo 2 feito sem as imagens | Rode o script de novo num banco Neon novo |
