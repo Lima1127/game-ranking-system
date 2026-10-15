@@ -172,7 +172,7 @@ public class CompletionService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao nao encontrada"));
 
         boolean ownsRequest = completion.getUser().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRequest && !isAdmin) {
             throw new BusinessException("Voce nao pode editar esta solicitacao");
@@ -319,7 +319,7 @@ public class CompletionService {
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
         List<CompletionRequestResponse> requests;
-        if (requester.getRole() == UserRole.ADMIN) {
+        if (requester.getRole().isStaff()) {
             requests = completionRepository.listRequestsByEditionId(edition.getId());
         } else {
             requests = completionRepository.listRequestsByEditionIdAndUserId(edition.getId(), requesterId);
@@ -383,7 +383,7 @@ public class CompletionService {
         User approver = userRepository.findById(approverId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
-        if (approver.getRole() != UserRole.ADMIN) {
+        if (!approver.getRole().isStaff()) {
             throw new BusinessException("Apenas usuarios ADMIN podem aprovar solicitacoes");
         }
 
@@ -457,7 +457,7 @@ public class CompletionService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao nao encontrada"));
 
         boolean ownsRequest = completion.getUser().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRequest && !isAdmin) {
             throw new BusinessException("Voce nao pode cancelar esta solicitacao");

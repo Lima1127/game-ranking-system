@@ -100,6 +100,19 @@ Como funciona a ligação: o site chama `/api/v1/...` no próprio endereço e o 
 
 ## 6. Usuários e admins
 
+Cargos e permissões: ver [docs/concept.md](concept.md). No dia a dia, use a tela **Usuários**
+do painel Admin. O cargo de **Fundador** só pode ser definido direto no banco:
+
+```sql
+-- psql local (troque o banco por game_ranking_teste para o teste)
+-- ou no Neon: painel do projeto -> SQL Editor
+UPDATE users SET role = 'FUNDADOR' WHERE lower(email) = lower('seu@email.com');
+```
+
+Depois, saia e entre de novo no site (ou só recarregue a página).
+
+O script abaixo continua útil para criar contas de teste:
+
 Com o backend ligado, na pasta do projeto:
 
 ```powershell
@@ -192,6 +205,7 @@ Procure no terminal o endereço `https://<palavras>.trycloudflare.com` e envie a
 | Site volta para o login ao trocar de banco | Sua conta não existe no banco atual | Esperado. Crie a conta nesse banco (seção 6) e entre de novo |
 | Imagens antigas não aparecem | Backend iniciado fora da pasta `backend/` | Rode pelo F5 ou de dentro de `backend/` |
 | Menu Admin não aparece | Promovido a admin com a sessão aberta | Saia e entre de novo |
+| `ClassFormatError: Invalid method Code length 0` ao subir | O VS Code recompilou sem o Lombok (comum depois de "Clean Java Language Server Workspace") | Recompile com o Maven: `mvn.cmd clean compile` na pasta `backend` (ou a tarefa do VS Code "Backend: recompilar do zero") |
 | Terminal com "um monte de linhas" e parou | Erro ao subir | Procure `APPLICATION FAILED TO START` ou a **última** linha `Caused by:` |
 
 Para investigar outros problemas, veja o [guia de debug](debugging.md).

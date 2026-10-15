@@ -61,7 +61,7 @@ public class CompletionSubmissionService {
                 request.proofContentType(),
                 request.coopGroupId(),
                 request.status() == CompletionStatus.PENDING
-                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN),
+                        && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
                 request.fromObligation(),
                 request.ruleCodes()
         )));
@@ -84,7 +84,7 @@ public class CompletionSubmissionService {
                 request.proofContentType(),
                 null,
                 "PENDING".equals(request.status().name())
-                        && (request.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN),
+                        && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
                 request.fromObligation(),
                 request.ruleCodes()
         )));
@@ -100,7 +100,7 @@ public class CompletionSubmissionService {
             User requester = userRepository.findById(requesterId)
                     .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
             boolean editable = details.status() == CompletionStatus.PENDING
-                    && (details.userId().equals(requesterId) || requester.getRole() == UserRole.ADMIN);
+                    && (details.userId().equals(requesterId) || requester.getRole().isStaff());
 
             return new CompletionSubmissionDetailsResponse(
                     CompletionSubmissionKind.NEW_COMPLETION,

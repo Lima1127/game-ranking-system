@@ -14,6 +14,8 @@ import ObligationsPage from './pages/ObligationsPage';
 import RotativeListPage from './pages/RotativeListPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
+import { isStaffRole, roleLabel } from './utils/roles';
 
 function ProtectedRoute({ children }) {
   const { user, isLoading } = useAuth();
@@ -54,7 +56,7 @@ function AdminRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'ADMIN') {
+  if (!isStaffRole(user.role)) {
     return <Navigate to="/menu" replace />;
   }
 
@@ -89,16 +91,19 @@ function MainLayout({ children, isDarkMode, onToggleTheme }) {
             <Link to="/rotative-list" className="hover:opacity-80">
               Lista Rotativa
             </Link>
-            {user?.role === 'ADMIN' && (
+            {isStaffRole(user?.role) && (
               <>
                 <Link to="/admin/records" className="hover:opacity-80">
                   Admin
+                </Link>
+                <Link to="/admin/users" className="hover:opacity-80">
+                  Usuários
                 </Link>
                 <Link to="/admin/logs" className="hover:opacity-80">
                   Logs
                 </Link>
                 <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
-                  Admin
+                  {roleLabel(user?.role)}
                 </span>
               </>
             )}
@@ -246,6 +251,16 @@ function AppContent({ isDarkMode, onToggleTheme }) {
           <AdminRoute>
             <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <AdminRecordsPage />
+            </MainLayout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <AdminUsersPage />
             </MainLayout>
           </AdminRoute>
         }

@@ -174,7 +174,7 @@ public class AdminService {
         User user = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
-        if (user.getRole() != UserRole.ADMIN) {
+        if (!user.getRole().isStaff()) {
             throw new BusinessException("Acesso restrito a usuarios ADMIN");
         }
 

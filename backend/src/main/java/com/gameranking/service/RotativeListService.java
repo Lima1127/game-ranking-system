@@ -241,7 +241,7 @@ public class RotativeListService {
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new NotFoundException("Usuario nao encontrado"));
 
-        if (requester.getRole() != UserRole.ADMIN) {
+        if (!requester.getRole().isStaff()) {
             throw new BusinessException("Acesso restrito a usuarios ADMIN");
         }
 

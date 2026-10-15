@@ -12,4 +12,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByIdAndActiveTrue(UUID id);
     List<User> findAllByActiveTrueOrderByDisplayNameAsc();
+
+    List<User> findAllByOrderByDisplayNameAsc();
 }

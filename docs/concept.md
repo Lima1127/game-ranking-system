@@ -12,8 +12,22 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 ### Usuários
 - Qualquer pessoa pode se cadastrar pelo site; todo cadastro nasce como **`USER`** (jogador).
   Na versão publicada na nuvem, o cadastro exige o **código de convite** definido pelo admin.
-- **`ADMIN`** aprova pedidos, revisa obrigações, gera a lista rotativa, exclui registros e
-  recalcula a edição. Um usuário vira admin pelo script `scripts/criar-usuario.ps1 -Admin`.
+- **Cargos**, do maior para o menor: **Fundador > Co-fundador > Admin > Jogador** (`USER`).
+  Admin, Co-fundador e Fundador formam a **equipe**: aprovam pedidos, revisam obrigações,
+  geram a lista rotativa, excluem registros e recalculam a edição.
+- Quem pode o quê (tela **Usuários** do painel Admin; regras em `UserPermissions.java`):
+
+  | Cargo | Mudar cargos | Editar nome de | Senha temporária para |
+  |---|---|---|---|
+  | **Fundador** | dá/tira Co-fundador, Admin e Jogador | si mesmo e cargos abaixo | cargos abaixo |
+  | **Co-fundador** | dá/tira Admin e Jogador | si mesmo e cargos abaixo | cargos abaixo |
+  | **Admin** | não | si mesmo e Jogadores | Jogadores |
+  | **Jogador** | não | não | não |
+
+  Ninguém altera o próprio cargo, nem o de quem está no mesmo nível ou acima.
+  **Fundador só é definido direto no banco de dados**, nunca pelo site. Toda alteração vai para o log.
+- Qualquer jogador troca a **própria senha** em *Menu → Alterar senha*. A senha temporária
+  do admin é o "último caso" (a recuperação por e-mail está planejada).
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.
 
 ### Edição
@@ -141,6 +155,8 @@ Zerou pela primeira vez, foi o primeiro da edição, 30h, sem platina:
 | 28/09/2026 | Excluir um registro que concluiu obrigação **reabre a obrigação** (volta para ACEITA, sem o +3). |
 | 28/09/2026 | Pedido de atualização **não altera coop nem lista rotativa**. |
 | 28/09/2026 | Ano de lançamento dos jogos é opcional e **definido apenas por admin**. |
+| 15/10/2026 | Cargos **Fundador > Co-fundador > Admin > Jogador**; Fundador só pelo banco. |
+| 15/10/2026 | Nome de exibição só é alterado pela equipe; senha, pelo próprio jogador (Menu). |
 
 ## Regras ainda não definidas
 
