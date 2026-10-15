@@ -40,7 +40,7 @@ VITE_API_URL=/api/v1
 |---|---|
 | `/login`, `/register` | Entrar / criar conta |
 | `/menu` | Página inicial: boas-vindas com frase sorteada, perfil (avatar com recorte, posição, pontos, medalhas) e atalhos. `/dashboard` redireciona para cá |
-| `/ranking` | Pódio, tabela da edição e regras de pontuação |
+| `/ranking` | Resumo do grupo e pódio (esquerda); classificação e histórico de conquistas (direita). Legenda dos ícones no botão "Como pontuar" |
 | `/completion` | Registrar jogo (inclui coop, hype e lista rotativa) |
 | `/requests` | Solicitações: pedidos novos e atualizações; admin aprova aqui |
 | `/requests/:kind/:id/edit` | Editar pedido pendente |
@@ -55,6 +55,7 @@ VITE_API_URL=/api/v1
 |---|---|
 | `src/data/frasesBoasVindas.js` | Frases sorteadas no Menu (instruções de edição no topo do arquivo) |
 | `src/data/scoringRules.js` | Nome, emoji e pontos de cada regra (usado no Ranking e nas medalhas do Menu) |
+| `src/utils/formatarData.js` | Datas (`02/09/2026`) e horas (`12,5h`) no padrão brasileiro |
 
 ## Pontos de atenção
 

@@ -8,6 +8,7 @@ import AvatarCropModal from '../components/AvatarCropModal';
 import { MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { scoringRules } from '../data/scoringRules';
 import { sortearFrase } from '../data/frasesBoasVindas';
+import { formatarData } from '../utils/formatarData';
 
 // "Jogo fechado" já aparece como contagem de jogos; as demais regras viram medalhas.
 const medalRules = scoringRules.filter((rule) => rule.code !== 'GAME_COMPLETED');
@@ -19,12 +20,6 @@ const STATUS_OBRIGACAO = {
   REVIEW_PENDING_PARTIAL: { texto: 'Em revisão (parcial)', precisaDeVoce: false },
   REVIEW_PENDING_COMPLETION: { texto: 'Em revisão (conclusão)', precisaDeVoce: false },
 };
-
-/** "2026-09-02" -> "02/09/2026" (sem converter para data, para nao mudar o dia por fuso horario). */
-function formatarData(data) {
-  const [ano, mes, dia] = String(data || '').split('-');
-  return ano && mes && dia ? `${dia}/${mes}/${ano}` : '';
-}
 
 function StatTile({ label, value }) {
   return (
