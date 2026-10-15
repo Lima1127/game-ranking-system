@@ -11,6 +11,7 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 
 ### Usuários
 - Qualquer pessoa pode se cadastrar pelo site; todo cadastro nasce como **`USER`** (jogador).
+  Na versão publicada na nuvem, o cadastro exige o **código de convite** definido pelo admin.
 - **`ADMIN`** aprova pedidos, revisa obrigações, gera a lista rotativa, exclui registros e
   recalcula a edição. Um usuário vira admin pelo script `scripts/criar-usuario.ps1 -Admin`.
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.

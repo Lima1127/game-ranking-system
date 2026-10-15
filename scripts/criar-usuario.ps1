@@ -20,11 +20,16 @@
 .EXAMPLE
   # Mesmo coisa, mas no banco REAL
   powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@x.com" -Senha "senha123" -Admin -Banco game_ranking
+
+.EXAMPLE
+  # Quando o cadastro exige codigo de convite (app.registration.invite-code)
+  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123" -Convite "codigo-do-grupo"
 #>
 param(
     [Parameter(Mandatory = $true)] [string] $Nome,
     [Parameter(Mandatory = $true)] [string] $Email,
     [Parameter(Mandatory = $true)] [string] $Senha,
+    [string] $Convite = '',
     [switch] $Admin,
     [string] $Banco = 'game_ranking_teste',
     [string] $Api = 'http://localhost:8080/api/v1',
@@ -40,7 +45,7 @@ if ($Senha.Length -lt 6) {
 
 # 1) Cadastro pela API -------------------------------------------------------
 Write-Host "Cadastrando $Email ..."
-$body = @{ displayName = $Nome; email = $Email; password = $Senha } | ConvertTo-Json
+$body = @{ displayName = $Nome; email = $Email; password = $Senha; inviteCode = $Convite } | ConvertTo-Json
 try {
     Invoke-RestMethod -Method Post -Uri "$Api/auth/register" -ContentType 'application/json; charset=utf-8' -Body $body | Out-Null
     Write-Host '  Usuario criado.' -ForegroundColor Green

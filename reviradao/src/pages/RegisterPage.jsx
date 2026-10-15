@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 
 export default function RegisterPage() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // O backend informa se o cadastro exige codigo de convite (configurado na hospedagem).
+    api.get('/auth/config')
+      .then((response) => setInviteRequired(Boolean(response.data?.inviteRequired)))
+      .catch(() => setInviteRequired(false));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,7 +39,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(displayName, email, password);
+      await register(displayName, email, password, inviteCode);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || `Erro ao criar conta${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
@@ -89,7 +99,7 @@ export default function RegisterPage() {
           />
         </div>
 
-        <div className="mb-6">
+        <div className={inviteRequired ? 'mb-4' : 'mb-6'}>
           <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Confirmar Senha</label>
           <input
             type="password"
@@ -100,6 +110,21 @@ export default function RegisterPage() {
             required
           />
         </div>
+
+        {inviteRequired && (
+          <div className="mb-6">
+            <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Codigo de convite</label>
+            <input
+              type="text"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
+              placeholder="Peca ao admin do Reviradao"
+              autoComplete="off"
+              required
+            />
+          </div>
+        )}
 
         <button
           type="submit"

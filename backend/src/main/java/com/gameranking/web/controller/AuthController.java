@@ -35,4 +35,10 @@ public class AuthController {
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    /** Informacoes publicas para a tela de cadastro (ex.: se precisa de codigo de convite). */
+    @GetMapping("/config")
+    public Map<String, Object> config() {
+        return Map.of("inviteRequired", authService.isInviteRequired());
+    }
 }

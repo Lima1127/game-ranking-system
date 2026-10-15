@@ -5,6 +5,7 @@ import com.gameranking.domain.model.PlatinumProof;
 import com.gameranking.service.PlatinumProofService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -41,12 +40,13 @@ public class UploadController {
     }
 
     @GetMapping("/proofs/{proofId}")
-    public ResponseEntity<ByteArrayResource> viewProof(@PathVariable UUID proofId) throws IOException {
+    public ResponseEntity<ByteArrayResource> viewProof(@PathVariable UUID proofId) {
         PlatinumProof proof = platinumProofService.findById(proofId);
-        Path path = Path.of(proof.getStorageKey());
-        ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+        ByteArrayResource resource = new ByteArrayResource(platinumProofService.readContent(proof));
 
+        // Cada comprovante tem id proprio e nunca muda: o navegador pode guardar em cache.
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)))
                 .headers(ImageFileType.safeServingHeaders(proof.getContentType()))
                 .contentLength(resource.contentLength())
                 .body(resource);

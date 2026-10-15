@@ -29,10 +29,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/uploads/proofs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/avatar").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/**").authenticated()
+                        // Fora de /api ficam as paginas e arquivos do site (React), publicos.
+                        .anyRequest().permitAll()
                 )
                 // Sem token (ou token expirado/invalido) -> 401. O padrao do Spring era 403,
                 // e o frontend so sabe mandar de volta para o login quando recebe 401.

@@ -7,6 +7,7 @@ import com.gameranking.service.UserService;
 import com.gameranking.web.dto.user.UserSummaryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,9 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,16 +52,17 @@ public class UserController {
     }
 
     @GetMapping("/{userId}/avatar")
-    public ResponseEntity<ByteArrayResource> getAvatar(@PathVariable UUID userId) throws IOException {
+    public ResponseEntity<ByteArrayResource> getAvatar(@PathVariable UUID userId) {
         User user = userService.getById(userId);
         if (user.getAvatarStorageKey() == null) {
             return ResponseEntity.notFound().build();
         }
 
-        Path path = Path.of(user.getAvatarStorageKey());
-        ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+        ByteArrayResource resource = new ByteArrayResource(userService.readAvatar(user));
 
+        // O site pede o avatar com ?v=<data do envio>: um avatar novo nunca usa o cache antigo.
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)))
                 .headers(ImageFileType.safeServingHeaders(user.getAvatarContentType()))
                 .contentLength(resource.contentLength())
                 .body(resource);

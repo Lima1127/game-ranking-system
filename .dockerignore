@@ -1,0 +1,17 @@
+# Nada disso deve entrar na imagem (dependencias sao baixadas no build; segredos ficam no painel).
+.git
+.vscode
+.claude
+**/node_modules
+reviradao/dist
+backend/target
+backend/storage
+**/*.log
+backup*.sql
+*.dump
+
+# Configuracoes locais com senhas
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-teste.yml
+reviradao/.env.local
+reviradao/.env

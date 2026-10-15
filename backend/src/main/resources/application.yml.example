@@ -28,4 +28,9 @@ app:
     secret: troque-esta-chave-em-producao
     expiration-seconds: 7200
   storage:
+    # disk = arquivos na pasta abaixo (uso local); database = dentro do banco (usado na nuvem)
+    type: disk
     root-path: ./storage
+  registration:
+    # Se preenchido, o cadastro exige este codigo de convite. Vazio = cadastro aberto.
+    invite-code: ""
