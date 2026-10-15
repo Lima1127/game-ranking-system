@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { isStaffRole } from '../utils/roles';
 
 const emojiByRuleCode = {
   FIRST_EXPERIENCE: '🎮',
@@ -95,7 +96,7 @@ export default function RequestsPage() {
   const queryClient = useQueryClient();
   const [previewImage, setPreviewImage] = useState(null);
   const [groupActionKey, setGroupActionKey] = useState(null);
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isStaffRole(user?.role);
   const buildProofUrl = (proofId) => `${api.defaults.baseURL}/uploads/proofs/${proofId}`;
 
   const { data: submissions = [], isLoading, error } = useQuery({

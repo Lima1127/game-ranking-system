@@ -4,6 +4,7 @@ import api from '../services/api';
 import { compressImage } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { isStaffRole } from '../utils/roles';
 
 function statusClasses(status) {
   if (status === 'COMPLETED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
@@ -24,7 +25,7 @@ function statusLabel(status) {
 export default function ObligationsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isStaffRole(user?.role);
   const [form, setForm] = useState({
     assignedToUserId: '',
     gameName: '',

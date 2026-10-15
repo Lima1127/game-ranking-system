@@ -30,7 +30,7 @@ public class GameService {
     @Transactional
     public GameResponse create(UUID requesterId, CreateGameRequest request) {
         boolean requesterIsAdmin = requesterId != null && userRepository.findById(requesterId)
-                .map(user -> user.getRole() == UserRole.ADMIN)
+                .map(user -> user.getRole().isStaff())
                 .orElse(false);
         return toResponse(findOrCreate(request, requesterIsAdmin ? request.releaseYear() : null));
     }
@@ -49,7 +49,7 @@ public class GameService {
     @Transactional
     public GameResponse updateReleaseYear(UUID requesterId, UUID gameId, Integer releaseYear) {
         boolean requesterIsAdmin = userRepository.findById(requesterId)
-                .map(user -> user.getRole() == UserRole.ADMIN)
+                .map(user -> user.getRole().isStaff())
                 .orElse(false);
         if (!requesterIsAdmin) {
             throw new BusinessException("Apenas usuarios ADMIN podem definir o ano de lancamento");

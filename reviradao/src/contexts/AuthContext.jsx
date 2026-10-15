@@ -23,10 +23,34 @@ export function AuthProvider({ children }) {
         role,
         avatarUploadedAt: avatarUploadedAt || null,
       });
+      // Confere no servidor cargo e nome atuais: quem foi promovido (ou rebaixado)
+      // vê a mudança sem precisar sair e entrar de novo.
+      refreshUser();
     }
 
     setIsLoading(false);
   }, []);
+
+  const refreshUser = async () => {
+    try {
+      const { data } = await api.get('/users/me');
+      localStorage.setItem('user_role', data.role);
+      localStorage.setItem('user_display_name', data.displayName);
+      localStorage.setItem('user_email', data.email);
+      if (data.avatarUploadedAt) {
+        localStorage.setItem('user_avatar_uploaded_at', data.avatarUploadedAt);
+      } else {
+        localStorage.removeItem('user_avatar_uploaded_at');
+      }
+      setUser((prev) =>
+        prev
+          ? { ...prev, role: data.role, displayName: data.displayName, email: data.email, avatarUploadedAt: data.avatarUploadedAt || null }
+          : prev
+      );
+    } catch {
+      // Sem conexão: segue com os dados salvos. Login vencido é tratado pelo api.js (volta ao login).
+    }
+  };
 
   const persistSession = ({ accessToken, userId, displayName, email, role, avatarUploadedAt }) => {
     localStorage.setItem('auth_token', accessToken);
@@ -81,7 +105,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateAvatar }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateAvatar, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

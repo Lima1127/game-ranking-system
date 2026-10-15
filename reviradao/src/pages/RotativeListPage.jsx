@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { isStaffRole } from '../utils/roles';
 
 const MAX_SOURCE_FILE_SIZE = 8 * 1024 * 1024;
 
@@ -12,7 +13,7 @@ function formatFileSize(size) {
 export default function RotativeListPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isStaffRole(user?.role);
   const [sourceFile, setSourceFile] = useState(null);
 
   const { data: currentList = [], isLoading, error } = useQuery({

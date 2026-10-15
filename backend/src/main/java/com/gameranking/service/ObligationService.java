@@ -52,7 +52,7 @@ public class ObligationService {
         Edition edition = resolveEdition(editionId);
         User requester = findUser(requesterId);
 
-        List<ObligationItemResponse> items = requester.getRole() == UserRole.ADMIN
+        List<ObligationItemResponse> items = requester.getRole().isStaff()
                 ? obligationRepository.listByEditionId(edition.getId())
                 : obligationRepository.listByEditionIdAndParticipantId(edition.getId(), requesterId);
 
@@ -174,7 +174,7 @@ public class ObligationService {
 
         boolean isAssignedTo = obligation.getAssignedTo().getId().equals(requesterId);
         boolean isAssignedBy = obligation.getAssignedBy().getId().equals(requesterId);
-        boolean isAdmin = actor.getRole() == UserRole.ADMIN;
+        boolean isAdmin = actor.getRole().isStaff();
 
         if (!isAssignedTo && !isAssignedBy && !isAdmin) {
             throw new BusinessException("Voce nao pode cancelar esta obrigacao");
@@ -277,7 +277,7 @@ public class ObligationService {
     @Transactional
     public ObligationItemResponse approveReview(UUID requesterId, UUID obligationId) {
         User admin = findUser(requesterId);
-        if (admin.getRole() != UserRole.ADMIN) {
+        if (!admin.getRole().isStaff()) {
             throw new BusinessException("Apenas usuarios ADMIN podem aprovar revisoes de obrigacao");
         }
 
@@ -322,7 +322,7 @@ public class ObligationService {
     @Transactional
     public ObligationItemResponse rejectReview(UUID requesterId, UUID obligationId) {
         User admin = findUser(requesterId);
-        if (admin.getRole() != UserRole.ADMIN) {
+        if (!admin.getRole().isStaff()) {
             throw new BusinessException("Apenas usuarios ADMIN podem rejeitar revisoes de obrigacao");
         }
 
@@ -397,7 +397,7 @@ public class ObligationService {
     private void ensureAssignedUserOrAdmin(UUID requesterId, Obligation obligation, String action) {
         User requester = findUser(requesterId);
         boolean ownsObligation = obligation.getAssignedTo().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsObligation && !isAdmin) {
             throw new BusinessException("Voce nao pode " + action + " esta obrigacao");

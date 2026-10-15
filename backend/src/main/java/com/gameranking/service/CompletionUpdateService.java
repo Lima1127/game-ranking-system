@@ -52,7 +52,7 @@ public class CompletionUpdateService {
 
         User requester = findUser(requesterId);
         boolean ownsRecord = details.userId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRecord && !isAdmin) {
             throw new BusinessException("Voce nao pode visualizar este registro");
@@ -66,7 +66,7 @@ public class CompletionUpdateService {
         Edition edition = resolveEdition(editionId);
         User requester = findUser(requesterId);
 
-        List<CompletionUpdateRequestRepository.UpdateRequestProjection> projections = requester.getRole() == UserRole.ADMIN
+        List<CompletionUpdateRequestRepository.UpdateRequestProjection> projections = requester.getRole().isStaff()
                 ? completionUpdateRequestRepository.listByEditionId(edition.getId())
                 : completionUpdateRequestRepository.listByEditionIdAndUserId(edition.getId(), requesterId);
 
@@ -203,7 +203,7 @@ public class CompletionUpdateService {
         Edition edition = resolveEdition(null);
         User approver = findUser(approverId);
 
-        if (approver.getRole() != UserRole.ADMIN) {
+        if (!approver.getRole().isStaff()) {
             throw new BusinessException("Apenas usuarios ADMIN podem aprovar atualizacoes");
         }
 
@@ -244,7 +244,7 @@ public class CompletionUpdateService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
 
         boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRequest && !isAdmin) {
             throw new BusinessException("Voce nao pode cancelar esta atualizacao");
@@ -292,7 +292,7 @@ public class CompletionUpdateService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
 
         boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRequest && !isAdmin) {
             throw new BusinessException("Voce nao pode visualizar esta solicitacao");
@@ -332,7 +332,7 @@ public class CompletionUpdateService {
                 .orElseThrow(() -> new NotFoundException("Solicitacao de atualizacao nao encontrada"));
 
         boolean ownsRequest = updateRequest.getRequestedBy().getId().equals(requesterId);
-        boolean isAdmin = requester.getRole() == UserRole.ADMIN;
+        boolean isAdmin = requester.getRole().isStaff();
 
         if (!ownsRequest && !isAdmin) {
             throw new BusinessException("Voce nao pode editar esta solicitacao");

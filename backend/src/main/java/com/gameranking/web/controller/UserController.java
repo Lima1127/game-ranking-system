@@ -3,8 +3,12 @@ package com.gameranking.web.controller;
 import com.gameranking.common.upload.ImageFileType;
 import com.gameranking.domain.model.User;
 import com.gameranking.security.AuthenticatedUser;
+import com.gameranking.service.UserAdminService;
 import com.gameranking.service.UserService;
+import com.gameranking.web.dto.user.MeResponse;
+import com.gameranking.web.dto.user.UserManagementRequests;
 import com.gameranking.web.dto.user.UserSummaryResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.CacheControl;
@@ -14,6 +18,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,10 +37,26 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final UserAdminService userAdminService;
 
     @GetMapping
     public List<UserSummaryResponse> list() {
         return userService.listActiveUsers();
+    }
+
+    /** Dados atuais de quem esta logado (o site atualiza cargo e nome sem precisar de novo login). */
+    @GetMapping("/me")
+    public MeResponse me(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        return userAdminService.me(currentUser.userId());
+    }
+
+    @PutMapping("/me/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changeOwnPassword(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @Valid @RequestBody UserManagementRequests.ChangeOwnPasswordRequest request
+    ) {
+        userAdminService.changeOwnPassword(currentUser.userId(), request.currentPassword(), request.newPassword());
     }
 
     @PostMapping("/me/avatar")

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { isStaffRole } from '../utils/roles';
 
 function actionLabel(actionCode) {
   const labels = {
@@ -28,10 +29,10 @@ export default function AdminAuditLogsPage() {
       });
       return response.data;
     },
-    enabled: Boolean(user?.id && user?.role === 'ADMIN'),
+    enabled: Boolean(user?.id && isStaffRole(user?.role)),
   });
 
-  if (user?.role !== 'ADMIN') {
+  if (!isStaffRole(user?.role)) {
     return <div className="text-red-600">Acesso restrito a administradores.</div>;
   }
 

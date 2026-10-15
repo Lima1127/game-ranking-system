@@ -1,14 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Camera, ClipboardList, Gamepad2, ListTodo, Trophy } from 'lucide-react';
+import { Camera, ClipboardList, Gamepad2, ListTodo, Lock, Trophy } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import AvatarCropModal from '../components/AvatarCropModal';
+import JanelaAlterarSenha from '../components/JanelaAlterarSenha';
 import { MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { scoringRules } from '../data/scoringRules';
 import { sortearFrase } from '../data/frasesBoasVindas';
 import { formatarData } from '../utils/formatarData';
+import { isStaffRole } from '../utils/roles';
 
 // "Jogo fechado" já aparece como contagem de jogos; as demais regras viram medalhas.
 const medalRules = scoringRules.filter((rule) => rule.code !== 'GAME_COMPLETED');
@@ -35,6 +37,7 @@ export default function MenuPage() {
   const fileInputRef = useRef(null);
   const [cropFile, setCropFile] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [alterandoSenha, setAlterandoSenha] = useState(false);
   // Sorteado uma vez por visita: a frase nao muda enquanto a tela estiver aberta.
   const [sorteio] = useState(() => Math.random());
 
@@ -102,7 +105,7 @@ export default function MenuPage() {
     queryFn: async () => (await api.get('/completions/submissions')).data,
     enabled: Boolean(user?.id),
   });
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isStaffRole(user?.role);
   const solicitacoesPendentes = submissions
     .filter((item) => item.status === 'PENDING')
     // Para o admin, pedidos de outros jogadores dependem dele: vem primeiro e em destaque.
@@ -195,6 +198,14 @@ export default function MenuPage() {
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <div className="text-2xl font-black text-slate-900 dark:text-slate-100">{displayName}</div>
             <div className="break-all text-sm text-slate-500 dark:text-slate-400">{user?.email}</div>
+            <button
+              type="button"
+              onClick={() => setAlterandoSenha(true)}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+            >
+              <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+              Alterar senha
+            </button>
             {feedback && (
               <p className={`mt-3 text-sm font-semibold ${feedback.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>{feedback.text}</p>
             )}
@@ -353,6 +364,8 @@ export default function MenuPage() {
       )}
       </div>
       </div>
+
+      {alterandoSenha && <JanelaAlterarSenha onFechar={() => setAlterandoSenha(false)} />}
 
       <AvatarCropModal
         file={cropFile}

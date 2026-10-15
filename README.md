@@ -164,7 +164,7 @@ O valor relativo usa o proxy do Vite. Só troque se o backend estiver em outro e
 ## API
 
 Base: `/api/v1`. Todas as rotas exigem login, exceto as marcadas como **pública**.
-Rotas marcadas como **admin** verificam o papel do usuário no banco.
+Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Admin, Co-fundador ou Fundador).
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -194,6 +194,8 @@ Rotas marcadas como **admin** verificam o papel do usuário no banco.
 | GET | `/uploads/proofs/{id}` | Exibe comprovante (**pública**) |
 | GET | `/users` | Jogadores ativos (para coop e obrigações) |
 | POST | `/users/me/avatar` | Envia avatar (JPG, PNG, GIF ou WEBP; até 5 MB) |
+| GET | `/users/me` | Dados atuais de quem está logado (cargo, nome, avatar) |
+| PUT | `/users/me/password` | Troca a própria senha (`currentPassword`, `newPassword`) |
 | GET | `/users/{id}/avatar` | Exibe avatar (**pública**) |
 | GET / POST | `/obligations` | Lista / cria obrigação |
 | POST | `/obligations/{id}/accept` · `refuse` · `cancel` · `submit-review` | Ações do jogador |
@@ -201,6 +203,9 @@ Rotas marcadas como **admin** verificam o papel do usuário no banco.
 | GET | `/rotative-list` | Lista rotativa ativa |
 | POST | `/rotative-list/source-file` · `generate-next` | Importar base / gerar rodada (**admin**) |
 | GET | `/admin/completions` · `/admin/audit-logs` | Painel admin (**admin**) |
+| GET | `/admin/users` | Usuários, com as ações que o admin logado pode fazer em cada um (**admin**) |
+| PATCH | `/admin/users/{id}/role` · `/display-name` | Muda cargo / nome, conforme as regras de cargo (**admin**) |
+| POST | `/admin/users/{id}/reset-password` | Gera senha temporária (mostrada uma vez) (**admin**) |
 | DELETE | `/admin/completions/{id}` | Exclui registro, reabre obrigação vinculada e recalcula (**admin**) |
 | POST | `/admin/recalculate?editionId=` | Recalcula pontos da edição (**admin**) |
 

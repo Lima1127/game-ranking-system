@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
+import { isStaffRole } from '../utils/roles';
 
 function StatusBadge({ status }) {
   const styles = {
@@ -103,7 +104,7 @@ export default function AdminRecordsPage() {
       });
       return response.data;
     },
-    enabled: Boolean(user?.id && user?.role === 'ADMIN'),
+    enabled: Boolean(user?.id && isStaffRole(user?.role)),
   });
 
   const deleteMutation = useMutation({
@@ -154,7 +155,7 @@ export default function AdminRecordsPage() {
     }
   };
 
-  if (user?.role !== 'ADMIN') {
+  if (!isStaffRole(user?.role)) {
     return <div className="text-red-600">Acesso restrito a administradores.</div>;
   }
 

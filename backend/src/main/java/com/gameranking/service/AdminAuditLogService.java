@@ -36,6 +36,22 @@ public class AdminAuditLogService {
                 .build());
     }
 
+    /** Registra uma acao feita sobre um usuario (cargo, nome, senha). */
+    @Transactional
+    public void logAboutUser(User actor, String actionCode, User subject, String details) {
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .id(UUID.randomUUID())
+                .actorUserId(actor.getId())
+                .actorDisplayName(actor.getDisplayName())
+                .actorRole(actor.getRole().name())
+                .actionCode(actionCode)
+                .subjectUserId(subject.getId())
+                .subjectDisplayName(subject.getDisplayName())
+                .details(details)
+                .createdAt(OffsetDateTime.now())
+                .build());
+    }
+
     @Transactional(readOnly = true)
     public List<AdminAuditLogResponse> list() {
         return adminAuditLogRepository.findAllByOrderByCreatedAtDesc().stream()
