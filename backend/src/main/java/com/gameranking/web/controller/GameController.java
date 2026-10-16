@@ -4,6 +4,7 @@ import com.gameranking.security.AuthenticatedUser;
 import com.gameranking.service.GameService;
 import com.gameranking.web.dto.game.CreateGameRequest;
 import com.gameranking.web.dto.game.GameResponse;
+import com.gameranking.web.dto.game.SteamGameSuggestionResponse;
 import com.gameranking.web.dto.game.UpdateGameReleaseYearRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,12 @@ public class GameController {
     @GetMapping
     public List<GameResponse> list() {
         return gameService.list();
+    }
+
+    // Sugestoes da loja Steam para o campo "Jogo" (lista vazia se a Steam nao responder).
+    @GetMapping("/steam-search")
+    public List<SteamGameSuggestionResponse> searchSteam(@RequestParam(defaultValue = "") String term) {
+        return gameService.searchSteam(term);
     }
 
     @PatchMapping("/{gameId}/release-year")

@@ -12,6 +12,7 @@ lerna-debug.log*
 target/
 .m2/
 *.war
+backend/cp.txt
 
 # Environment and local config
 .env

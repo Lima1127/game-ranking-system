@@ -26,6 +26,10 @@ public class Game extends AuditableEntity {
     @Column(name = "release_year")
     private Integer releaseYear;
 
+    // Id do jogo na loja Steam (null = jogo sem vinculo com a Steam).
+    @Column(name = "steam_app_id")
+    private Integer steamAppId;
+
     @Column(name = "estimated_hours_main", precision = 6, scale = 2)
     private BigDecimal estimatedHoursMain;
 

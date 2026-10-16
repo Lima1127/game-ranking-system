@@ -34,3 +34,7 @@ app:
   registration:
     # Se preenchido, o cadastro exige este codigo de convite. Vazio = cadastro aberto.
     invite-code: ""
+  steam:
+    # Sugestoes de jogos da loja Steam no campo "Jogo" (busca publica, sem chave de API).
+    # false = desliga; o cadastro de jogos volta a ser so pelo nome digitado.
+    enabled: true

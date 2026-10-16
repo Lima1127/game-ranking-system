@@ -71,7 +71,7 @@ public class RotativeListService {
         for (String gameName : parsedNames) {
             // Ano de lancamento fica vazio: o arquivo nao informa e um ano inventado corrompe o catalogo.
             Game game = gameService.findOrCreate(
-                    new CreateGameRequest(gameName, null, null, null, Set.of("Nao informado")),
+                    new CreateGameRequest(gameName, null, null, null, Set.of("Nao informado"), null),
                     null
             );
 

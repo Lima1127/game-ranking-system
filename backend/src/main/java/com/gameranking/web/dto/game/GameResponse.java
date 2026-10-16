@@ -7,6 +7,7 @@ public record GameResponse(
         UUID id,
         String name,
         Integer releaseYear,
-        Set<String> genres
+        Set<String> genres,
+        Integer steamAppId
 ) {
 }

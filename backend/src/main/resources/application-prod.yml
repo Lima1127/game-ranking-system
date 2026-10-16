@@ -44,6 +44,9 @@ app:
   registration:
     # Codigo que os amigos precisam informar para criar conta. Vazio = cadastro aberto.
     invite-code: ${APP_INVITE_CODE:}
+  steam:
+    # Sugestoes da loja Steam no campo "Jogo". Ligado por padrao; APP_STEAM_ENABLED=false desliga.
+    enabled: ${APP_STEAM_ENABLED:true}
 
 logging:
   level:
