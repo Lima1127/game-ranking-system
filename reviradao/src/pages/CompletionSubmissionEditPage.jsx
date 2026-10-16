@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
+import { useSugestoesSteam } from '../hooks/useSugestoesSteam';
+import SugestoesSteam from '../components/SugestoesSteam';
 
 const MAX_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
@@ -70,6 +72,8 @@ export default function CompletionSubmissionEditPage() {
       estimatedHoursMain: null,
       estimatedHoursPlatinum: null,
       genres: ['Nao informado'],
+      // O servidor confere o jogo na Steam e usa o nome e o ano de lancamento oficiais.
+      steamAppId: steamAppIdParaCadastro,
     });
 
     queryClient.invalidateQueries({ queryKey: ['games'] });
@@ -137,6 +141,21 @@ export default function CompletionSubmissionEditPage() {
     const normalized = form.gameName.trim().toLowerCase();
     return games.filter((game) => game.name.toLowerCase().includes(normalized)).slice(0, 6);
   }, [form?.gameName, games, kind]);
+
+  const normalizedGameName = (form?.gameName || '').trim().toLowerCase();
+  const matchingGame = games.find((game) => game.name.trim().toLowerCase() === normalizedGameName);
+  const { sugestoesSteam, jogoSteamSelecionado, escolherSugestaoSteam, limparSelecaoSteam, steamAppIdParaCadastro } =
+    useSugestoesSteam({
+      gameName: form?.gameName,
+      games,
+      ativo: kind === 'NEW_COMPLETION' && !matchingGame,
+      idsJaSugeridos: suggestions.map((game) => game.id),
+    });
+
+  const handleSelectSteamSuggestion = (steamGame) => {
+    const existingGame = escolherSugestaoSteam(steamGame);
+    setForm((prev) => ({ ...prev, gameName: existingGame ? existingGame.name : steamGame.name }));
+  };
 
   if (isLoading || !form) {
     return <div className="text-slate-600 dark:text-slate-300">Carregando solicitacao...</div>;
@@ -214,19 +233,28 @@ export default function CompletionSubmissionEditPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
-            {suggestions.length > 0 && (
-              <div className="mt-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+            {(suggestions.length > 0 || sugestoesSteam.length > 0) && !jogoSteamSelecionado && (
+              <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                 {suggestions.map((game) => (
                   <button
                     key={game.id}
                     type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, gameName: game.name }))}
+                    onClick={() => {
+                      limparSelecaoSteam();
+                      setForm((prev) => ({ ...prev, gameName: game.name }));
+                    }}
                     className="block w-full border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
                   >
                     {game.name}
                   </button>
                 ))}
+                <SugestoesSteam sugestoes={sugestoesSteam} onEscolher={handleSelectSteamSuggestion} />
               </div>
+            )}
+            {jogoSteamSelecionado && (
+              <p className="mt-2 text-sm font-semibold text-green-600 dark:text-green-400">
+                Jogo da loja Steam: sera cadastrado com o nome e o ano de lancamento oficiais.
+              </p>
             )}
           </div>
         ) : (

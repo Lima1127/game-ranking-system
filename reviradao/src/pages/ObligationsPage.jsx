@@ -5,6 +5,8 @@ import { compressImage } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { isStaffRole } from '../utils/roles';
+import { useSugestoesSteam } from '../hooks/useSugestoesSteam';
+import SugestoesSteam from '../components/SugestoesSteam';
 
 function statusClasses(status) {
   if (status === 'COMPLETED') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
@@ -76,6 +78,8 @@ export default function ObligationsPage() {
           estimatedHoursMain: null,
           estimatedHoursPlatinum: null,
           genres: ['Nao informado'],
+          // O servidor confere o jogo na Steam e usa o nome e o ano de lancamento oficiais.
+          steamAppId: steamAppIdParaCadastro,
         });
 
         gameId = response.data.id;
@@ -92,6 +96,7 @@ export default function ObligationsPage() {
     },
     onSuccess: () => {
       setForm({ assignedToUserId: '', gameName: '' });
+      limparSelecaoSteam();
       queryClient.invalidateQueries({ queryKey: ['games'] });
       refresh();
     },
@@ -206,6 +211,18 @@ export default function ObligationsPage() {
   }, [games, form.gameName]);
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+  const { sugestoesSteam, jogoSteamSelecionado, escolherSugestaoSteam, limparSelecaoSteam, steamAppIdParaCadastro } =
+    useSugestoesSteam({
+      gameName: form.gameName,
+      games,
+      ativo: !matchingGame,
+      idsJaSugeridos: gameSuggestions.map((game) => game.id),
+    });
+
+  const handleSelectSteamSuggestion = (steamGame) => {
+    const existingGame = escolherSugestaoSteam(steamGame);
+    setForm((prev) => ({ ...prev, gameName: existingGame ? existingGame.name : steamGame.name }));
+  };
 
   const handleCreate = (e) => {
     e.preventDefault();
@@ -336,25 +353,31 @@ export default function ObligationsPage() {
                 placeholder="Ex: Elden Ring"
                 required
               />
-              {gameSuggestions.length > 0 && (
-                <div className="mt-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+              {(gameSuggestions.length > 0 || sugestoesSteam.length > 0) && !jogoSteamSelecionado && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
                   {gameSuggestions.map((game) => (
                     <button
                       key={game.id}
                       type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, gameName: game.name }))}
+                      onClick={() => {
+                        limparSelecaoSteam();
+                        setForm((prev) => ({ ...prev, gameName: game.name }));
+                      }}
                       className="block w-full border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
                     >
                       {game.name}
                     </button>
                   ))}
+                  <SugestoesSteam sugestoes={sugestoesSteam} onEscolher={handleSelectSteamSuggestion} />
                 </div>
               )}
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                 {form.gameName.trim()
                   ? matchingGame
                     ? <>Este jogo ja existe no sistema e sera reutilizado: <strong>{matchingGame.name}</strong></>
-                    : 'Este jogo ainda nao existe no sistema. Ele sera criado automaticamente ao enviar a obrigacao.'
+                    : jogoSteamSelecionado
+                      ? 'Jogo da loja Steam: sera cadastrado com o nome e o ano de lancamento oficiais ao enviar a obrigacao.'
+                      : 'Este jogo ainda nao existe no sistema. Ele sera criado automaticamente ao enviar a obrigacao. Se ele estiver na Steam, escolha a sugestao para preencher o ano.'
                   : 'Digite o nome para o sistema verificar se o jogo ja existe.'}
               </div>
             </div>

@@ -48,6 +48,13 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 - **Um nome = um jogo**, sem diferenciar maiúsculas/minúsculas nem ano. Remakes precisam de
   nome diferente (ex.: "Resident Evil 4 Remake").
 - O **ano de lançamento é opcional** e só pode ser definido por um admin.
+- **Sugestões da Steam:** ao digitar o nome, o site também sugere jogos da loja Steam. Escolhendo
+  uma delas, o jogo é cadastrado com o **nome oficial e o ano de lançamento da Steam** (o servidor
+  consulta a Steam; por isso o ano vale mesmo quando quem cadastra é jogador). Se o jogo já existia
+  pelo nome, ele ganha o vínculo com a Steam e o ano, se ainda não tinha; um ano definido por admin
+  nunca é trocado. Se a Steam estiver fora do ar, o cadastro segue pelo nome digitado, sem ano.
+- O ano de lançamento é **informativo**: aparece na tela de Solicitações para o admin conferir o
+  bônus "Em dia", mas não muda nenhum ponto sozinho.
 
 ### Conclusão (registro de jogo zerado)
 - O jogador envia um **pedido** com: jogo, data, horas jogadas, marcações (primeira vez, em dia,
