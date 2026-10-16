@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import EsqueciSenhaPage from './pages/EsqueciSenhaPage';
 import MenuPage from './pages/MenuPage';
 import RankingPage from './pages/RankingPage';
 import CompletionPage from './pages/CompletionPage';
@@ -165,6 +166,7 @@ function AppContent({ isDarkMode, onToggleTheme }) {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenhaPage />} />
       <Route
         path="/menu"
         element={

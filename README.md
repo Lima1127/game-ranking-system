@@ -171,6 +171,8 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | POST | `/auth/register` | Cadastro (**pública**) |
 | POST | `/auth/login` | Login; devolve `accessToken` (**pública**) |
 | GET | `/auth/config` | Se o cadastro exige código de convite (**pública**) |
+| POST | `/auth/password-reset/request` | "Esqueci minha senha": cria pedido para um admin (`email`); resposta sempre igual (**pública**) |
+| POST | `/auth/password-reset/confirm` | Redefine com o código do admin (`email`, `code`, `newPassword`) (**pública**) |
 | GET | `/health` | Verificação de funcionamento usada pela hospedagem (**pública**) |
 | GET | `/ranking?editionId=` | Ranking da edição (padrão: edição ativa) |
 | GET | `/games` | Catálogo de jogos |
@@ -205,7 +207,9 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | GET | `/admin/completions` · `/admin/audit-logs` | Painel admin (**admin**) |
 | GET | `/admin/users` | Usuários, com as ações que o admin logado pode fazer em cada um (**admin**) |
 | PATCH | `/admin/users/{id}/role` · `/display-name` | Muda cargo / nome, conforme as regras de cargo (**admin**) |
-| POST | `/admin/users/{id}/reset-password` | Gera senha temporária (mostrada uma vez) (**admin**) |
+| POST | `/admin/users/{id}/reset-code` | Gera código de redefinição (30 min, uso único) (**admin**) |
+| GET | `/admin/password-resets` | Pedidos de senha pendentes (**admin**) |
+| POST | `/admin/password-resets/{id}/approve` · `reject` | Gera o código do pedido / recusa (**admin**) |
 | DELETE | `/admin/completions/{id}` | Exclui registro, reabre obrigação vinculada e recalcula (**admin**) |
 | POST | `/admin/recalculate?editionId=` | Recalcula pontos da edição (**admin**) |
 

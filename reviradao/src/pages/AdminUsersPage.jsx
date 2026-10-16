@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, KeyRound, Pencil, Search, UserCog } from 'lucide-react';
+import { Check, Copy, KeyRound, Pencil, Search, UserCog, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import JanelaFoco from '../components/JanelaFoco';
@@ -164,15 +164,23 @@ function JanelaNome({ usuario, onFechar, onSalvo }) {
   );
 }
 
-function JanelaSenhaTemporaria({ usuario, onFechar }) {
+/** "2026-10-15T18:30:00-03:00" -> "18:30" */
+function formatarHora(dataHora) {
+  const data = new Date(dataHora);
+  return Number.isNaN(data.getTime()) ? '' : data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Gera o código de redefinição e mostra para o admin repassar.
+ * `gerar` é a chamada à API (código por iniciativa do admin ou aprovação de um pedido).
+ */
+function JanelaCodigo({ nome, gerar, onFechar, onGerado }) {
   const [copiado, setCopiado] = useState(false);
-  const mutation = useMutation({
-    mutationFn: async () => (await api.post(`/admin/users/${usuario.id}/reset-password`)).data.temporaryPassword,
-  });
+  const mutation = useMutation({ mutationFn: gerar, onSuccess: onGerado });
 
   const copiar = async () => {
     try {
-      await navigator.clipboard.writeText(mutation.data);
+      await navigator.clipboard.writeText(mutation.data.code);
       setCopiado(true);
     } catch {
       setCopiado(false);
@@ -180,28 +188,23 @@ function JanelaSenhaTemporaria({ usuario, onFechar }) {
   };
 
   return (
-    <JanelaFoco titulo="Senha temporária" subtitulo={usuario.displayName} largura="max-w-lg" onFechar={onFechar}>
+    <JanelaFoco titulo="Código para redefinir a senha" subtitulo={nome} largura="max-w-lg" onFechar={onFechar}>
       {!mutation.data ? (
         <>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Use só em <strong>último caso</strong>, quando o jogador não conseguir recuperar a senha sozinho.
-            Uma senha nova será gerada e a senha atual dele <strong>deixa de funcionar</strong>.
+            Será gerado um código que vale por <strong>30 minutos</strong> e pode ser usado <strong>uma única vez</strong>.
+            Com ele, o próprio jogador escolhe a senha nova: você não fica sabendo a senha.
           </p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">A senha atual dele continua valendo até ele usar o código.</p>
           <MensagemErro erro={mutation.error} />
-          <BotoesRodape
-            onCancelar={onFechar}
-            onConfirmar={() => mutation.mutate()}
-            confirmando={mutation.isPending}
-            textoConfirmar="Gerar senha temporária"
-            perigo
-          />
+          <BotoesRodape onCancelar={onFechar} onConfirmar={() => mutation.mutate()} confirmando={mutation.isPending} textoConfirmar="Gerar código" />
         </>
       ) : (
         <>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Passe esta senha para o jogador. Ela aparece <strong>só agora</strong>:</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Passe este código para o jogador. Ele aparece <strong>só agora</strong>:</p>
           <div className="mt-3 flex items-center gap-2">
-            <code className="flex-1 rounded-xl bg-slate-100 px-4 py-3 text-center font-mono text-xl font-bold tracking-wider text-slate-900 select-all dark:bg-slate-800 dark:text-slate-100">
-              {mutation.data}
+            <code className="flex-1 select-all rounded-xl bg-slate-100 px-4 py-3 text-center font-mono text-2xl font-bold tracking-[0.2em] text-slate-900 dark:bg-slate-800 dark:text-slate-100">
+              {mutation.data.code}
             </code>
             <button
               type="button"
@@ -209,11 +212,12 @@ function JanelaSenhaTemporaria({ usuario, onFechar }) {
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               {copiado ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-              {copiado ? 'Copiada' : 'Copiar'}
+              {copiado ? 'Copiado' : 'Copiar'}
             </button>
           </div>
-          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            Peça para ele entrar com essa senha e trocá-la em <strong>Menu → Alterar senha</strong>.
+          <p className="mt-2 text-center text-xs font-semibold text-amber-700 dark:text-amber-300">Vale até às {formatarHora(mutation.data.expiresAt)}</p>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            O jogador deve ir em <strong>Login → Esqueci minha senha → Já tenho um código</strong> e informar o e-mail, o código e a senha nova.
           </p>
           <div className="mt-5 flex justify-end">
             <button type="button" onClick={onFechar} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary">
@@ -223,6 +227,41 @@ function JanelaSenhaTemporaria({ usuario, onFechar }) {
         </>
       )}
     </JanelaFoco>
+  );
+}
+
+/** Pedidos de "Esqueci minha senha" aguardando um admin (só aparece se houver algum). */
+function PedidosDeSenha({ pedidos, onGerarCodigo, onRecusar, recusandoId }) {
+  if (pedidos.length === 0) return null;
+  return (
+    <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow dark:border-amber-500/40 dark:bg-amber-900/20">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-300">
+        <KeyRound className="h-4 w-4" aria-hidden="true" />
+        {pedidos.length === 1 ? 'Pedido de senha' : `Pedidos de senha (${pedidos.length})`}
+      </h2>
+      <ul className="space-y-2">
+        {pedidos.map((pedido) => (
+          <li key={pedido.id} className="flex flex-col gap-2 rounded-xl bg-white/70 px-3 py-2 sm:flex-row sm:items-center dark:bg-slate-900/60">
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-bold text-slate-900 dark:text-slate-100">{pedido.displayName}</div>
+              <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {pedido.email} · pediu em {formatarData(pedido.requestedAt)} às {formatarHora(pedido.requestedAt)}
+              </div>
+            </div>
+            {pedido.canDecide ? (
+              <div className="flex gap-2">
+                <BotaoAcao icone={KeyRound} onClick={() => onGerarCodigo(pedido)}>Gerar código</BotaoAcao>
+                <BotaoAcao icone={X} perigo onClick={() => onRecusar(pedido)}>
+                  {recusandoId === pedido.id ? 'Recusando...' : 'Recusar'}
+                </BotaoAcao>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 dark:text-slate-400">Só um cargo acima pode decidir</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -236,6 +275,17 @@ export default function AdminUsersPage() {
     queryKey: ['admin-users'],
     queryFn: async () => (await api.get('/admin/users')).data,
     enabled: Boolean(user?.id && isStaffRole(user?.role)),
+  });
+
+  const { data: pedidosSenha = [] } = useQuery({
+    queryKey: ['admin-password-resets'],
+    queryFn: async () => (await api.get('/admin/password-resets')).data,
+    enabled: Boolean(user?.id && isStaffRole(user?.role)),
+  });
+
+  const recusarMutation = useMutation({
+    mutationFn: async (pedido) => api.post(`/admin/password-resets/${pedido.id}/reject`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-password-resets'] }),
   });
 
   const filtrados = useMemo(() => {
@@ -283,6 +333,14 @@ export default function AdminUsersPage() {
         </label>
       </div>
 
+      <PedidosDeSenha
+        pedidos={pedidosSenha}
+        onGerarCodigo={(pedido) => setJanela({ tipo: 'codigo-pedido', pedido })}
+        onRecusar={(pedido) => recusarMutation.mutate(pedido)}
+        recusandoId={recusarMutation.isPending ? recusarMutation.variables?.id : null}
+      />
+      {recusarMutation.error && <MensagemErro erro={recusarMutation.error} />}
+
       <section className="rounded-2xl border border-slate-100 bg-white p-2 shadow sm:p-4 dark:border-slate-800 dark:bg-slate-900">
         {isLoading ? (
           <p className="p-4 text-slate-500 dark:text-slate-400">Carregando usuários...</p>
@@ -326,7 +384,7 @@ export default function AdminUsersPage() {
                         <BotaoAcao icone={Pencil} onClick={() => setJanela({ tipo: 'nome', usuario })}>Nome</BotaoAcao>
                       )}
                       {usuario.canResetPassword && (
-                        <BotaoAcao icone={KeyRound} perigo onClick={() => setJanela({ tipo: 'senha', usuario })}>Senha temporária</BotaoAcao>
+                        <BotaoAcao icone={KeyRound} onClick={() => setJanela({ tipo: 'codigo-usuario', usuario })}>Código de senha</BotaoAcao>
                       )}
                     </div>
                   ) : (
@@ -341,12 +399,27 @@ export default function AdminUsersPage() {
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Ninguém altera o próprio cargo nem o de quem está no mesmo nível ou acima. O cargo de Fundador só é definido direto no banco de dados.
-        Todas as alterações ficam registradas nos Logs.
+        Códigos de senha valem 30 minutos e uma única vez. Todas as alterações ficam registradas nos Logs.
       </p>
 
       {janela?.tipo === 'cargo' && <JanelaCargo usuario={janela.usuario} onFechar={fecharJanela} onSalvo={aposSalvar} />}
       {janela?.tipo === 'nome' && <JanelaNome usuario={janela.usuario} onFechar={fecharJanela} onSalvo={aposSalvar} />}
-      {janela?.tipo === 'senha' && <JanelaSenhaTemporaria usuario={janela.usuario} onFechar={fecharJanela} />}
+      {janela?.tipo === 'codigo-usuario' && (
+        <JanelaCodigo
+          nome={janela.usuario.displayName}
+          gerar={async () => (await api.post(`/admin/users/${janela.usuario.id}/reset-code`)).data}
+          onGerado={() => queryClient.invalidateQueries({ queryKey: ['admin-password-resets'] })}
+          onFechar={fecharJanela}
+        />
+      )}
+      {janela?.tipo === 'codigo-pedido' && (
+        <JanelaCodigo
+          nome={janela.pedido.displayName}
+          gerar={async () => (await api.post(`/admin/password-resets/${janela.pedido.id}/approve`)).data}
+          onGerado={() => queryClient.invalidateQueries({ queryKey: ['admin-password-resets'] })}
+          onFechar={fecharJanela}
+        />
+      )}
     </div>
   );
 }

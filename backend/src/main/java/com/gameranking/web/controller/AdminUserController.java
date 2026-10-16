@@ -1,8 +1,10 @@
 package com.gameranking.web.controller;
 
 import com.gameranking.security.AuthenticatedUser;
+import com.gameranking.service.PasswordResetService;
 import com.gameranking.service.UserAdminService;
 import com.gameranking.web.dto.user.AdminUserResponse;
+import com.gameranking.web.dto.user.PasswordResetResponses;
 import com.gameranking.web.dto.user.UserManagementRequests;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /** Tela "Usuarios" do painel Admin. Quem pode o que: UserPermissions. */
@@ -26,6 +27,7 @@ import java.util.UUID;
 public class AdminUserController {
 
     private final UserAdminService userAdminService;
+    private final PasswordResetService passwordResetService;
 
     @GetMapping
     public List<AdminUserResponse> list(@AuthenticationPrincipal AuthenticatedUser currentUser) {
@@ -50,12 +52,15 @@ public class AdminUserController {
         return userAdminService.changeDisplayName(currentUser.userId(), userId, request.displayName());
     }
 
-    /** Ultimo caso: devolve a senha temporaria uma unica vez (ela nao fica guardada em lugar nenhum). */
-    @PostMapping("/{userId}/reset-password")
-    public Map<String, String> resetPassword(
+    /**
+     * Gera um codigo de redefinicao (30 min, uso unico) para o admin repassar ao jogador.
+     * O admin nunca conhece a senha: o proprio jogador escolhe a nova em "Esqueci minha senha".
+     */
+    @PostMapping("/{userId}/reset-code")
+    public PasswordResetResponses.CodigoGerado resetCode(
             @AuthenticationPrincipal AuthenticatedUser currentUser,
             @PathVariable UUID userId
     ) {
-        return Map.of("temporaryPassword", userAdminService.resetPassword(currentUser.userId(), userId));
+        return passwordResetService.gerarParaUsuario(currentUser.userId(), userId);
     }
 }
