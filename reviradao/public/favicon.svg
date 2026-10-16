@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Icone da aba: controle ampliado dentro de um circulo escuro (fica legivel com 16px) -->
+  <circle cx="50" cy="50" r="48" fill="#1b1622" stroke="#4a3d57" stroke-width="4"/>
+  <g transform="translate(50 52) scale(0.86) translate(-50 -53.5)">
+    <path d="M30 28H70C84 28 92 38 95 54C98 70 92 79 84 79C77 79 73 73 68 67H32C27 73 23 79 16 79C8 79 2 70 5 54C8 38 16 28 30 28Z" fill="#ece4d6"/>
+    <path d="M23 38h10v9h9v10h-9v9h-10v-9h-9v-10h9z" fill="#1b1622"/>
+    <circle cx="78" cy="44" r="6.5" fill="#e3242b"/>
+    <circle cx="67" cy="56" r="6.5" fill="#e3242b"/>
+  </g>
+</svg>

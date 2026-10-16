@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 2.5 100 100">
+  <!-- Simbolo do Reviradao: controle de videogame (osso, botoes vermelhos, contorno escuro), fundo transparente -->
+  <path d="M30 28H70C84 28 92 38 95 54C98 70 92 79 84 79C77 79 73 73 68 67H32C27 73 23 79 16 79C8 79 2 70 5 54C8 38 16 28 30 28Z" fill="#ece4d6" stroke="#15121a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M24 39h8v8h8v8h-8v8h-8v-8h-8v-8h8z" fill="#15121a"/>
+  <circle cx="78" cy="45" r="5" fill="#d4202a" stroke="#15121a" stroke-width="2.5"/>
+  <circle cx="68" cy="57" r="5" fill="#d4202a" stroke="#15121a" stroke-width="2.5"/>
+  <rect x="41" y="38" width="8" height="4" rx="2" fill="#15121a"/>
+  <rect x="51" y="38" width="8" height="4" rx="2" fill="#15121a"/>
+</svg>

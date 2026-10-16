@@ -8,6 +8,7 @@ import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.User;
 import com.gameranking.repository.CompletionRepository;
+import com.gameranking.repository.CompletionUpdateRequestRepository;
 import com.gameranking.repository.UserRepository;
 import com.gameranking.web.dto.completion.CompletionDetailsResponse;
 import com.gameranking.web.dto.completion.CompletionRequestResponse;
@@ -23,7 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class CompletionSubmissionService {
     private final CompletionService completionService;
     private final CompletionUpdateService completionUpdateService;
     private final CompletionRepository completionRepository;
+    private final CompletionUpdateRequestRepository completionUpdateRequestRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -41,6 +46,23 @@ public class CompletionSubmissionService {
 
         List<CompletionRequestResponse> completionRequests = completionService.listRequests(requesterId, editionId);
         List<CompletionUpdateRequestResponse> updateRequests = completionUpdateService.list(requesterId, editionId);
+
+        // Quem aprovou: busca de uma vez so, apenas para os itens ja aprovados.
+        Map<UUID, String> aprovadorDoRegistro = completionRepository.findAllById(completionRequests.stream()
+                        .filter(request -> request.approvedAt() != null)
+                        .map(CompletionRequestResponse::completionId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .filter(completion -> completion.getApprovedBy() != null)
+                .collect(Collectors.toMap(Completion::getId, completion -> completion.getApprovedBy().getDisplayName()));
+        Map<UUID, String> aprovadorDaAtualizacao = completionUpdateRequestRepository.findAllById(updateRequests.stream()
+                        .filter(request -> request.approvedAt() != null)
+                        .map(CompletionUpdateRequestResponse::updateRequestId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .filter(update -> update.getApprovedBy() != null)
+                .collect(Collectors.toMap(update -> update.getId(), update -> update.getApprovedBy().getDisplayName()));
 
         List<CompletionSubmissionItemResponse> items = new java.util.ArrayList<>();
         completionRequests.forEach(request -> items.add(new CompletionSubmissionItemResponse(
@@ -57,6 +79,7 @@ public class CompletionSubmissionService {
                 request.status().name(),
                 request.createdAt(),
                 request.approvedAt(),
+                aprovadorDoRegistro.get(request.completionId()),
                 request.proofId(),
                 request.proofContentType(),
                 request.coopGroupId(),
@@ -80,6 +103,7 @@ public class CompletionSubmissionService {
                 request.status().name(),
                 request.createdAt(),
                 request.approvedAt(),
+                aprovadorDaAtualizacao.get(request.updateRequestId()),
                 request.proofId(),
                 request.proofContentType(),
                 null,

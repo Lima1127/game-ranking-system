@@ -22,6 +22,8 @@ public record CompletionSubmissionItemResponse(
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime approvedAt,
+        // Nome de quem aprovou (null enquanto nao aprovado).
+        String approvedByDisplayName,
         UUID proofId,
         String proofContentType,
         UUID coopGroupId,

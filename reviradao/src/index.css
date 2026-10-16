@@ -40,3 +40,8 @@ body,
 @media (prefers-reduced-motion: reduce) {
   .splash-text { animation: none; }
 }
+
+/* Emojis sempre com a fonte colorida do sistema (medidas iguais para todos, sem "pular" de lugar) */
+.emoji {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
