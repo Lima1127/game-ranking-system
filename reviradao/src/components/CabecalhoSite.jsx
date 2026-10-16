@@ -129,9 +129,8 @@ export function CabecalhoSite({ isDarkMode, onToggleTheme }) {
         <div className="container mx-auto flex items-center gap-3 rounded-full border border-white/60 bg-white/80 py-1.5 pl-2 pr-1.5 shadow-[0_10px_30px_-14px_rgba(60,40,140,0.45)] backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">
           {/* O nome do site leva ao Menu (pagina inicial) */}
           <Link to="/menu" title="Ir para o Menu" className="flex shrink-0 items-center gap-2 rounded-full pr-1 hover:opacity-90">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-white">
-              <Gamepad2 className="h-5 w-5" aria-hidden="true" />
-            </span>
+            {/* Simbolo do Reviradao: controle de videogame (a aba do navegador usa a versao com fundo: favicon.svg) */}
+            <img src="/simbolo-o-grupo.svg?v=2" alt="" className="h-8 w-8 shrink-0" />
             <span className="font-display text-xl font-bold text-slate-900 dark:text-white">
               Revira<span className="text-primary">dão</span>
             </span>
