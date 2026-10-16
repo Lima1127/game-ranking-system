@@ -17,7 +17,7 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   geram a lista rotativa, excluem registros e recalculam a edição.
 - Quem pode o quê (tela **Usuários** do painel Admin; regras em `UserPermissions.java`):
 
-  | Cargo | Mudar cargos | Editar nome de | Senha temporária para |
+  | Cargo | Mudar cargos | Editar nome de | Código de senha para |
   |---|---|---|---|
   | **Fundador** | dá/tira Co-fundador, Admin e Jogador | si mesmo e cargos abaixo | cargos abaixo |
   | **Co-fundador** | dá/tira Admin e Jogador | si mesmo e cargos abaixo | cargos abaixo |
@@ -26,8 +26,16 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 
   Ninguém altera o próprio cargo, nem o de quem está no mesmo nível ou acima.
   **Fundador só é definido direto no banco de dados**, nunca pelo site. Toda alteração vai para o log.
-- Qualquer jogador troca a **própria senha** em *Menu → Alterar senha*. A senha temporária
-  do admin é o "último caso" (a recuperação por e-mail está planejada).
+- Qualquer jogador troca a **própria senha** em *Menu → Alterar senha*.
+- **Esqueci minha senha** (sem e-mail): o jogador pede em *Login → Esqueci minha senha*;
+  o pedido aparece em *Admin → Usuários → Pedidos de senha*; um admin com cargo acima
+  gera um **código** (ex.: `ABCD-1234`) e passa para ele (WhatsApp etc.). O jogador volta em
+  *Esqueci minha senha → Já tenho um código* e escolhe a senha nova.
+  - O código vale **30 minutos**, é de **uso único** e é guardado só como hash.
+  - **5 tentativas erradas** cancelam o código; gerar um código novo invalida o anterior.
+  - No máximo **3 pedidos por hora** por usuário; a tela responde igual exista ou não o e-mail.
+  - O admin também pode gerar o código direto (botão *Código de senha*), sem pedido.
+  - Tudo vai para o log (`PASSWORD_RESET_*`). Não há envio de e-mail: o Render gratuito bloqueia SMTP.
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.
 
 ### Edição

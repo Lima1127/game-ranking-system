@@ -19,6 +19,10 @@
     <properties>
         <java.version>21</java.version>
 	<flyway.version>11.3.4</flyway.version>
+        <!-- Lombok mais novo que o do Spring Boot 3.3 (1.18.34): o compilador embutido no VS Code
+             (extensao Java recente) interpreta errado o codigo gerado pela versao antiga e grava
+             classes quebradas (ClassFormatError ao subir o backend). -->
+        <lombok.version>1.18.48</lombok.version>
     </properties>
 
     <dependencies>

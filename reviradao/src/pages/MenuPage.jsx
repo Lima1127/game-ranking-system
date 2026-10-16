@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Camera, ClipboardList, Gamepad2, ListTodo, Lock, Trophy } from 'lucide-react';
+import { Camera, ClipboardList, Gamepad2, KeyRound, ListTodo, Lock, Trophy } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import AvatarCropModal from '../components/AvatarCropModal';
@@ -112,6 +112,14 @@ export default function MenuPage() {
     .map((item) => ({ ...item, precisaDeVoce: isAdmin && item.userId !== user?.id }))
     .sort((a, b) => Number(b.precisaDeVoce) - Number(a.precisaDeVoce) || String(b.createdAt).localeCompare(String(a.createdAt)));
   const LIMITE_SOLICITACOES = 3;
+
+  // Pedidos de "Esqueci minha senha" (so para a equipe). Mostra apenas os que este admin pode resolver.
+  const { data: pedidosSenha = [] } = useQuery({
+    queryKey: ['admin-password-resets'],
+    queryFn: async () => (await api.get('/admin/password-resets')).data,
+    enabled: Boolean(user?.id && isAdmin),
+  });
+  const pedidosSenhaParaVoce = pedidosSenha.filter((pedido) => pedido.canDecide);
 
   const dataReady = !rankingLoading && !completionsLoading;
   const frase = useMemo(() => (dataReady ? sortearFrase(stats, sorteio) : null), [dataReady, stats, sorteio]);
@@ -357,6 +365,38 @@ export default function MenuPage() {
             {solicitacoesPendentes.length > LIMITE_SOLICITACOES && (
               <Link to="/requests" className="block pt-1 text-center text-sm font-bold text-primary hover:underline">
                 e mais {solicitacoesPendentes.length - LIMITE_SOLICITACOES}... ver todas
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Pedidos de codigo de senha: so aparece para a equipe e quando existe algum. */}
+      {pedidosSenhaParaVoce.length > 0 && (
+        <section className="rounded-lg border border-gray-100 bg-white p-6 shadow dark:border-slate-800 dark:bg-slate-900">
+          <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            {pedidosSenhaParaVoce.length === 1 ? 'Pedido de código de senha' : `Pedidos de código de senha (${pedidosSenhaParaVoce.length})`}
+          </h3>
+          <div className="space-y-2">
+            {pedidosSenhaParaVoce.slice(0, LIMITE_SOLICITACOES).map((pedido) => (
+              <Link
+                key={pedido.id}
+                to="/admin/users"
+                className="block rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 transition hover:shadow dark:border-amber-500/40 dark:bg-amber-900/20"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <KeyRound className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+                  <span className="min-w-0 truncate text-sm font-bold text-slate-800 dark:text-slate-100" title={pedido.displayName}>
+                    {pedido.displayName}
+                  </span>
+                </span>
+                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Esqueceu a senha · pediu em {formatarData(pedido.requestedAt)}</span>
+                <span className="mt-0.5 block text-xs font-bold text-amber-700 dark:text-amber-300">Aguardando você gerar o código</span>
+              </Link>
+            ))}
+            {pedidosSenhaParaVoce.length > LIMITE_SOLICITACOES && (
+              <Link to="/admin/users" className="block pt-1 text-center text-sm font-bold text-primary hover:underline">
+                e mais {pedidosSenhaParaVoce.length - LIMITE_SOLICITACOES}... ver todos
               </Link>
             )}
           </div>

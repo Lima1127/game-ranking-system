@@ -81,12 +81,4 @@ class UserPermissionsTest {
         assertThat(UserPermissions.canResetPassword(cofundador, fundador)).isFalse();
         assertThat(UserPermissions.canResetPassword(jogador, usuario(USER))).isFalse();
     }
-
-    @Test
-    void senhaTemporariaTemTamanhoFixoESemCaracteresAmbiguos() {
-        for (int i = 0; i < 200; i++) {
-            String senha = UserAdminService.gerarSenhaTemporaria();
-            assertThat(senha).hasSize(10).doesNotContainPattern("[0O1lI]");
-        }
-    }
 }

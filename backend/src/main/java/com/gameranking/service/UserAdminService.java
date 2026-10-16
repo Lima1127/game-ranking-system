@@ -12,7 +12,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,11 +22,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserAdminService {
-
-    // Sem caracteres que se confundem (0/O, 1/l/I) para facilitar ditar a senha.
-    private static final String ALFABETO_SENHA = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private static final int TAMANHO_SENHA_TEMPORARIA = 10;
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -84,23 +78,6 @@ public class UserAdminService {
         return toResponse(actor, target);
     }
 
-    /** "Ultimo caso": gera uma senha temporaria, mostrada uma unica vez para quem gerou. */
-    @Transactional
-    public String resetPassword(UUID actorId, UUID targetId) {
-        User actor = ensureStaff(actorId);
-        User target = findUser(targetId);
-
-        if (!UserPermissions.canResetPassword(actor, target)) {
-            throw new BusinessException("Voce nao pode redefinir a senha deste usuario");
-        }
-
-        String temporaria = gerarSenhaTemporaria();
-        target.setPasswordHash(passwordEncoder.encode(temporaria));
-        adminAuditLogService.logAboutUser(actor, "USER_PASSWORD_RESET", target,
-                "Senha temporaria gerada pelo admin.");
-        return temporaria;
-    }
-
     @Transactional
     public void changeOwnPassword(UUID userId, String currentPassword, String newPassword) {
         User user = findUser(userId);
@@ -118,14 +95,6 @@ public class UserAdminService {
     public MeResponse me(UUID userId) {
         User user = findUser(userId);
         return new MeResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getRole(), user.getAvatarUploadedAt());
-    }
-
-    static String gerarSenhaTemporaria() {
-        StringBuilder senha = new StringBuilder(TAMANHO_SENHA_TEMPORARIA);
-        for (int i = 0; i < TAMANHO_SENHA_TEMPORARIA; i++) {
-            senha.append(ALFABETO_SENHA.charAt(RANDOM.nextInt(ALFABETO_SENHA.length())));
-        }
-        return senha.toString();
     }
 
     private AdminUserResponse toResponse(User actor, User target) {
