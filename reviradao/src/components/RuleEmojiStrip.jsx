@@ -23,8 +23,11 @@ export default function RuleEmojiStrip({ ruleCodes = [], className = '' }) {
         const label = `${rule?.name || 'Bônus'}${count > 1 ? ` ×${count}` : ''}`;
         return (
           <span key={code} className="relative inline-flex" title={label}>
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900">
-              <span aria-hidden="true">{rule?.emoji || '⭐'}</span>
+            <span className="inline-block h-7 w-7 overflow-hidden rounded-full border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+              {/* Altura da linha = altura do circulo e texto centralizado: cada emoji tem uma largura diferente, assim todos ficam no meio */}
+              <span aria-hidden="true" className="emoji block h-full w-full text-center text-[14px] leading-[26px]">
+                {rule?.emoji || '⭐'}
+              </span>
               <span className="sr-only">{label}</span>
             </span>
             {count > 1 && (
