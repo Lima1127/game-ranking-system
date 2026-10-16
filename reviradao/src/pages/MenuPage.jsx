@@ -311,7 +311,7 @@ export default function MenuPage() {
         </div>
       </section>
 
-      <div className="space-y-8 lg:sticky lg:top-6">
+      <div className="space-y-8 lg:sticky lg:top-24">
       <section className="rounded-lg border border-gray-100 bg-white p-6 shadow dark:border-slate-800 dark:bg-slate-900">
         <h3 className="mb-6 text-2xl font-bold">Ações Rápidas</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">

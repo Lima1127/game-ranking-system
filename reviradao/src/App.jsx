@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import LoginPage from './pages/LoginPage';
@@ -16,7 +16,8 @@ import RotativeListPage from './pages/RotativeListPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
-import { isStaffRole, roleLabel } from './utils/roles';
+import { isStaffRole } from './utils/roles';
+import { BarraInferior, CabecalhoSite } from './components/CabecalhoSite';
 
 function ProtectedRoute({ children }) {
   const { user, isLoading } = useAuth();
@@ -65,85 +66,16 @@ function AdminRoute({ children }) {
 }
 
 function MainLayout({ children, isDarkMode, onToggleTheme }) {
-  const { logout, user } = useAuth();
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors">
-      <header className="bg-gradient-to-r from-primary to-secondary text-white shadow-md">
-        <div className="container mx-auto px-4 py-4 flex flex-col gap-3 md:flex-row md:justify-between md:items-center">
-          {/* O nome do site leva ao Menu (pagina inicial) */}
-          <Link to="/menu" className="text-2xl font-bold hover:opacity-80" title="Ir para o Menu">
-            Reviradão
-          </Link>
-          <nav className="flex gap-x-4 gap-y-2 items-center flex-wrap text-sm sm:text-base">
-            <Link to="/ranking" className="hover:opacity-80">
-              Ranking
-            </Link>
-            <Link to="/completion" className="hover:opacity-80">
-              Registrar
-            </Link>
-            <Link to="/requests" className="hover:opacity-80">
-              Solicitacoes
-            </Link>
-            <Link to="/obligations" className="hover:opacity-80">
-              Obrigacoes
-            </Link>
-            <Link to="/rotative-list" className="hover:opacity-80">
-              Lista Rotativa
-            </Link>
-            {isStaffRole(user?.role) && (
-              <>
-                <Link to="/admin/records" className="hover:opacity-80">
-                  Admin
-                </Link>
-                <Link to="/admin/users" className="hover:opacity-80">
-                  Usuários
-                </Link>
-                <Link to="/admin/logs" className="hover:opacity-80">
-                  Logs
-                </Link>
-                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
-                  {roleLabel(user?.role)}
-                </span>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={onToggleTheme}
-              aria-label={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
-              title={isDarkMode ? 'Ativar tema claro' : 'Ativar tema escuro'}
-              className={`relative h-10 w-20 rounded-full border transition-all duration-300 ${
-                isDarkMode
-                  ? 'border-white/30 bg-black/90'
-                  : 'border-white/50 bg-slate-100/90'
-              }`}
-            >
-              <span
-                className={`absolute top-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg transition-all duration-300 ${
-                  isDarkMode
-                    ? 'left-1 bg-white text-slate-900'
-                    : 'left-11 bg-slate-900 text-white'
-                }`}
-                aria-hidden="true"
-              >
-                {isDarkMode ? '☀' : '☾'}
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                logout();
-                navigate('/login', { replace: true });
-              }}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold"
-            >
-              Sair
-            </button>
-          </nav>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">{children}</main>
+    <div className="relative min-h-screen bg-gray-50 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100">
+      {/* Brilho suave de cor atras do cabecalho */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_20%_-30%,rgba(102,126,234,0.28),transparent_70%),radial-gradient(45%_90%_at_90%_-35%,rgba(118,75,162,0.25),transparent_70%)]"
+      />
+      <CabecalhoSite isDarkMode={isDarkMode} onToggleTheme={onToggleTheme} />
+      <main className="container relative mx-auto px-4 pb-28 pt-8 lg:pb-8">{children}</main>
+      <BarraInferior />
     </div>
   );
 }

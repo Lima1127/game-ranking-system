@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, ImagePlus, Info, RotateCcw, Sparkles, TriangleAlert, Users } from 'lucide-react';
 import api from '../services/api';
 import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
+import { emojiByRuleCode, pointsByRuleCode } from '../data/scoringRules';
 
 const MAX_PLATINUM_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
@@ -24,11 +26,60 @@ function formatFileSize(size) {
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const campoClasse =
+  'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400';
+
+function Rotulo({ children, obrigatorio }) {
+  return (
+    <span className="mb-1 block text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+      {children}
+      {obrigatorio && <span className="text-red-500"> *</span>}
+    </span>
+  );
+}
+
+/** Bonus em formato de "botao que liga e desliga" (por baixo continua sendo um checkbox). */
+function OpcaoBonus({ regra, titulo, dica, checked, onChange, disabled }) {
+  return (
+    <label
+      title={dica}
+      className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition ${
+        disabled
+          ? 'cursor-not-allowed border-slate-200 opacity-45 dark:border-slate-800'
+          : checked
+            ? 'cursor-pointer border-primary bg-primary/10 shadow-sm dark:bg-primary/20'
+            : 'cursor-pointer border-slate-200 hover:border-primary/50 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} className="sr-only" />
+      <span className="text-xl leading-none" aria-hidden="true">{emojiByRuleCode[regra]}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">{titulo}</span>
+        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{dica}</span>
+      </span>
+      <span
+        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+          checked ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+        }`}
+      >
+        +{pointsByRuleCode[regra]}
+      </span>
+    </label>
+  );
+}
+
 export default function CompletionPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState(buildInitialForm);
   const [platinumFile, setPlatinumFile] = useState(null);
+  // Mensagens na propria tela (no lugar das janelinhas de alerta do navegador).
+  const [aviso, setAviso] = useState(null); // { tipo: 'erro' | 'sucesso', texto }
+  const avisar = (texto, tipo = 'erro') => setAviso({ tipo, texto });
+
+  // Miniatura da imagem anexada
+  const previewUrl = useMemo(() => (platinumFile ? URL.createObjectURL(platinumFile) : null), [platinumFile]);
+  useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl]);
 
   const { data: games = [], isLoading: gamesLoading, isError: gamesLoadError } = useQuery({
     queryKey: ['games'],
@@ -134,9 +185,9 @@ export default function CompletionPage() {
     },
     onSuccess: () => {
       if (form.coop) {
-        alert(`Solicitacao de coop enviada para voce e mais ${form.coopPlayerUserIds.length} jogador(es). Todas contarao pontos apenas apos aprovacao.`);
+        avisar(`Solicitação de coop enviada para você e mais ${form.coopPlayerUserIds.length} jogador(es). Todas contarão pontos apenas após a aprovação.`, 'sucesso');
       } else {
-        alert('Solicitacao enviada com sucesso! Ela so contara pontos depois da aprovacao.');
+        avisar('Solicitação enviada! Ela só contará pontos depois da aprovação.', 'sucesso');
       }
       setForm(buildInitialForm());
       setPlatinumFile(null);
@@ -144,7 +195,7 @@ export default function CompletionPage() {
       queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
     },
     onError: (error) => {
-      alert(`Erro ao registrar: ${error.response?.data?.message || error.message}`);
+      avisar(`Erro ao registrar: ${error.response?.data?.message || error.message}`);
     },
   });
 
@@ -165,46 +216,48 @@ export default function CompletionPage() {
     }
 
     if (!file.type.startsWith('image/')) {
-      alert('Envie apenas arquivos de imagem.');
+      avisar('Envie apenas arquivos de imagem.');
       e.target.value = '';
       return;
     }
 
     if (file.size > MAX_PLATINUM_IMAGE_SIZE) {
-      alert(`A imagem excede o limite de ${formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.`);
+      avisar(`A imagem passa do limite de ${formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.`);
       e.target.value = '';
       return;
     }
 
+    setAviso(null);
     setPlatinumFile(file);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setAviso(null);
 
     if (!form.gameName.trim() || (!isHypeParticipationOnly && !form.hoursPlayed)) {
-      alert('Preencha nome do jogo e horas jogadas.');
+      avisar('Preencha o nome do jogo e as horas jogadas.');
       return;
     }
 
     if (hasUserCompletionForGame) {
-      alert('Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.');
+      avisar('Você já tem uma conclusão registrada para este jogo. Para alterar, fale com um admin.');
       return;
     }
 
     if (!platinumFile) {
-      alert('Anexe uma imagem para enviar a solicitacao.');
+      avisar('Anexe uma imagem para enviar a solicitação.');
       return;
     }
 
     if (form.coop) {
       if (form.coopPlayerUserIds.length === 0) {
-        alert('Selecione ao menos um jogador para o cooperativo.');
+        avisar('Selecione ao menos um jogador para o cooperativo.');
         return;
       }
 
       if (form.coopPlayerUserIds.length + 1 > 4) {
-        alert('Cooperativo permite no maximo 4 jogadores contando com voce.');
+        avisar('O cooperativo permite no máximo 4 jogadores contando com você.');
         return;
       }
     }
@@ -269,6 +322,7 @@ export default function CompletionPage() {
   const resetForm = () => {
     setForm(buildInitialForm());
     setPlatinumFile(null);
+    setAviso(null);
   };
 
   const toggleCoopPlayer = (selectedUserId) => {
@@ -282,7 +336,7 @@ export default function CompletionPage() {
       }
 
       if (prev.coopPlayerUserIds.length >= 3) {
-        alert('Voce pode selecionar no maximo 3 jogadores (com voce, totaliza 4).');
+        avisar('Você pode selecionar no máximo 3 jogadores (com você, totaliza 4).');
         return prev;
       }
 
@@ -321,23 +375,40 @@ export default function CompletionPage() {
     }));
   };
 
+  // Situacao do jogo digitado, em uma linha so
+  const situacaoJogo = !form.gameName.trim()
+    ? { icone: Info, cor: 'text-slate-500 dark:text-slate-400', texto: 'Digite o nome: o sistema verifica se o jogo já existe.' }
+    : hasUserCompletionForGame
+      ? { icone: TriangleAlert, cor: 'text-red-600 dark:text-red-400', texto: 'Você já registrou este jogo. Para alterar, fale com um admin.' }
+      : isSelectedGameInRotativeList
+        ? { icone: Sparkles, cor: 'text-indigo-600 dark:text-indigo-300', texto: `Está na Lista Rotativa: +${pointsByRuleCode.ROTATIVE_LIST_BONUS} pontos ao concluir!` }
+        : matchingGame
+          ? { icone: CheckCircle2, cor: 'text-green-600 dark:text-green-400', texto: `Jogo já cadastrado: ${matchingGame.name}` }
+          : { icone: Info, cor: 'text-amber-600 dark:text-amber-300', texto: 'Jogo novo: será cadastrado automaticamente ao registrar.' };
+  const IconeSituacao = situacaoJogo.icone;
+
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-4xl font-bold mb-2">Registrar Conclusao</h1>
-      <p className="text-gray-600 dark:text-slate-300 mb-8">Informe o jogo livremente. Se ele ainda nao existir, sera criado automaticamente.</p>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-4xl font-bold">Registrar Conclusão</h1>
+        <p className="mt-1 text-slate-600 dark:text-slate-300">Fechou um jogo? Conta pra gente. Os pontos entram depois da aprovação.</p>
+      </div>
 
-      <form onSubmit={handleSubmit} autoComplete="off" className="bg-white dark:bg-slate-900 rounded-lg shadow p-8 border border-gray-100 dark:border-slate-800">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {gamesLoadError && (
-            <div className="md:col-span-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              Nao foi possivel carregar os jogos cadastrados. Recarregue a pagina ou verifique o backend.
-            </div>
-          )}
+      <form
+        onSubmit={handleSubmit}
+        autoComplete="off"
+        className="space-y-6 rounded-2xl border border-slate-100 bg-white p-5 shadow sm:p-6 dark:border-slate-800 dark:bg-slate-900"
+      >
+        {gamesLoadError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300">
+            Não foi possível carregar os jogos cadastrados. Recarregue a página ou verifique o backend.
+          </div>
+        )}
 
-          <div className="md:col-span-2">
-            <label className="block text-gray-700 dark:text-slate-200 font-bold mb-2">
-              Jogo <span className="text-red-500">*</span>
-            </label>
+        {/* Jogo, data e horas na mesma linha */}
+        <div className="grid gap-4 md:grid-cols-[1fr_11rem_9rem]">
+          <label className="relative block">
+            <Rotulo obrigatorio>Jogo</Rotulo>
             <input
               type="text"
               name="gameName"
@@ -347,49 +418,38 @@ export default function CompletionPage() {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className={campoClasse}
               placeholder="Ex: Elden Ring"
               required
             />
-            {gameSuggestions.length > 0 && (
-              <div className="mt-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+            {gameSuggestions.length > 0 && !matchingGame && (
+              <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                 {gameSuggestions.map((game) => (
                   <button
                     key={game.id}
                     type="button"
                     onClick={() => handleSelectSuggestion(game)}
-                    className="flex w-full items-center justify-between border-b border-gray-100 dark:border-slate-700 px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 last:border-b-0"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    <span>{game.name}</span>
+                    <span className="truncate">{game.name}</span>
                     {game.isRotative && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-primary/25 dark:text-indigo-200">
-                        🔄 Reviradao
+                      <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary dark:bg-primary/25 dark:text-indigo-200">
+                        🔄 Rotativa
                       </span>
                     )}
                   </button>
                 ))}
               </div>
             )}
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-gray-700 dark:text-slate-200 font-bold mb-2">
-              Data de Conclusao <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              name="completedAt"
-              value={form.completedAt}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-          </div>
+          <label className="block">
+            <Rotulo obrigatorio>Concluído em</Rotulo>
+            <input type="date" name="completedAt" value={form.completedAt} onChange={handleChange} className={campoClasse} required />
+          </label>
 
-          <div>
-            <label className="block text-gray-700 dark:text-slate-200 font-bold mb-2">
-              Horas Jogadas <span className="text-red-500">*</span>
-            </label>
+          <label className="block">
+            <Rotulo obrigatorio={!isHypeParticipationOnly}>Horas</Rotulo>
             <input
               type="number"
               name="hoursPlayed"
@@ -397,124 +457,53 @@ export default function CompletionPage() {
               onChange={handleChange}
               step="0.5"
               min="0"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Ex: 35.5"
+              inputMode="decimal"
+              // Esconde as setinhas de aumentar/diminuir do campo numerico (Chrome, Edge e Firefox)
+              className={`${campoClasse} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+              placeholder={isHypeParticipationOnly ? '—' : 'Ex: 35.5'}
               required={!isHypeParticipationOnly}
               disabled={isHypeParticipationOnly}
             />
-          </div>
+          </label>
 
-          <div className="md:col-span-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-4">
-            {form.gameName.trim() ? (
-              hasUserCompletionForGame ? (
-                <p className="text-sm text-red-700">
-                  Voce ja possui uma conclusao registrada para este jogo. Caso precise alterar essa informacao, entre em contato com o administrador.
-                </p>
-              ) : isSelectedGameInRotativeList ? (
-                <p className="text-sm text-indigo-700">
-                  Este jogo esta na <strong>Lista Rotativa</strong> e recebe bonus de <strong>+3 pontos</strong> quando concluido.
-                </p>
-              ) : matchingGame ? (
-                <p className="text-sm text-green-700">
-                  Este jogo ja existe no sistema e sera reutilizado: <strong>{matchingGame.name}</strong>
-                </p>
-              ) : (
-                <p className="text-sm text-amber-700">
-                  Este jogo ainda nao existe no sistema. Ele sera criado automaticamente ao registrar a conclusao.
-                </p>
-              )
-            ) : (
-              <p className="text-sm text-gray-500 dark:text-slate-400">Preencha o nome para o sistema verificar se o jogo ja existe.</p>
-            )}
-          </div>
+          <p className={`-mt-2 flex items-center gap-1.5 text-sm font-semibold md:col-span-3 ${situacaoJogo.cor}`}>
+            <IconeSituacao className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="min-w-0">{situacaoJogo.texto}</span>
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-            <input
-              type="checkbox"
-              name="firstTimeEver"
+        {/* Bonus */}
+        <div>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Bônus</h2>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <OpcaoBonus
+              regra="FIRST_EXPERIENCE"
+              titulo="Primeira experiência"
+              dica="Primeira vez na vida fechando este jogo"
               checked={form.firstTimeEver}
-              onChange={handleChange}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              onChange={(event) => setForm((prev) => ({ ...prev, firstTimeEver: event.target.checked }))}
               disabled={isHypeParticipationOnly}
             />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Primeira Experiencia
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Primeira vez na vida completando este jogo</span>
-            </span>
-          </label>
-
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-            <input
-              type="checkbox"
-              name="platinum"
+            <OpcaoBonus
+              regra="PLATINUM"
+              titulo="Platina (100%)"
+              dica="O anexo precisa comprovar a platina"
               checked={form.platinum}
-              onChange={handleChange}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              onChange={(event) => setForm((prev) => ({ ...prev, platinum: event.target.checked }))}
               disabled={isHypeParticipationOnly}
             />
-              <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-                Platina (100%)
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando o anexo enviado comprovar a platina.</span>
-            </span>
-          </label>
-
-          <label className="flex items-center cursor-pointer p-4 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition md:col-span-2">
-            <input
-              type="checkbox"
-              name="completedInReleaseYear"
+            <OpcaoBonus
+              regra="IN_RELEASE_YEAR"
+              titulo="Em dia"
+              dica="Conta como lançamento do ano na edição"
               checked={form.completedInReleaseYear}
-              onChange={handleChange}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
+              onChange={(event) => setForm((prev) => ({ ...prev, completedInReleaseYear: event.target.checked }))}
               disabled={isHypeParticipationOnly}
             />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Em Dia
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">Marque quando este jogo deve contar como lancamento do ano na edicao</span>
-            </span>
-          </label>
-        </div>
-
-        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.hypeParticipation}
-              onChange={(event) => handleHypeParticipationToggle(event.target.checked)}
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
-            />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Participacao do Hype
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                Marca participacao e garante +1 ponto. Sem concluir, os demais campos ficam desabilitados.
-              </span>
-            </span>
-          </label>
-
-          {form.hypeParticipation && (
-            <label className="flex items-center cursor-pointer rounded-lg border border-gray-300 dark:border-slate-700 p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
-              <input
-                type="checkbox"
-                checked={form.hypeCompletedBonus}
-                onChange={(event) => handleHypeCompletedToggle(event.target.checked)}
-                className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
-              />
-              <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-                Concluiu jogo do hype?
-                <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                  Ao marcar, os demais campos voltam e o sistema soma +2 pontos extras de conclusao do hype.
-                </span>
-              </span>
-            </label>
-          )}
-        </div>
-
-        <div className="mt-6 space-y-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              name="coop"
+            <OpcaoBonus
+              regra="COOP_RIGHT_HAND"
+              titulo="Cooperativo"
+              dica="Jogou junto com até 3 amigos"
               checked={form.coop}
               onChange={(event) =>
                 setForm((prev) => ({
@@ -523,21 +512,32 @@ export default function CompletionPage() {
                   coopPlayerUserIds: event.target.checked ? prev.coopPlayerUserIds : [],
                 }))
               }
-              className="w-5 h-5 text-primary rounded focus:ring-2 focus:ring-primary"
               disabled={isHypeParticipationOnly}
             />
-            <span className="ml-3 font-semibold text-gray-700 dark:text-slate-200">
-              Jogo em Cooperativo
-              <span className="block text-xs text-gray-500 dark:text-slate-400 font-normal">
-                Se marcado, selecione os jogadores que jogaram com voce (maximo de 4 contando com voce).
-              </span>
-            </span>
-          </label>
+            <OpcaoBonus
+              regra="HYPE_PARTICIPATION"
+              titulo="Participação do Hype"
+              dica="Sem concluir, os outros bônus ficam travados"
+              checked={form.hypeParticipation}
+              onChange={(event) => handleHypeParticipationToggle(event.target.checked)}
+            />
+            {form.hypeParticipation && (
+              <OpcaoBonus
+                regra="HYPE_COMPLETION_BONUS"
+                titulo="Concluí o jogo do Hype"
+                dica="Libera os outros bônus de novo"
+                checked={form.hypeCompletedBonus}
+                onChange={(event) => handleHypeCompletedToggle(event.target.checked)}
+              />
+            )}
+          </div>
 
           {form.coop && (
-            <div>
-              <p className="mb-2 text-sm font-bold text-slate-700 dark:text-slate-200">Jogadores do coop ({form.coopPlayerUserIds.length + 1}/4)</p>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                <Users className="h-4 w-4" aria-hidden="true" /> Quem jogou com você ({form.coopPlayerUserIds.length + 1}/4)
+              </p>
+              <div className="flex flex-wrap gap-2">
                 {users
                   .filter((candidate) => candidate.id !== user.id)
                   .map((candidate) => {
@@ -545,19 +545,15 @@ export default function CompletionPage() {
                     return (
                       <label
                         key={candidate.id}
-                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition ${
+                        className={`cursor-pointer rounded-full border px-3 py-1 text-sm font-semibold transition ${
                           checked
-                            ? 'border-primary bg-primary/10 text-primary dark:bg-primary/20'
-                            : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-slate-300 bg-white text-slate-700 hover:border-primary/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200'
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleCoopPlayer(candidate.id)}
-                          className="h-4 w-4 rounded"
-                        />
-                        <span className="text-sm font-semibold">{candidate.displayName}</span>
+                        <input type="checkbox" checked={checked} onChange={() => toggleCoopPlayer(candidate.id)} className="sr-only" />
+                        {checked ? '✓ ' : ''}
+                        {candidate.displayName}
                       </label>
                     );
                   })}
@@ -566,56 +562,63 @@ export default function CompletionPage() {
           )}
         </div>
 
-        <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-5 dark:border-indigo-400/35 dark:bg-[#243247]">
-          <label className="block text-indigo-900 dark:text-indigo-100 font-bold mb-2">
-            Anexo da Solicitacao <span className="text-red-500">*</span>
+        {/* Anexo */}
+        <div>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            Comprovante <span className="text-red-500">*</span>
+          </h2>
+          <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 p-3 transition hover:border-primary hover:bg-primary/5 dark:border-slate-700">
+            <input type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
+            {previewUrl ? (
+              <img src={previewUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+            ) : (
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ImagePlus className="h-6 w-6" aria-hidden="true" />
+              </span>
+            )}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">
+                {platinumFile ? platinumFile.name : 'Clique para escolher uma imagem'}
+              </span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                {platinumFile
+                  ? `${formatFileSize(platinumFile.size)} · clique para trocar`
+                  : `Print da tela final, conquista ou platina · até ${formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}`}
+              </span>
+            </span>
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="block w-full text-sm text-indigo-900 dark:text-indigo-100 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:font-bold file:text-white hover:file:bg-indigo-700"
-          />
-          <p className="mt-2 text-sm text-indigo-800 dark:text-indigo-200">
-            Toda solicitacao exige uma imagem anexada, com limite de {formatFileSize(MAX_PLATINUM_IMAGE_SIZE)}.
-          </p>
-          {platinumFile && (
-            <p className="mt-2 text-sm text-indigo-900 dark:text-indigo-100">
-              Arquivo selecionado: <strong>{platinumFile.name}</strong> ({formatFileSize(platinumFile.size)})
-            </p>
-          )}
         </div>
 
-        <div className="mt-8 flex gap-4">
-          <button
-            type="submit"
-            disabled={mutation.isPending || gamesLoading || hasUserCompletionForGame}
-            className="flex-1 bg-primary hover:bg-secondary text-white font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50"
+        {aviso && (
+          <div
+            role="status"
+            className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+              aviso.tipo === 'sucesso'
+                ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-500/40 dark:bg-green-950/40 dark:text-green-300'
+                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-950/40 dark:text-red-300'
+            }`}
           >
-            {mutation.isPending ? 'Registrando...' : 'Registrar Conclusao'}
-          </button>
+            {aviso.texto}
+          </div>
+        )}
+
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end dark:border-slate-800">
           <button
             type="button"
             onClick={resetForm}
-            className="px-6 bg-gray-400 hover:bg-gray-500 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold py-3 rounded-lg transition duration-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 py-2.5 font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            Limpar
+            <RotateCcw className="h-4 w-4" aria-hidden="true" /> Limpar
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending || gamesLoading || hasUserCompletionForGame}
+            className="rounded-xl bg-primary px-8 py-2.5 font-bold text-white transition hover:bg-secondary disabled:opacity-50"
+          >
+            {mutation.isPending ? 'Registrando...' : 'Registrar Conclusão'}
           </button>
         </div>
-
-        {mutation.error && (
-          <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {mutation.error.message}
-          </div>
-        )}
       </form>
-
-      <div className="mt-8 bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-lg p-6">
-        <h3 className="font-bold text-blue-900 dark:text-sky-300 mb-2">Dica</h3>
-        <p className="text-blue-800 dark:text-slate-300 text-sm">
-          Se o jogo ainda nao existir no sistema, ele sera cadastrado automaticamente com o genero padrao "Nao informado" e ano tecnico igual ao da data de conclusao.
-        </p>
-      </div>
     </div>
   );
 }
