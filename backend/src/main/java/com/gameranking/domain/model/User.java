@@ -46,4 +46,11 @@ public class User extends AuditableEntity {
 
     @Column(name = "avatar_uploaded_at")
     private OffsetDateTime avatarUploadedAt;
+
+    // SteamID64 do perfil vinculado pelo login da Steam (null = sem vinculo). Visivel para o grupo.
+    @Column(name = "steam_id", length = 20)
+    private String steamId;
+
+    @Column(name = "steam_linked_at")
+    private OffsetDateTime steamLinkedAt;
 }

@@ -38,3 +38,6 @@ app:
     # Sugestoes de jogos da loja Steam no campo "Jogo" (busca publica, sem chave de API).
     # false = desliga; o cadastro de jogos volta a ser so pelo nome digitado.
     enabled: true
+  # Endereco pelo qual as pessoas abrem o site. A Steam devolve a pessoa para ca depois do
+  # login de "Conectar Steam". Localmente e o Vite; por tunel, troque pelo endereco do tunel.
+  public-url: http://localhost:5173

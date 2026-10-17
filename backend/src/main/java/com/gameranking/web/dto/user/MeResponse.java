@@ -11,6 +11,8 @@ public record MeResponse(
         String displayName,
         String email,
         UserRole role,
-        OffsetDateTime avatarUploadedAt
+        OffsetDateTime avatarUploadedAt,
+        // SteamID do perfil vinculado (null = sem vinculo). Texto: 17 digitos nao cabem num numero do JavaScript.
+        String steamId
 ) {
 }
