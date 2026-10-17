@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { History, Info } from 'lucide-react';
+import { ExternalLink, History, Info } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import JanelaFoco from '../components/JanelaFoco';
+import { steamProfileUrl } from '../components/ContaSteam';
 import RuleEmojiStrip from '../components/RuleEmojiStrip';
 import { scoringRules, pointsByRuleCode } from '../data/scoringRules';
 import { formatarData, formatarHoras } from '../utils/formatarData';
@@ -375,6 +376,16 @@ function JogosDoJogador({ jogador, jogos, onFechar }) {
       icone={<Avatar row={jogador} size="h-10 w-10" />}
       onFechar={onFechar}
     >
+      {jogador.steamId && (
+        <a
+          href={steamProfileUrl(jogador.steamId)}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+        >
+          Perfil na Steam <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+        </a>
+      )}
       <label htmlFor="ordem-jogos" className="mb-1.5 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
         Ordenar por
       </label>

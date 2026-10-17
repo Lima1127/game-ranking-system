@@ -5,6 +5,8 @@ import api from '../services/api';
 import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
 import { emojiByRuleCode, pointsByRuleCode } from '../data/scoringRules';
+import { useSugestoesSteam } from '../hooks/useSugestoesSteam';
+import SugestoesSteam from '../components/SugestoesSteam';
 
 const MAX_PLATINUM_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
@@ -128,6 +130,8 @@ export default function CompletionPage() {
       estimatedHoursMain: null,
       estimatedHoursPlatinum: null,
       genres: ['Nao informado'],
+      // O servidor confere o jogo na Steam e usa o nome e o ano de lancamento oficiais.
+      steamAppId: steamAppIdParaCadastro,
     });
 
     queryClient.setQueryData(['games'], (currentGames = []) => {
@@ -191,6 +195,7 @@ export default function CompletionPage() {
       }
       setForm(buildInitialForm());
       setPlatinumFile(null);
+      limparSelecaoSteam();
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
       queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
     },
@@ -298,12 +303,30 @@ export default function CompletionPage() {
       .slice(0, 6);
   }, [games, form.gameName, rotativeByGameId]);
 
+  const { sugestoesSteam, jogoSteamSelecionado, escolherSugestaoSteam, limparSelecaoSteam, steamAppIdParaCadastro } =
+    useSugestoesSteam({
+      gameName: form.gameName,
+      games,
+      ativo: !matchingGame,
+      idsJaSugeridos: gameSuggestions.map((game) => game.id),
+    });
+
   const handleSelectSuggestion = (gameSuggestion) => {
+    limparSelecaoSteam();
     setForm((prev) => ({
       ...prev,
       gameName: gameSuggestion.name,
       rotativeList: gameSuggestion.isRotative,
     }));
+  };
+
+  const handleSelectSteamSuggestion = (steamGame) => {
+    const existingGame = escolherSugestaoSteam(steamGame);
+    if (existingGame) {
+      handleSelectSuggestion({ ...existingGame, isRotative: rotativeByGameId.has(existingGame.id) });
+      return;
+    }
+    setForm((prev) => ({ ...prev, gameName: steamGame.name }));
   };
 
   useEffect(() => {
@@ -322,6 +345,7 @@ export default function CompletionPage() {
   const resetForm = () => {
     setForm(buildInitialForm());
     setPlatinumFile(null);
+    limparSelecaoSteam();
     setAviso(null);
   };
 
@@ -384,7 +408,9 @@ export default function CompletionPage() {
         ? { icone: Sparkles, cor: 'text-indigo-600 dark:text-indigo-300', texto: `Está na Lista Rotativa: +${pointsByRuleCode.ROTATIVE_LIST_BONUS} pontos ao concluir!` }
         : matchingGame
           ? { icone: CheckCircle2, cor: 'text-green-600 dark:text-green-400', texto: `Jogo já cadastrado: ${matchingGame.name}` }
-          : { icone: Info, cor: 'text-amber-600 dark:text-amber-300', texto: 'Jogo novo: será cadastrado automaticamente ao registrar.' };
+          : jogoSteamSelecionado
+            ? { icone: CheckCircle2, cor: 'text-green-600 dark:text-green-400', texto: 'Jogo da loja Steam: será cadastrado com o nome e o ano de lançamento oficiais.' }
+            : { icone: Info, cor: 'text-amber-600 dark:text-amber-300', texto: 'Jogo novo: será cadastrado ao registrar. Se ele estiver na Steam, escolha a sugestão para preencher o ano.' };
   const IconeSituacao = situacaoJogo.icone;
 
   return (
@@ -422,7 +448,7 @@ export default function CompletionPage() {
               placeholder="Ex: Elden Ring"
               required
             />
-            {gameSuggestions.length > 0 && !matchingGame && (
+            {(gameSuggestions.length > 0 || sugestoesSteam.length > 0) && !matchingGame && !jogoSteamSelecionado && (
               <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
                 {gameSuggestions.map((game) => (
                   <button
@@ -439,6 +465,7 @@ export default function CompletionPage() {
                     )}
                   </button>
                 ))}
+                <SugestoesSteam sugestoes={sugestoesSteam} onEscolher={handleSelectSteamSuggestion} />
               </div>
             )}
           </label>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calculator, Check, ClipboardList, KeyRound, Pencil, PlusCircle, Search, Send, Shield, Trash2, UserCog, X } from 'lucide-react';
+import { Calculator, Check, ClipboardList, KeyRound, Pencil, PlusCircle, Search, Send, Shield, ShieldCheck, Trash2, UserCog, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { isStaffRole, roleLabel } from '../utils/roles';
@@ -34,6 +34,8 @@ const TIPOS = {
   PASSWORD_RESET_APPROVED: { rotulo: 'Código de senha gerado', grupo: 'usuarios', icone: KeyRound, cor: VERDE },
   PASSWORD_RESET_REJECTED: { rotulo: 'Pedido de senha recusado', grupo: 'usuarios', icone: KeyRound, cor: VERMELHO },
   PASSWORD_RESET_COMPLETED: { rotulo: 'Senha redefinida com código', grupo: 'usuarios', icone: KeyRound, cor: VERDE },
+  STEAM_LINKED: { rotulo: 'Conta Steam conectada', grupo: 'usuarios', icone: ShieldCheck, cor: VERDE },
+  STEAM_UNLINKED: { rotulo: 'Conta Steam desconectada', grupo: 'usuarios', icone: ShieldCheck, cor: CINZA },
   EDITION_RECALCULATED: { rotulo: 'Pontos da edição recalculados', grupo: 'sistema', icone: Calculator, cor: CINZA },
 };
 

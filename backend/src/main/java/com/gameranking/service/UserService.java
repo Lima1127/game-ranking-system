@@ -28,7 +28,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<UserSummaryResponse> listActiveUsers() {
         return userRepository.findAllByActiveTrueOrderByDisplayNameAsc().stream()
-                .map(user -> new UserSummaryResponse(user.getId(), user.getDisplayName()))
+                .map(user -> new UserSummaryResponse(user.getId(), user.getDisplayName(), user.getSteamId()))
                 .toList();
     }
 

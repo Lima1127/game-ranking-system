@@ -94,7 +94,7 @@ public class UserAdminService {
     @Transactional(readOnly = true)
     public MeResponse me(UUID userId) {
         User user = findUser(userId);
-        return new MeResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getRole(), user.getAvatarUploadedAt());
+        return new MeResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getRole(), user.getAvatarUploadedAt(), user.getSteamId());
     }
 
     private AdminUserResponse toResponse(User actor, User target) {

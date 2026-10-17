@@ -37,6 +37,14 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   - O admin também pode gerar o código direto (botão *Código de senha*), sem pedido.
   - Tudo vai para o log (`PASSWORD_RESET_*`). Não há envio de e-mail: o Render gratuito bloqueia SMTP.
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.
+- **Conta Steam (opcional):** em *Menu → Conectar Steam* o jogador entra **no site oficial da Steam**
+  e a Steam informa ao Reviradão apenas o **SteamID** (número público do perfil). O Reviradão não
+  recebe senha nem nenhum acesso à conta Steam, e o vínculo **não serve para entrar** no site.
+  - O perfil vinculado é **visível para todo o grupo** (link "Perfil na Steam" nos jogos do jogador, no Ranking).
+  - Um perfil Steam só pode estar ligado a uma conta. O jogador pode desconectar quando quiser.
+  - Cada tentativa vale **10 minutos** e **uma única vez**; o servidor confirma cada resposta
+    direto com a Steam antes de aceitar. Conectar e desconectar vão para o log (`STEAM_*`).
+  - Só funciona pelo endereço configurado em `app.public-url` (por túnel, troque esse endereço).
 
 ### Edição
 - É a competição do ano. Hoje existe apenas **"Reviradao 2026"** (01/01/2026 a 31/12/2026),
@@ -48,6 +56,13 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 - **Um nome = um jogo**, sem diferenciar maiúsculas/minúsculas nem ano. Remakes precisam de
   nome diferente (ex.: "Resident Evil 4 Remake").
 - O **ano de lançamento é opcional** e só pode ser definido por um admin.
+- **Sugestões da Steam:** ao digitar o nome, o site também sugere jogos da loja Steam. Escolhendo
+  uma delas, o jogo é cadastrado com o **nome oficial e o ano de lançamento da Steam** (o servidor
+  consulta a Steam; por isso o ano vale mesmo quando quem cadastra é jogador). Se o jogo já existia
+  pelo nome, ele ganha o vínculo com a Steam e o ano, se ainda não tinha; um ano definido por admin
+  nunca é trocado. Se a Steam estiver fora do ar, o cadastro segue pelo nome digitado, sem ano.
+- O ano de lançamento é **informativo**: aparece na tela de Solicitações para o admin conferir o
+  bônus "Em dia", mas não muda nenhum ponto sozinho.
 
 ### Conclusão (registro de jogo zerado)
 - O jogador envia um **pedido** com: jogo, data, horas jogadas, marcações (primeira vez, em dia,

@@ -6,6 +6,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import AvatarCropModal from '../components/AvatarCropModal';
 import JanelaAlterarSenha from '../components/JanelaAlterarSenha';
+import ContaSteam from '../components/ContaSteam';
 import { MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { scoringRules } from '../data/scoringRules';
 import { sortearFrase } from '../data/frasesBoasVindas';
@@ -214,6 +215,7 @@ export default function MenuPage() {
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               Alterar senha
             </button>
+            <ContaSteam />
             {feedback && (
               <p className={`mt-3 text-sm font-semibold ${feedback.type === 'ok' ? 'text-green-600' : 'text-red-600'}`}>{feedback.text}</p>
             )}

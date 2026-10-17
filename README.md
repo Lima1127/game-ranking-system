@@ -50,7 +50,7 @@ Backend — Spring Boot (pasta backend/), porta 8080
     │                 estrutura criada/atualizada pelo Flyway (migrations V1…V18)
     └──────────────► Disco: backend/storage/{platinum,avatars}  (imagens enviadas)
 
-Serviços externos: nenhum.
+Serviços externos: loja pública da Steam (sugestões de jogos e ano de lançamento; opcional, sem chave).
 ```
 
 **Na nuvem** ([docs/deploy.md](docs/deploy.md)) a estrutura é mais simples: um único serviço no
@@ -138,6 +138,8 @@ Resumo (passo a passo detalhado em [docs/integration-runbook.md](docs/integratio
 | `app.storage.type` | não | `disk` (padrão, pasta local) ou `database` (imagens no banco; usado na nuvem) |
 | `app.storage.root-path` | não | Pasta das imagens no modo `disk` (padrão `./storage`) |
 | `app.registration.invite-code` | não | Se preenchido, o cadastro exige este código. Vazio = cadastro aberto |
+| `app.steam.enabled` | não | `true` (padrão) liga as sugestões da loja Steam; `false` desliga. Na nuvem: `APP_STEAM_ENABLED` |
+| `app.public-url` | não | Endereço pelo qual o site é aberto (padrão `http://localhost:5173`). A Steam devolve a pessoa para cá em "Conectar Steam". Na nuvem: `APP_PUBLIC_URL` (obrigatório para esse botão) |
 
 Na nuvem a configuração vem de `application-prod.yml` + variáveis de ambiente do Render
 (`DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `APP_JWT_SECRET`, `APP_INVITE_CODE`).
@@ -176,7 +178,8 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | GET | `/health` | Verificação de funcionamento usada pela hospedagem (**pública**) |
 | GET | `/ranking?editionId=` | Ranking da edição (padrão: edição ativa) |
 | GET | `/games` | Catálogo de jogos |
-| POST | `/games` | Cria jogo (ou devolve o existente com o mesmo nome). O ano só é aceito se enviado por admin |
+| POST | `/games` | Cria jogo (ou devolve o existente com o mesmo nome). O ano só é aceito se enviado por admin; com `steamAppId`, nome e ano vêm da Steam |
+| GET | `/games/steam-search?term=` | Sugestões da loja Steam para o campo "Jogo" (lista vazia se a Steam não responder) |
 | PATCH | `/games/{id}/release-year` | Define o ano de lançamento (**admin**) |
 | POST | `/completions` | Envia pedido de conclusão (fica `PENDING`) |
 | GET | `/completions?editionId=` | Conclusões aprovadas da edição, com códigos de regra |
@@ -199,6 +202,9 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | GET | `/users/me` | Dados atuais de quem está logado (cargo, nome, avatar) |
 | PUT | `/users/me/password` | Troca a própria senha (`currentPassword`, `newPassword`) |
 | GET | `/users/{id}/avatar` | Exibe avatar (**pública**) |
+| POST | `/steam/link/start` | Inicia "Conectar Steam": devolve o endereço do login oficial da Steam |
+| GET | `/steam/callback` | Retorno do login da Steam; confere e volta para `/menu?steam=<resultado>` (**pública**) |
+| DELETE | `/steam/link` | Desconecta a conta Steam |
 | GET / POST | `/obligations` | Lista / cria obrigação |
 | POST | `/obligations/{id}/accept` · `refuse` · `cancel` · `submit-review` | Ações do jogador |
 | POST | `/obligations/{id}/approve-review` · `reject-review` | Revisão (**admin**) |
@@ -250,6 +256,8 @@ no recálculo, armazenamento de imagens (disco e banco) e código de convite. O 
 - Pontos são calculados **somente no servidor**, na aprovação feita por um admin.
 - Uploads: apenas imagens reais (tipo detectado pelo conteúdo), servidas com `nosniff` e CSP `sandbox`.
 - Mensagens de erro não expõem detalhes internos.
+- "Conectar Steam" usa o login OpenID da própria Steam: o site guarda só o SteamID, cada tentativa
+  tem código de uso único (10 min, só o hash é salvo) e toda resposta é confirmada com a Steam.
 - Operações que distribuem pontos travam a edição no banco, evitando bônus duplicados por concorrência.
 
 ## Limitações conhecidas
@@ -258,6 +266,7 @@ Levantadas na auditoria de 28/09/2026 e ainda **não corrigidas**:
 
 - Sem tela para criar edições (só existe a "Reviradao 2026", criada pela migration V1).
 - Sem tela para o admin definir o ano de lançamento (só via `PATCH /games/{id}/release-year`).
+  Jogos escolhidos pela sugestão da Steam já recebem o ano automaticamente.
 - Quem cria uma obrigação pode cancelá-la mesmo durante a revisão da conclusão (anula o +3 do outro jogador).
 - A prévia de pontos não considera obrigações ainda não aceitas.
 - Não há desempate no ranking nem limite de tentativas de login.

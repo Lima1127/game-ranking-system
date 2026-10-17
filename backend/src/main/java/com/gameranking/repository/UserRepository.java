@@ -10,6 +10,8 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmailIgnoreCase(String email);
 
+    Optional<User> findBySteamId(String steamId);
+
     boolean existsByIdAndActiveTrue(UUID id);
     List<User> findAllByActiveTrueOrderByDisplayNameAsc();
 

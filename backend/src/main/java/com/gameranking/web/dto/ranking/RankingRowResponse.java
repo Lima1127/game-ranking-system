@@ -9,6 +9,8 @@ public record RankingRowResponse(
         Long totalPoints,
         Long underdogBonusCount,
         Boolean hasAvatar,
-        OffsetDateTime avatarUploadedAt
+        OffsetDateTime avatarUploadedAt,
+        // SteamID do perfil vinculado (null = sem vinculo). Texto: 17 digitos nao cabem num numero do JavaScript.
+        String steamId
 ) {
 }

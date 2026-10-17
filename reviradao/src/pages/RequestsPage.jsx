@@ -76,6 +76,39 @@ export default function RequestsPage() {
     enabled: Boolean(user?.id),
   });
 
+  // Catalogo de jogos: ano de lancamento e vinculo com a Steam, para conferir o bonus "Em dia".
+  const { data: games = [] } = useQuery({
+    queryKey: ['games'],
+    queryFn: async () => {
+      const response = await api.get('/games');
+      return response.data;
+    },
+  });
+  const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
+
+  /** "Lançado em 2022" (com link para a loja Steam, se o jogo estiver vinculado). */
+  const infoLancamento = (gameId) => {
+    const game = gamesById.get(gameId);
+    if (!game?.releaseYear && !game?.steamAppId) {
+      return null;
+    }
+    return (
+      <span key="lancamento" className="inline-flex items-center gap-1.5">
+        {game.releaseYear ? `Lançado em ${game.releaseYear}` : 'Ano de lançamento não informado'}
+        {game.steamAppId && (
+          <a
+            href={`https://store.steampowered.com/app/${game.steamAppId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          >
+            Steam <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </a>
+        )}
+      </span>
+    );
+  };
+
   const groupedSubmissions = useMemo(() => {
     const map = new Map();
 
@@ -217,6 +250,7 @@ export default function RequestsPage() {
               <strong key="j" className="font-semibold text-slate-800 dark:text-slate-100">{submission.userDisplayName}</strong>,
               `Concluído em ${formatarData(submission.completedAt)}`,
               formatarHoras(submission.hoursPlayed),
+              infoLancamento(submission.gameId),
             ]}
           />
 
@@ -294,7 +328,13 @@ export default function RequestsPage() {
             />
           </div>
 
-          <LinhaInfo itens={[`Concluído em ${formatarData(firstSubmission.completedAt)}`, formatarHoras(firstSubmission.hoursPlayed)]} />
+          <LinhaInfo
+            itens={[
+              `Concluído em ${formatarData(firstSubmission.completedAt)}`,
+              formatarHoras(firstSubmission.hoursPlayed),
+              infoLancamento(firstSubmission.gameId),
+            ]}
+          />
 
           {/* Cada participante com a sua situacao */}
           <div className="flex flex-wrap gap-1.5">
