@@ -11,6 +11,8 @@ import { useSugestoesSteam } from '../hooks/useSugestoesSteam';
 import SugestoesSteam from '../components/SugestoesSteam';
 import JanelaFoco from '../components/JanelaFoco';
 import OpcaoBonus from '../components/OpcaoBonus';
+import { dicaEmDia, emDiaPeloLancamento } from '../utils/emDia';
+import { dicaPlatina, usePlatinaSteam } from '../hooks/usePlatinaSteam';
 
 // Situacao da obrigacao: nome em portugues + cor (mesmo formato das etiquetas de Solicitacoes)
 const STATUS = {
@@ -314,15 +316,21 @@ export default function ObligationsPage() {
   }, [isLoading]);
 
   const openReviewModal = (item, outcome) => {
+    const completedAt = new Date().toISOString().slice(0, 10);
+    // "Em dia" ja vem marcado ou desmarcado pelo ano de lancamento, se o catalogo souber o ano.
+    const jogo = games.find((game) => game.id === item.gameId);
     setReviewModal({
       obligationId: item.obligationId,
       gameId: item.gameId,
       gameName: item.gameName,
+      anoLancamento: jogo?.releaseYear ?? null,
+      origemAnoLancamento: jogo?.steamAppId ? 'Steam' : 'catálogo',
+      steamAppId: jogo?.steamAppId ?? null,
       outcome,
-      completedAt: new Date().toISOString().slice(0, 10),
+      completedAt,
       hoursPlayed: '',
       firstTimeEver: false,
-      completedInReleaseYear: false,
+      completedInReleaseYear: emDiaPeloLancamento(jogo?.releaseYear, completedAt) ?? false,
       platinum: false,
       proofFile: null,
       erro: null,
@@ -352,6 +360,17 @@ export default function ObligationsPage() {
     submitReviewMutation.mutate(reviewModal);
   };
   const isPartialReview = reviewModal?.outcome === 'PARTIAL';
+
+  // "Platina" pelas conquistas do jogador na Steam, so na conclusao (jogo finalizado).
+  const platinaObrigacao = usePlatinaSteam(reviewModal && !isPartialReview ? reviewModal.steamAppId : null);
+  const platinaObrigacaoSugerida = platinaObrigacao?.suggestPlatinum ?? null;
+  useEffect(() => {
+    if (platinaObrigacaoSugerida === null) {
+      return;
+    }
+    setReviewModal((prev) => (prev && prev.platinum !== platinaObrigacaoSugerida ? { ...prev, platinum: platinaObrigacaoSugerida } : prev));
+    // Reaplica so ao abrir outra obrigacao: se o jogador mexer no botao depois, vale a escolha dele.
+  }, [platinaObrigacaoSugerida, reviewModal?.obligationId]);
 
   // Miniatura do anexo da janela de revisao
   const previewUrl = useMemo(() => (reviewModal?.proofFile ? URL.createObjectURL(reviewModal.proofFile) : null), [reviewModal?.proofFile]);
@@ -761,7 +780,7 @@ export default function ObligationsPage() {
                   <OpcaoBonus
                     regra="PLATINUM"
                     titulo="Platina (100%)"
-                    dica="O anexo precisa comprovar a platina"
+                    dica={dicaPlatina(platinaObrigacao, reviewModal.platinum)}
                     checked={reviewModal.platinum}
                     onChange={(e) => setReviewModal((prev) => ({ ...prev, platinum: e.target.checked }))}
                   />
@@ -769,7 +788,12 @@ export default function ObligationsPage() {
                 <OpcaoBonus
                   regra="IN_RELEASE_YEAR"
                   titulo="Em dia"
-                  dica="Conta como lançamento do ano na edição"
+                  dica={dicaEmDia({
+                    anoLancamento: reviewModal.anoLancamento,
+                    origem: reviewModal.origemAnoLancamento,
+                    sugestao: emDiaPeloLancamento(reviewModal.anoLancamento, reviewModal.completedAt),
+                    marcado: reviewModal.completedInReleaseYear,
+                  })}
                   checked={reviewModal.completedInReleaseYear}
                   onChange={(e) => setReviewModal((prev) => ({ ...prev, completedInReleaseYear: e.target.checked }))}
                 />

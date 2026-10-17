@@ -5,7 +5,7 @@ export const scoringRules = [
   { code: 'GAME_COMPLETED', name: 'Jogo fechado', emoji: '🎮', points: 1, description: 'Cada conclusão registrada gera 1 ponto base.', active: true },
   { code: 'FIRST_EXPERIENCE', name: 'Primeira experiência', emoji: '✨', points: 1, description: 'Bônus para a primeira vez que a pessoa fecha aquele jogo.', active: true },
   { code: 'FIRST_IN_EDITION', name: 'Primeiro no Reviradão', emoji: '🚀', points: 1, description: 'Bônus para quem fecha o jogo primeiro dentro da edição ativa.', active: true },
-  { code: 'IN_RELEASE_YEAR', name: 'Em dia', emoji: '📅', points: 1, description: 'Bônus manual para jogos considerados lançamento do ano na edição.', active: true },
+  { code: 'IN_RELEASE_YEAR', name: 'Em dia', emoji: '📅', points: 1, description: 'Jogo lançado no ano da edição. Marcado automaticamente quando o ano de lançamento é conhecido (Steam ou catálogo).', active: true },
   { code: 'TIME_VALUABLE_BLOCK', name: 'Tempo valioso', emoji: '⏱️', points: 2, description: 'A cada bloco completo de 25 horas jogadas, soma 2 pontos.', active: true },
   { code: 'PLATINUM', name: 'Platina', emoji: '🏆', points: 3, description: 'Platina confirmada rende 3 pontos.', active: true },
   { code: 'COOP_RIGHT_HAND', name: 'Braço direito', emoji: '🤝', points: 2, description: 'Coop com até 4 jogadores rende 2 pontos extras.', active: true },

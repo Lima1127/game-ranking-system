@@ -2,6 +2,8 @@ package com.gameranking.web.controller;
 
 import com.gameranking.security.AuthenticatedUser;
 import com.gameranking.service.SteamAccountService;
+import com.gameranking.service.SteamPlatinumPreviewService;
+import com.gameranking.web.dto.completion.SteamPlatinumPreviewResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,6 +27,7 @@ import java.util.Map;
 public class SteamAccountController {
 
     private final SteamAccountService steamAccountService;
+    private final SteamPlatinumPreviewService steamPlatinumPreviewService;
 
     /** Devolve o endereco do login da Steam; o site leva a pessoa para la na mesma aba. */
     @PostMapping("/link/start")
@@ -36,6 +39,15 @@ public class SteamAccountController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlink(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         steamAccountService.unlink(currentUser.userId());
+    }
+
+    /** Conquistas do proprio jogador no jogo, para a tela de registro ja marcar a "Platina". */
+    @GetMapping("/me/platinum")
+    public SteamPlatinumPreviewResponse platinumPreview(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @RequestParam int steamAppId
+    ) {
+        return steamPlatinumPreviewService.preview(currentUser.userId(), steamAppId);
     }
 
     /**

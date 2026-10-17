@@ -8,6 +8,8 @@ import { pointsByRuleCode } from '../data/scoringRules';
 import { useSugestoesSteam } from '../hooks/useSugestoesSteam';
 import SugestoesSteam from '../components/SugestoesSteam';
 import OpcaoBonus from '../components/OpcaoBonus';
+import { dicaEmDia, emDiaPeloLancamento } from '../utils/emDia';
+import { dicaPlatina, usePlatinaSteam } from '../hooks/usePlatinaSteam';
 
 const MAX_PLATINUM_IMAGE_SIZE = MAX_ORIGINAL_IMAGE_SIZE; // a foto e reduzida antes do envio
 
@@ -274,13 +276,38 @@ export default function CompletionPage() {
       .slice(0, 6);
   }, [games, form.gameName, rotativeByGameId]);
 
-  const { sugestoesSteam, jogoSteamSelecionado, escolherSugestaoSteam, limparSelecaoSteam, steamAppIdParaCadastro } =
+  const { sugestoesSteam, jogoSteamSelecionado, escolherSugestaoSteam, limparSelecaoSteam, steamAppIdParaCadastro, anoLancamentoSteam } =
     useSugestoesSteam({
       gameName: form.gameName,
       games,
       ativo: !matchingGame,
       idsJaSugeridos: gameSuggestions.map((game) => game.id),
     });
+
+  // "Em dia" pelo ano de lancamento (do catalogo ou da Steam). O sistema ja marca ou desmarca;
+  // o jogador ainda pode mudar (ex.: port de console com data diferente) e o admin ve a divergencia.
+  const anoLancamento = matchingGame?.releaseYear ?? anoLancamentoSteam;
+  const origemAnoLancamento = matchingGame && !matchingGame.steamAppId ? 'catálogo' : 'Steam';
+  const emDiaSugerido = emDiaPeloLancamento(anoLancamento, form.completedAt);
+  useEffect(() => {
+    if (emDiaSugerido === null || isHypeParticipationOnly) {
+      return;
+    }
+    setForm((prev) => (prev.completedInReleaseYear === emDiaSugerido ? prev : { ...prev, completedInReleaseYear: emDiaSugerido }));
+    // So reaplica quando o jogo (ou o ano dele) muda: se o jogador mexer no botao depois, vale a escolha dele.
+  }, [emDiaSugerido, matchingGame?.id, anoLancamentoSteam, isHypeParticipationOnly]);
+
+  // "Platina" pelas conquistas do jogador na Steam (100% dentro da edicao). Mesma ideia do "Em dia":
+  // o sistema marca ou desmarca, o jogador pode mudar e a conferencia do pedido mostra ao admin.
+  const steamAppIdDoJogo = matchingGame?.steamAppId ?? steamAppIdParaCadastro;
+  const platinaSteam = usePlatinaSteam(steamAppIdDoJogo);
+  const platinaSugerida = platinaSteam?.suggestPlatinum ?? null;
+  useEffect(() => {
+    if (platinaSugerida === null || isHypeParticipationOnly) {
+      return;
+    }
+    setForm((prev) => (prev.platinum === platinaSugerida ? prev : { ...prev, platinum: platinaSugerida }));
+  }, [platinaSugerida, steamAppIdDoJogo, isHypeParticipationOnly]);
 
   const handleSelectSuggestion = (gameSuggestion) => {
     limparSelecaoSteam();
@@ -485,7 +512,7 @@ export default function CompletionPage() {
             <OpcaoBonus
               regra="PLATINUM"
               titulo="Platina (100%)"
-              dica="O anexo precisa comprovar a platina"
+              dica={dicaPlatina(platinaSteam, form.platinum)}
               checked={form.platinum}
               onChange={(event) => setForm((prev) => ({ ...prev, platinum: event.target.checked }))}
               disabled={isHypeParticipationOnly}
@@ -493,7 +520,12 @@ export default function CompletionPage() {
             <OpcaoBonus
               regra="IN_RELEASE_YEAR"
               titulo="Em dia"
-              dica="Conta como lançamento do ano na edição"
+              dica={dicaEmDia({
+                anoLancamento,
+                origem: origemAnoLancamento,
+                sugestao: emDiaSugerido,
+                marcado: form.completedInReleaseYear,
+              })}
               checked={form.completedInReleaseYear}
               onChange={(event) => setForm((prev) => ({ ...prev, completedInReleaseYear: event.target.checked }))}
               disabled={isHypeParticipationOnly}

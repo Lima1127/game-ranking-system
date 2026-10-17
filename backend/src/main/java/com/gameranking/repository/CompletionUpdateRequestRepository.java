@@ -28,6 +28,7 @@ public interface CompletionUpdateRequestRepository extends JpaRepository<Complet
         java.time.OffsetDateTime getApprovedAt();
         java.util.UUID getProofId();
         boolean isFromObligation();
+        boolean isCompletedInReleaseYear();
     }
 
     @Query("""
@@ -44,7 +45,8 @@ public interface CompletionUpdateRequestRepository extends JpaRepository<Complet
                 u.createdAt as createdAt,
                 u.approvedAt as approvedAt,
                 u.proofId as proofId,
-                u.completion.fromObligation as fromObligation
+                u.completion.fromObligation as fromObligation,
+                u.completedInReleaseYear as completedInReleaseYear
             from CompletionUpdateRequest u
             where u.completion.edition.id = :editionId
             order by u.createdAt desc
@@ -65,7 +67,8 @@ public interface CompletionUpdateRequestRepository extends JpaRepository<Complet
                 u.createdAt as createdAt,
                 u.approvedAt as approvedAt,
                 u.proofId as proofId,
-                u.completion.fromObligation as fromObligation
+                u.completion.fromObligation as fromObligation,
+                u.completedInReleaseYear as completedInReleaseYear
             from CompletionUpdateRequest u
             where u.completion.edition.id = :editionId
               and u.requestedBy.id = :userId

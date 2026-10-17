@@ -110,6 +110,7 @@ Se o Neon já tiver tabelas, nada é enviado e o script mostra o que existe lá:
    | `DATABASE_PASSWORD` | SENHA do Neon |
    | `APP_JWT_SECRET` | um segredo **novo** (não reutilize o do seu PC) — gere com o comando abaixo |
    | `APP_INVITE_CODE` | o código de convite que você vai passar aos amigos |
+   | `STEAM_API_KEY` | (opcional) chave da Steam Web API, gerada em https://steamcommunity.com/dev/apikey. Liga a conferência de horas e conquistas na tela de Solicitações |
    | `APP_PUBLIC_URL` | o endereço do site no Render, sem barra no final (ex.: `https://reviradao.onrender.com`). Sem ele, o botão "Conectar Steam" não funciona |
 
    ```powershell

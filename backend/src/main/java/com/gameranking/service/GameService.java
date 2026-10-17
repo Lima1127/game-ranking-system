@@ -12,6 +12,7 @@ import com.gameranking.service.steam.SteamAppDetails;
 import com.gameranking.service.steam.SteamStoreClient;
 import com.gameranking.web.dto.game.CreateGameRequest;
 import com.gameranking.web.dto.game.GameResponse;
+import com.gameranking.web.dto.game.SteamAppSummaryResponse;
 import com.gameranking.web.dto.game.SteamGameSuggestionResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -152,6 +153,16 @@ public class GameService {
                 .build();
 
         return gameRepository.save(game);
+    }
+
+    /**
+     * Ano de lancamento de um jogo da Steam ainda fora do catalogo (escolhido na sugestao).
+     * Sem @Transactional: so consulta a Steam (com cache), nao o banco.
+     */
+    public SteamAppSummaryResponse steamAppSummary(int steamAppId) {
+        return steamStoreClient.fetchAppDetails(steamAppId)
+                .map(details -> new SteamAppSummaryResponse(details.appId(), details.name(), details.releaseYear()))
+                .orElseThrow(() -> new NotFoundException("Jogo nao encontrado na Steam"));
     }
 
     @Transactional(readOnly = true)

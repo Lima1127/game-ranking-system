@@ -52,6 +52,7 @@ public class CompletionService {
     private final AdminAuditLogService adminAuditLogService;
     private final ObligationService obligationService;
     private final RotativeListService rotativeListService;
+    private final SteamVerificationService steamVerificationService;
 
     @Transactional
     public CompletionResponse create(UUID userId, CreateCompletionRequest request) {
@@ -130,6 +131,7 @@ public class CompletionService {
         Completion saved = completionRepository.save(requesterCompletion);
 
         platinumProofService.attachToCompletion(request.platinumProofId(), saved);
+        List<UUID> createdIds = new ArrayList<>(List.of(saved.getId()));
 
         if (request.coop()) {
             List<Completion> additionalRequests = new ArrayList<>();
@@ -157,8 +159,11 @@ public class CompletionService {
                         .build());
             }
             completionRepository.saveAll(additionalRequests);
+            additionalRequests.forEach(additional -> createdIds.add(additional.getId()));
         }
 
+        // Cada jogador do coop e conferido no proprio perfil Steam. Roda depois de salvar, em segundo plano.
+        steamVerificationService.verifyAfterCommit(createdIds);
         return new CompletionResponse(saved.getId(), user.getId(), game.getId(), 0, CompletionStatus.PENDING);
     }
 
@@ -233,6 +238,8 @@ public class CompletionService {
             platinumProofService.replaceCompletionProof(request.platinumProofId(), completion);
         }
 
+        // O jogo pode ter sido trocado: confere de novo na Steam.
+        steamVerificationService.verifyAfterCommit(List.of(completion.getId()));
         return new CompletionResponse(completion.getId(), completion.getUser().getId(), completion.getGame().getId(), 0, completion.getStatus());
     }
 
@@ -371,7 +378,8 @@ public class CompletionService {
                             request.proofId(),
                             request.proofContentType(),
                             request.coopGroupId(),
-                            previewRuleCodes
+                            previewRuleCodes,
+                            request.completedInReleaseYear()
                     );
                 })
                 .toList();

@@ -1,5 +1,6 @@
 package com.gameranking.service;
 
+import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Game;
 import com.gameranking.domain.model.User;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -143,6 +145,21 @@ class GameServiceSteamTest {
 
         assertThat(suggestions).extracting(SteamGameSuggestionResponse::existingGameId)
                 .containsExactly(existingId, null);
+    }
+
+    @Test
+    void anoDeLancamentoDeJogoDaSteamForaDoCatalogo() {
+        when(steamStoreClient.fetchAppDetails(ELDEN_RING))
+                .thenReturn(Optional.of(new SteamAppDetails(ELDEN_RING, "ELDEN RING", 2022, List.of())));
+
+        assertThat(service.steamAppSummary(ELDEN_RING).releaseYear()).isEqualTo(2022);
+    }
+
+    @Test
+    void steamSemRespostaParaOAnoDevolveNaoEncontrado() {
+        when(steamStoreClient.fetchAppDetails(ELDEN_RING)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.steamAppSummary(ELDEN_RING)).isInstanceOf(NotFoundException.class);
     }
 
     @Test

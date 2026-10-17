@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, ExternalLink, Pencil, RefreshCw, Users, X } from 'lucide-react';
+import { Check, ExternalLink, Pencil, RefreshCw, TriangleAlert, Users, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import RuleEmojiStrip from '../components/RuleEmojiStrip';
+import ConferenciaSteam from '../components/ConferenciaSteam';
 import { Etiqueta, EtiquetaStatus, EtiquetasDoJogo, STATUS, etiquetaCoop, etiquetaNeutra } from '../components/Etiquetas';
 import { isStaffRole } from '../utils/roles';
 import { formatarData, formatarDataHora, formatarHoras } from '../utils/formatarData';
+import { emDiaPeloLancamento } from '../utils/emDia';
 
 function hasObligationBadge(submission) {
   return Boolean(
@@ -85,10 +87,14 @@ export default function RequestsPage() {
     },
   });
   const gamesById = useMemo(() => new Map(games.map((game) => [game.id, game])), [games]);
+  const gamesByName = useMemo(() => new Map(games.map((game) => [game.name.trim().toLowerCase(), game])), [games]);
+  // Pedidos de atualizacao nao trazem o id do jogo, so o nome.
+  const jogoDoPedido = (submission) =>
+    gamesById.get(submission.gameId) || gamesByName.get(String(submission.gameName || '').trim().toLowerCase());
 
   /** "Lançado em 2022" (com link para a loja Steam, se o jogo estiver vinculado). */
-  const infoLancamento = (gameId) => {
-    const game = gamesById.get(gameId);
+  const infoLancamento = (submission) => {
+    const game = jogoDoPedido(submission);
     if (!game?.releaseYear && !game?.steamAppId) {
       return null;
     }
@@ -106,6 +112,70 @@ export default function RequestsPage() {
           </a>
         )}
       </span>
+    );
+  };
+
+  /**
+   * Alerta quando o jogador marcou "Em dia" num jogo que nao foi lancado no ano da edicao
+   * (o sistema ja desmarcava, entao ele mudou de proposito: ex. port de console com data diferente).
+   */
+  const avisoEmDia = (submission) => {
+    if (submission.status !== 'PENDING' || !submission.completedInReleaseYear) {
+      return null;
+    }
+    const game = jogoDoPedido(submission);
+    if (emDiaPeloLancamento(game?.releaseYear, submission.completedAt) !== false) {
+      return null;
+    }
+    return (
+      <p className="flex items-start gap-1.5 text-sm font-semibold text-amber-700 dark:text-amber-300">
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        Marcou "Em dia", mas o jogo foi lançado em {game.releaseYear}
+        {game.steamAppId ? ' (pela Steam)' : ''}. Confira antes de aprovar.
+      </p>
+    );
+  };
+
+  // Conferencia na Steam (horas e conquistas) dos pedidos pendentes. So evidencia para o admin.
+  const pendingCompletionIds = useMemo(
+    () => [...new Set(submissions.filter((item) => item.status === 'PENDING').map((item) => item.completionId))].slice(0, 200),
+    [submissions]
+  );
+  const { data: steamChecks = [] } = useQuery({
+    queryKey: ['steam-checks', pendingCompletionIds],
+    queryFn: async () => {
+      const response = await api.get('/completions/steam-checks', { params: { completionIds: pendingCompletionIds.join(',') } });
+      return response.data;
+    },
+    enabled: pendingCompletionIds.length > 0,
+    // Sem status = conferencia rodando no servidor: busca de novo a cada 3s (no maximo 10 vezes).
+    refetchInterval: (query) =>
+      (query.state.data || []).some((check) => !check.status) && query.state.dataUpdateCount < 10 ? 3000 : false,
+  });
+  const steamCheckByCompletionId = useMemo(
+    () => new Map(steamChecks.map((check) => [check.completionId, check])),
+    [steamChecks]
+  );
+  const conferirSteamMutation = useMutation({
+    mutationFn: async (completionId) => (await api.post(`/completions/${completionId}/steam-check`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['steam-checks'] }),
+    onError: (error) => alert(error.response?.data?.message || error.message),
+  });
+
+  const renderConferenciaSteam = (submission, nome) => {
+    if (submission.status !== 'PENDING') {
+      return null;
+    }
+    return (
+      <ConferenciaSteam
+        key={`steam-${submission.kind}-${submission.submissionId}`}
+        check={steamCheckByCompletionId.get(submission.completionId)}
+        submission={submission}
+        nome={nome}
+        podeConferir={isAdmin || submission.userId === user.id}
+        conferindo={conferirSteamMutation.isPending && conferirSteamMutation.variables === submission.completionId}
+        onConferir={() => conferirSteamMutation.mutate(submission.completionId)}
+      />
     );
   };
 
@@ -250,9 +320,11 @@ export default function RequestsPage() {
               <strong key="j" className="font-semibold text-slate-800 dark:text-slate-100">{submission.userDisplayName}</strong>,
               `Concluído em ${formatarData(submission.completedAt)}`,
               formatarHoras(submission.hoursPlayed),
-              infoLancamento(submission.gameId),
+              infoLancamento(submission),
             ]}
           />
+
+          {avisoEmDia(submission)}
 
           {submission.ruleCodes && submission.ruleCodes.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
@@ -262,6 +334,8 @@ export default function RequestsPage() {
               )}
             </div>
           )}
+
+          {renderConferenciaSteam(submission)}
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <Datas submission={submission} />
@@ -332,9 +406,11 @@ export default function RequestsPage() {
             itens={[
               `Concluído em ${formatarData(firstSubmission.completedAt)}`,
               formatarHoras(firstSubmission.hoursPlayed),
-              infoLancamento(firstSubmission.gameId),
+              infoLancamento(firstSubmission),
             ]}
           />
+
+          {avisoEmDia(firstSubmission)}
 
           {/* Cada participante com a sua situacao */}
           <div className="flex flex-wrap gap-1.5">
@@ -353,6 +429,9 @@ export default function RequestsPage() {
               );
             })}
           </div>
+
+          {/* Cada participante e conferido no proprio perfil Steam */}
+          {group.entries.map((entry) => renderConferenciaSteam(entry, entry.userDisplayName))}
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <Datas submission={group.entries.find((entry) => entry.approvedAt) || firstSubmission} />
