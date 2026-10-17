@@ -1,5 +1,6 @@
 package com.gameranking.domain.model;
 
+import com.gameranking.domain.enums.RotativeReviewBand;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,4 +31,23 @@ public class RotativeListEntry {
 
     @Column(nullable = false)
     private Boolean active;
+
+    // Sorteio da Steam (null em listas montadas por arquivo).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_band", length = 20)
+    private RotativeReviewBand reviewBand;
+
+    @Column(name = "steam_review_count")
+    private Integer steamReviewCount;
+
+    // Tags marcadas em vermelho, separadas por virgula (so os admins veem).
+    @Column(name = "flagged_tags", length = 200)
+    private String flaggedTags;
+
+    // Preenchidos quando o jogo entrou por "Sortear outro" (destaque para o admin).
+    @Column(name = "replaced_game_name", length = 180)
+    private String replacedGameName;
+
+    @Column(name = "rerolled_at")
+    private java.time.OffsetDateTime rerolledAt;
 }

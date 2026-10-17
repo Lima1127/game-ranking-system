@@ -2,6 +2,7 @@ package com.gameranking.service;
 
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
+import com.gameranking.domain.enums.RotativeReviewBand;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Edition;
 import com.gameranking.domain.model.Game;
@@ -13,6 +14,8 @@ import com.gameranking.repository.EditionRepository;
 import com.gameranking.repository.RotativeListEntryRepository;
 import com.gameranking.repository.RotativeSourceGameRepository;
 import com.gameranking.repository.UserRepository;
+import com.gameranking.service.steam.SteamGameDrawService;
+import com.gameranking.service.steam.SteamQueryGame;
 import com.gameranking.web.dto.game.CreateGameRequest;
 import com.gameranking.web.dto.rotative.RotativeListEntryResponse;
 import com.gameranking.web.dto.rotative.RotativeListGenerationResponse;
@@ -32,6 +35,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -48,13 +52,111 @@ public class RotativeListService {
     private final EditionRepository editionRepository;
     private final UserRepository userRepository;
     private final GameService gameService;
+    private final AdminAuditLogService adminAuditLogService;
 
     @Transactional(readOnly = true)
     public List<RotativeListEntryResponse> list(UUID editionId) {
         Edition edition = resolveEdition(editionId);
         return rotativeListEntryRepository.findActiveByEditionId(edition.getId()).stream()
-                .map(this::toResponse)
+                .map(entry -> toResponse(entry, false))
                 .toList();
+    }
+
+    /** Lista ativa; as tags marcadas em vermelho so aparecem para a equipe. */
+    @Transactional(readOnly = true)
+    public List<RotativeListEntryResponse> list(UUID requesterId, UUID editionId) {
+        boolean staff = userRepository.findById(requesterId).map(user -> user.getRole().isStaff()).orElse(false);
+        Edition edition = resolveEdition(editionId);
+        return rotativeListEntryRepository.findActiveByEditionId(edition.getId()).stream()
+                .map(entry -> toResponse(entry, staff))
+                .toList();
+    }
+
+    /** O que o sorteio da Steam precisa saber antes de consultar a loja (fora de transacao). */
+    public record SteamDrawContext(UUID editionId, int editionYear, SteamGameDrawService.Exclusions excluded) {
+    }
+
+    /**
+     * Antes de sortear uma lista nova: confere se e admin e junta os jogos que nao podem sair no
+     * sorteio (ja zerados na edicao e os que estao na lista atual).
+     */
+    @Transactional(readOnly = true)
+    public SteamDrawContext steamDrawContext(UUID requesterId, UUID editionId) {
+        ensureAdmin(requesterId);
+        Edition edition = resolveEdition(editionId);
+        return new SteamDrawContext(edition.getId(), edition.getYear(), drawExclusions(edition.getId()));
+    }
+
+    /** Troca a lista ativa inteira pelos jogos sorteados da Steam (nova rodada). */
+    @Transactional
+    public RotativeListGenerationResponse replaceWithSteamDraw(
+            UUID requesterId,
+            UUID editionId,
+            Map<RotativeReviewBand, List<SteamQueryGame>> drawn,
+            String warning
+    ) {
+        User admin = ensureAdmin(requesterId);
+        Edition edition = resolveEdition(editionId);
+
+        List<RotativeListEntry> currentActiveEntries = rotativeListEntryRepository.findActiveByEditionId(edition.getId());
+        currentActiveEntries.forEach(entry -> entry.setActive(false));
+        rotativeListEntryRepository.saveAll(currentActiveEntries);
+
+        short nextRound = (short) (rotativeListEntryRepository.findMaxQuarterByEditionId(edition.getId()) + 1);
+        List<RotativeListEntry> created = new ArrayList<>();
+        Set<UUID> gamesInRound = new java.util.HashSet<>();
+        drawn.forEach((band, games) -> games.forEach(steamGame -> {
+            RotativeListEntry entry = newSteamEntry(edition, nextRound, band, steamGame);
+            if (gamesInRound.add(entry.getGame().getId())) {
+                created.add(entry);
+            }
+        }));
+        rotativeListEntryRepository.saveAll(created);
+
+        long flagged = created.stream().filter(entry -> entry.getFlaggedTags() != null).count();
+        adminAuditLogService.log(admin, "ROTATIVE_LIST_DRAWN", null,
+                "Lista #" + nextRound + " sorteada da Steam com " + created.size() + " jogos"
+                        + (flagged > 0 ? " (" + flagged + " com tags marcadas)" : "") + "."
+                        + (warning != null ? " " + warning : ""));
+
+        return new RotativeListGenerationResponse(nextRound, 0, created.size(), created.size(), warning);
+    }
+
+    /** O que "sortear outro" precisa saber antes de consultar a loja. */
+    public record RerollContext(UUID editionId, int editionYear, RotativeReviewBand band, SteamGameDrawService.Exclusions excluded) {
+    }
+
+    @Transactional(readOnly = true)
+    public RerollContext rerollContext(UUID requesterId, UUID entryId) {
+        ensureAdmin(requesterId);
+        Edition edition = resolveEdition(null);
+        RotativeListEntry entry = findActiveEntry(edition, entryId);
+        // Item de lista montada por arquivo nao tem vaga: o substituto vem da vaga 1400+.
+        RotativeReviewBand band = entry.getReviewBand() != null ? entry.getReviewBand() : RotativeReviewBand.HIGH;
+        return new RerollContext(edition.getId(), edition.getYear(), band, drawExclusions(edition.getId()));
+    }
+
+    /** Troca um item da lista ativa por outro jogo sorteado (mesma rodada e mesma faixa). */
+    @Transactional
+    public RotativeListEntryResponse replaceEntry(UUID requesterId, UUID entryId, RotativeReviewBand band, SteamQueryGame steamGame) {
+        User admin = ensureAdmin(requesterId);
+        Edition edition = resolveEdition(null);
+        RotativeListEntry entry = findActiveEntry(edition, entryId);
+
+        RotativeListEntry replacement = newSteamEntry(edition, entry.getQuarter(), band, steamGame);
+        if (rotativeListEntryRepository.findByEditionIdAndQuarterAndGameId(edition.getId(), entry.getQuarter(), replacement.getGame().getId()).isPresent()) {
+            throw new BusinessException("O jogo sorteado ja esta nesta lista. Tente sortear de novo.");
+        }
+        String oldName = entry.getGame().getName();
+        replacement.setReplacedGameName(oldName);
+        replacement.setRerolledAt(java.time.OffsetDateTime.now());
+        rotativeListEntryRepository.delete(entry);
+        rotativeListEntryRepository.flush();
+        rotativeListEntryRepository.save(replacement);
+
+        adminAuditLogService.log(admin, "ROTATIVE_GAME_REROLLED", null,
+                "Lista #" + entry.getQuarter() + ": \"" + oldName + "\" trocado por \"" + replacement.getGame().getName() + "\".");
+        return toResponse(replacement, true);
     }
 
     @Transactional
@@ -155,7 +257,8 @@ public class RotativeListService {
                 nextRound,
                 carryOver.size(),
                 additions.size(),
-                nextList.size()
+                nextList.size(),
+                null
         );
     }
 
@@ -258,14 +361,53 @@ public class RotativeListService {
                 .orElseThrow(() -> new NotFoundException("Edicao ativa nao encontrada"));
     }
 
-    private RotativeListEntryResponse toResponse(RotativeListEntry entry) {
+    /**
+     * Jogos que o sorteio nao pode trazer: ja zerados (aprovados) na edicao e os da lista atual,
+     * pelo codigo da Steam e pelo nome (um jogo do catalogo sem vinculo com a Steam so e achado pelo nome).
+     */
+    private SteamGameDrawService.Exclusions drawExclusions(UUID editionId) {
+        Set<UUID> gameIds = new java.util.HashSet<>(completionRepository.listApprovedGameIdsByEditionId(editionId));
+        rotativeListEntryRepository.findActiveByEditionId(editionId).forEach(entry -> gameIds.add(entry.getGame().getId()));
+        return new SteamGameDrawService.Exclusions(gameService.steamAppIdsOf(gameIds), gameService.namesOf(gameIds));
+    }
+
+    private RotativeListEntry findActiveEntry(Edition edition, UUID entryId) {
+        RotativeListEntry entry = rotativeListEntryRepository.findByIdAndEditionId(entryId, edition.getId())
+                .orElseThrow(() -> new NotFoundException("Item da lista nao encontrado"));
+        if (!Boolean.TRUE.equals(entry.getActive())) {
+            throw new BusinessException("Este jogo nao esta mais na lista ativa");
+        }
+        return entry;
+    }
+
+    private RotativeListEntry newSteamEntry(Edition edition, short round, RotativeReviewBand band, SteamQueryGame steamGame) {
+        List<String> flagged = SteamGameDrawService.flaggedTagNames(steamGame.tagIds());
+        return RotativeListEntry.builder()
+                .id(UUID.randomUUID())
+                .edition(edition)
+                .quarter(round)
+                .game(gameService.findOrCreateFromSteam(steamGame.appId(), steamGame.name(), steamGame.releaseYear()))
+                .active(true)
+                .reviewBand(band)
+                .steamReviewCount(steamGame.reviewCount())
+                .flaggedTags(flagged.isEmpty() ? null : String.join(",", flagged))
+                .build();
+    }
+
+    private RotativeListEntryResponse toResponse(RotativeListEntry entry, boolean includeFlaggedTags) {
         return new RotativeListEntryResponse(
                 entry.getId(),
                 entry.getEdition().getId(),
                 entry.getQuarter(),
                 entry.getGame().getId(),
                 entry.getGame().getName(),
-                Boolean.TRUE.equals(entry.getActive())
+                Boolean.TRUE.equals(entry.getActive()),
+                entry.getGame().getSteamAppId(),
+                entry.getReviewBand(),
+                entry.getSteamReviewCount(),
+                includeFlaggedTags && entry.getFlaggedTags() != null ? List.of(entry.getFlaggedTags().split(",")) : List.of(),
+                includeFlaggedTags ? entry.getReplacedGameName() : null,
+                includeFlaggedTags ? entry.getRerolledAt() : null
         );
     }
 }
