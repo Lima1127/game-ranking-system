@@ -50,7 +50,9 @@ Backend — Spring Boot (pasta backend/), porta 8080
     │                 estrutura criada/atualizada pelo Flyway (migrations V1…V18)
     └──────────────► Disco: backend/storage/{platinum,avatars}  (imagens enviadas)
 
-Serviços externos: loja pública da Steam (sugestões de jogos e ano de lançamento; opcional, sem chave).
+Serviços externos (todos opcionais): loja pública da Steam (sugestões de jogos e ano de lançamento,
+sem chave), login OpenID da Steam ("Conectar Steam") e Steam Web API (conferência de horas e
+conquistas, exige chave).
 ```
 
 **Na nuvem** ([docs/deploy.md](docs/deploy.md)) a estrutura é mais simples: um único serviço no
@@ -139,6 +141,7 @@ Resumo (passo a passo detalhado em [docs/integration-runbook.md](docs/integratio
 | `app.storage.root-path` | não | Pasta das imagens no modo `disk` (padrão `./storage`) |
 | `app.registration.invite-code` | não | Se preenchido, o cadastro exige este código. Vazio = cadastro aberto |
 | `app.steam.enabled` | não | `true` (padrão) liga as sugestões da loja Steam; `false` desliga. Na nuvem: `APP_STEAM_ENABLED` |
+| `app.steam.api-key` | não | Chave da Steam Web API, para conferir horas e conquistas dos registros. Segredo (fora do Git). Vazio = conferência desligada. Também lê a variável `STEAM_API_KEY` |
 | `app.public-url` | não | Endereço pelo qual o site é aberto (padrão `http://localhost:5173`). A Steam devolve a pessoa para cá em "Conectar Steam". Na nuvem: `APP_PUBLIC_URL` (obrigatório para esse botão) |
 
 Na nuvem a configuração vem de `application-prod.yml` + variáveis de ambiente do Render
@@ -188,6 +191,8 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | POST | `/completions/{id}/approve` | Aprova pedido e gera pontos (**admin**) |
 | POST | `/completions/{id}/cancel` | Cancela pedido pendente (dono ou admin) |
 | GET | `/completions/submissions` | Lista unificada: novos registros + atualizações |
+| GET | `/completions/steam-checks?completionIds=` | Conferência na Steam (horas e conquistas) dos registros; jogador vê os próprios, equipe vê todos |
+| POST | `/completions/{id}/steam-check` | Confere de novo na Steam (dono do registro ou equipe) |
 | GET / PUT | `/completions/submissions/{kind}/{id}` | Detalha / edita um pedido pendente (`kind` = `NEW_COMPLETION` ou `UPDATE_COMPLETION`) |
 | POST | `/completions/submissions/{kind}/{id}/approve` | Aprova (**admin**) |
 | POST | `/completions/submissions/{kind}/{id}/cancel` | Cancela |

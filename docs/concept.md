@@ -77,6 +77,18 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   primeira vez, em dia, observações, novo anexo). **Coop e lista rotativa não podem ser
   alterados** por atualização. O admin vê a **prévia dos pontos** antes de aprovar; ao aprovar,
   a edição inteira é recalculada.
+- **Conferência na Steam:** se o jogo está ligado à Steam e o jogador conectou a conta Steam, o
+  servidor consulta as **horas** e as **conquistas** do jogo no perfil dele ao enviar o registro,
+  ao editar um pedido pendente e ao pedir atualização. O resultado aparece no pedido, na tela de
+  Solicitações, com avisos quando:
+  - as horas declaradas passam das registradas na Steam (folga de 2h ou 20%, o que for maior);
+  - marcou platina, mas a Steam não mostra 100% das conquistas;
+  - as 100% das conquistas foram completadas antes do início da edição.
+  É **só evidência**: não muda pontos sozinha, e a decisão continua com o admin. A Steam registra o
+  tempo total desde sempre (não só o da edição) e não sabe se o jogo foi "zerado"; o comprovante
+  continua obrigatório. Perfil privado, jogo fora da biblioteca ou Steam fora do ar aparecem como
+  aviso, sem travar o registro. O dono do registro e a equipe podem "Conferir de novo".
+  Exige a chave da Steam Web API no servidor (`app.steam.api-key` / `STEAM_API_KEY`).
 
 ### Coop
 - De 2 a 4 jogadores contando com quem registra. Quem registra escolhe os parceiros e o sistema

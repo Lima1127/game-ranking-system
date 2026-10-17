@@ -6,6 +6,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ImagePreviewModal from '../components/ImagePreviewModal';
 import RuleEmojiStrip from '../components/RuleEmojiStrip';
+import ConferenciaSteam from '../components/ConferenciaSteam';
 import { Etiqueta, EtiquetaStatus, EtiquetasDoJogo, STATUS, etiquetaCoop, etiquetaNeutra } from '../components/Etiquetas';
 import { isStaffRole } from '../utils/roles';
 import { formatarData, formatarDataHora, formatarHoras } from '../utils/formatarData';
@@ -106,6 +107,46 @@ export default function RequestsPage() {
           </a>
         )}
       </span>
+    );
+  };
+
+  // Conferencia na Steam (horas e conquistas) dos pedidos pendentes. So evidencia para o admin.
+  const pendingCompletionIds = useMemo(
+    () => [...new Set(submissions.filter((item) => item.status === 'PENDING').map((item) => item.completionId))].slice(0, 200),
+    [submissions]
+  );
+  const { data: steamChecks = [] } = useQuery({
+    queryKey: ['steam-checks', pendingCompletionIds],
+    queryFn: async () => {
+      const response = await api.get('/completions/steam-checks', { params: { completionIds: pendingCompletionIds.join(',') } });
+      return response.data;
+    },
+    enabled: pendingCompletionIds.length > 0,
+  });
+  const steamCheckByCompletionId = useMemo(
+    () => new Map(steamChecks.map((check) => [check.completionId, check])),
+    [steamChecks]
+  );
+  const conferirSteamMutation = useMutation({
+    mutationFn: async (completionId) => (await api.post(`/completions/${completionId}/steam-check`)).data,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['steam-checks'] }),
+    onError: (error) => alert(error.response?.data?.message || error.message),
+  });
+
+  const renderConferenciaSteam = (submission, nome) => {
+    if (submission.status !== 'PENDING') {
+      return null;
+    }
+    return (
+      <ConferenciaSteam
+        key={`steam-${submission.kind}-${submission.submissionId}`}
+        check={steamCheckByCompletionId.get(submission.completionId)}
+        submission={submission}
+        nome={nome}
+        podeConferir={isAdmin || submission.userId === user.id}
+        conferindo={conferirSteamMutation.isPending && conferirSteamMutation.variables === submission.completionId}
+        onConferir={() => conferirSteamMutation.mutate(submission.completionId)}
+      />
     );
   };
 
@@ -263,6 +304,8 @@ export default function RequestsPage() {
             </div>
           )}
 
+          {renderConferenciaSteam(submission)}
+
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <Datas submission={submission} />
             {temAcoes && (
@@ -353,6 +396,9 @@ export default function RequestsPage() {
               );
             })}
           </div>
+
+          {/* Cada participante e conferido no proprio perfil Steam */}
+          {group.entries.map((entry) => renderConferenciaSteam(entry, entry.userDisplayName))}
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <Datas submission={group.entries.find((entry) => entry.approvedAt) || firstSubmission} />
