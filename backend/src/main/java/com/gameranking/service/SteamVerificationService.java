@@ -238,7 +238,8 @@ public class SteamVerificationService {
                 check == null ? null : check.getAchievementsUnlocked(),
                 check == null ? null : check.getLastUnlockAt(),
                 check == null ? null : check.getCheckedAt(),
-                completion.getEdition().getStartsAt()
+                completion.getEdition().getStartsAt(),
+                SteamPlatinumPreviewService.MIN_ACHIEVEMENTS_FOR_PLATINUM
         );
     }
 }

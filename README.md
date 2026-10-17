@@ -210,6 +210,8 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | POST | `/steam/link/start` | Inicia "Conectar Steam": devolve o endereço do login oficial da Steam |
 | GET | `/steam/callback` | Retorno do login da Steam; confere e volta para `/menu?steam=<resultado>` (**pública**) |
 | DELETE | `/steam/link` | Desconecta a conta Steam |
+| GET | `/steam/me/platinum?steamAppId=` | Conquistas do próprio jogador no jogo, para a tela já marcar a "Platina" |
+| GET | `/games/steam-apps/{steamAppId}` | Nome e ano de lançamento de um jogo da Steam (usado para marcar o "Em dia") |
 | GET / POST | `/obligations` | Lista / cria obrigação |
 | POST | `/obligations/{id}/accept` · `refuse` · `cancel` · `submit-review` | Ações do jogador |
 | POST | `/obligations/{id}/approve-review` · `reject-review` | Revisão (**admin**) |

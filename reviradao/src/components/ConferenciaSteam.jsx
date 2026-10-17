@@ -4,6 +4,8 @@ import { formatarData, formatarHoras } from '../utils/formatarData';
 // Diferenca de horas aceita antes de avisar: 2h ou 20% do que a Steam registra (o que for maior).
 const FOLGA_HORAS_MINIMA = 2;
 const FOLGA_HORAS_PERCENTUAL = 0.2;
+// O servidor envia o minimo de conquistas para a platina; este valor so cobre respostas antigas.
+const MINIMO_CONQUISTAS_PADRAO = 9;
 
 /**
  * Compara o que o jogador declarou (horas, platina) com o que a Steam informou.
@@ -53,16 +55,13 @@ export function analisarConferencia(check, submission) {
     alertas.push(`Declarou ${formatarHoras(horasDeclaradas)}; a Steam registra ${Math.floor(horasSteam)}h.`);
   }
 
+  // Platina: todas as conquistas, em jogo com o minimo de conquistas (nao importa quando foram feitas).
   if (submission?.platinum && total > 0) {
-    const completouTudo = desbloqueadas === total;
-    const antesDaEdicao = check.editionStartsAt && check.lastUnlockAt && check.lastUnlockAt.slice(0, 10) < check.editionStartsAt;
-    if (!completouTudo) {
+    const minimo = check.minimumAchievementsForPlatinum ?? MINIMO_CONQUISTAS_PADRAO;
+    if (total < minimo) {
+      alertas.push(`Marcou platina, mas o jogo tem só ${total} conquistas: platina vale a partir de ${minimo}.`);
+    } else if (desbloqueadas < total) {
       alertas.push(`Marcou platina, mas a Steam mostra ${desbloqueadas} de ${total} conquistas.`);
-    } else if (antesDaEdicao) {
-      alertas.push(`100% das conquistas antes do início da edição (última em ${ultima}).`);
-    } else if (!check.lastUnlockAt) {
-      // Alguns jogos antigos nao informam a data das conquistas: nao da para saber se foi na edicao.
-      confirmacoes.push('100% das conquistas na Steam (a Steam não informa a data; confira pelo anexo)');
     } else {
       confirmacoes.push('Platina confirmada pela Steam');
     }

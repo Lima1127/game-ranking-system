@@ -21,6 +21,8 @@ public record CompletionSteamCheckResponse(
         Integer achievementsUnlocked,
         OffsetDateTime lastUnlockAt,
         OffsetDateTime checkedAt,
-        LocalDate editionStartsAt
+        LocalDate editionStartsAt,
+        // Minimo de conquistas do jogo para valer como platina (regra do grupo).
+        int minimumAchievementsForPlatinum
 ) {
 }

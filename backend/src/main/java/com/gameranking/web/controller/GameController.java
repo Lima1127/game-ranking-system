@@ -4,6 +4,7 @@ import com.gameranking.security.AuthenticatedUser;
 import com.gameranking.service.GameService;
 import com.gameranking.web.dto.game.CreateGameRequest;
 import com.gameranking.web.dto.game.GameResponse;
+import com.gameranking.web.dto.game.SteamAppSummaryResponse;
 import com.gameranking.web.dto.game.SteamGameSuggestionResponse;
 import com.gameranking.web.dto.game.UpdateGameReleaseYearRequest;
 import jakarta.validation.Valid;
@@ -40,6 +41,12 @@ public class GameController {
     @GetMapping("/steam-search")
     public List<SteamGameSuggestionResponse> searchSteam(@RequestParam(defaultValue = "") String term) {
         return gameService.searchSteam(term);
+    }
+
+    // Ano de lancamento de um jogo da Steam escolhido na sugestao (404 se a Steam nao responder).
+    @GetMapping("/steam-apps/{steamAppId}")
+    public SteamAppSummaryResponse steamAppSummary(@PathVariable int steamAppId) {
+        return gameService.steamAppSummary(steamAppId);
     }
 
     @PatchMapping("/{gameId}/release-year")

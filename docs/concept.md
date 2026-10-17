@@ -83,7 +83,7 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   Solicitações, com avisos quando:
   - as horas declaradas passam das registradas na Steam (folga de 2h ou 20%, o que for maior);
   - marcou platina, mas a Steam não mostra 100% das conquistas;
-  - as 100% das conquistas foram completadas antes do início da edição.
+  - marcou platina num jogo com menos de 9 conquistas (não conta como platina).
   É **só evidência**: não muda pontos sozinha, e a decisão continua com o admin. A Steam registra o
   tempo total desde sempre (não só o da edição) e não sabe se o jogo foi "zerado"; o comprovante
   continua obrigatório. Perfil privado, jogo fora da biblioteca ou Steam fora do ar aparecem como
@@ -129,9 +129,9 @@ vira um evento na tabela `score_events`.
 | `GAME_COMPLETED` | Jogo fechado | +1 | automático |
 | `FIRST_EXPERIENCE` | Primeira experiência | +1 | jogador marca, admin confere |
 | `FIRST_IN_EDITION` | Primeiro no Reviradão | +1 | servidor (ver abaixo) |
-| `IN_RELEASE_YEAR` | Em dia | +1 | jogador marca, admin confere |
+| `IN_RELEASE_YEAR` | Em dia | +1 | sistema sugere pelo ano de lançamento; jogador pode mudar; admin confere (ver abaixo) |
 | `TIME_VALUABLE_BLOCK` | Tempo valioso | +2 **a cada 25h** completas | horas informadas (máx. 1000h) |
-| `PLATINUM` | Platina | +3 | jogador marca, admin confere |
+| `PLATINUM` | Platina | +3 | sistema sugere pelas conquistas da Steam; jogador pode mudar; admin confere (ver abaixo) |
 | `COOP_RIGHT_HAND` | Braço direito | +2 | coop com até 4 jogadores |
 | `HYPE_PARTICIPATION` | Participação no Hype | +1 | jogador marca, admin confere |
 | `HYPE_COMPLETION_BONUS` | Hype concluído | +2 | jogador marca, admin confere |
@@ -139,6 +139,27 @@ vira um evento na tabela `score_events`.
 | `UNDERDOG_BONUS` | Café com leite | +3 | servidor (ver abaixo) |
 
 Registro de **"só participação no Hype"** gera apenas `HYPE_PARTICIPATION`.
+
+**"Em dia" (`IN_RELEASE_YEAR`):** vale para jogo **lançado no ano da edição**. Quando o ano de
+lançamento é conhecido (veio da Steam ou foi definido por um admin), a tela de registro (e a
+conclusão de obrigação) **já marca ou desmarca** o bônus sozinha e mostra de onde veio o ano. O
+jogador ainda pode mudar, porque a data da Steam às vezes é a do PC e não a original (ports de
+console, acesso antecipado). Se ele marcar "Em dia" num jogo de outro ano, a tela de Solicitações
+mostra o alerta *"Marcou Em dia, mas o jogo foi lançado em ..."* para o admin conferir. Sem ano
+conhecido, segue como antes: o jogador marca e o admin confere.
+
+**"Platina" (`PLATINUM`):** em jogo da Steam, se o jogador conectou a conta Steam, a tela de
+registro (e a conclusão de obrigação) consulta as conquistas **dele** e **já marca a platina**
+quando ele tem **100% das conquistas**, **não importa quando** foram desbloqueadas.
+- **Mínimo de 9 conquistas:** jogo com menos de 9 conquistas no total **não conta como platina**,
+  mesmo com 100% (5/5 não conta; 9/9 conta). O número fica em
+  `SteamPlatinumPreviewService.MIN_ACHIEVEMENTS_FOR_PLATINUM`.
+- Faltando conquista, ou com menos de 9 no total, a opção vem desmarcada.
+- Não marca nem desmarca sozinha quando não dá para afirmar: sem conta Steam conectada, perfil
+  privado ou jogo sem conquistas na Steam (pode ser platina de console, que a Steam não conhece).
+
+O jogador pode mudar, e a conferência na Steam do pedido mostra ao admin qualquer divergência. O
+anexo continua obrigatório.
 
 ### Regras de obrigação
 
@@ -189,6 +210,8 @@ Zerou pela primeira vez, foi o primeiro da edição, 30h, sem platina:
 | 28/09/2026 | Pedido **cancelado** não impede reenviar o mesmo jogo. |
 | 28/09/2026 | Excluir um registro que concluiu obrigação **reabre a obrigação** (volta para ACEITA, sem o +3). |
 | 28/09/2026 | Pedido de atualização **não altera coop nem lista rotativa**. |
+| 17/10/2026 | "Em dia" = jogo **lançado no ano da edição**. |
+| 17/10/2026 | Platina = **100% das conquistas**, não importa quando; jogo com **menos de 9 conquistas** não conta. |
 | 28/09/2026 | Ano de lançamento dos jogos é opcional e **definido apenas por admin**. |
 | 15/10/2026 | Cargos **Fundador > Co-fundador > Admin > Jogador**; Fundador só pelo banco. |
 | 15/10/2026 | Nome de exibição só é alterado pela equipe; senha, pelo próprio jogador (Menu). |
@@ -201,7 +224,8 @@ Precisam de decisão do grupo antes de mudar o código:
 2. "Primeiro no Reviradão": deve ser o primeiro **aprovado** (atual) ou o primeiro a **zerar** (data)?
 3. Café com leite: avaliar na **aprovação** (atual) ou quando o jogador **começa** o jogo, como diz o texto do site?
 4. Pode registrar o mesmo jogo em **edições diferentes**? Hoje não pode.
-5. "Em dia": zerou no **ano de lançamento** do jogo, ou é um jogo **lançado no ano da edição**?
+5. ~~"Em dia": zerou no ano de lançamento ou é lançado no ano da edição?~~ **Decidido em 17/10/2026:**
+   jogo **lançado no ano da edição** (como a conclusão sempre fica dentro da edição, dá no mesmo). Ver a regra `IN_RELEASE_YEAR` acima.
 6. **Hype**: qual jogo é o Hype e quem define?
 7. Obrigação **parcial ("25%")**: 25% de quê? Hoje não é validado.
 8. **Prazo** para obrigações.

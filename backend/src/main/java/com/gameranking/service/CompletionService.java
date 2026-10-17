@@ -378,7 +378,8 @@ public class CompletionService {
                             request.proofId(),
                             request.proofContentType(),
                             request.coopGroupId(),
-                            previewRuleCodes
+                            previewRuleCodes,
+                            request.completedInReleaseYear()
                     );
                 })
                 .toList();

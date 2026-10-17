@@ -63,7 +63,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.approvedAt,
                 p.id,
                 p.contentType,
-                c.coopGroupId
+                c.coopGroupId,
+                c.completedInReleaseYear
             )
             from Completion c
             left join c.proof p
@@ -88,7 +89,8 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
                 c.approvedAt,
                 p.id,
                 p.contentType,
-                c.coopGroupId
+                c.coopGroupId,
+                c.completedInReleaseYear
             )
             from Completion c
             left join c.proof p

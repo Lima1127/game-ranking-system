@@ -29,7 +29,9 @@ public record CompletionSubmissionItemResponse(
         UUID coopGroupId,
         boolean editable,
         boolean fromObligation,
-        List<String> ruleCodes
+        List<String> ruleCodes,
+        // Jogador marcou "Em dia". A tela compara com o ano de lancamento e avisa o admin se divergir.
+        boolean completedInReleaseYear
 ) {
 }
 
