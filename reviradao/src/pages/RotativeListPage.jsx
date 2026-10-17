@@ -218,7 +218,7 @@ Atenção: ${warning}` : ''}`);
                 {totalMarcados} {totalMarcados === 1 ? 'jogo marcado' : 'jogos marcados'}
               </span>
             )}
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary dark:bg-primary/25 dark:text-indigo-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/30 dark:bg-primary/20 dark:text-indigo-200">
               🔄 Lista #{currentRound || 0}
             </span>
           </div>

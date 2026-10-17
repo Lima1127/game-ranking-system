@@ -12,7 +12,7 @@ export const scoringRules = [
   { code: 'HYPE_PARTICIPATION', name: 'Participação no Hype', emoji: '🔥', points: 1, description: 'Participar do Hype adiciona 1 ponto.', active: true },
   { code: 'HYPE_COMPLETION_BONUS', name: 'Hype concluído', emoji: '⚡', points: 2, description: 'Completar o objetivo relacionado ao Hype soma mais 2 pontos.', active: true },
   { code: 'ROTATIVE_LIST_BONUS', name: 'Lista rotativa', emoji: '🔄', points: 3, description: 'Completar um item da lista rotativa adiciona 3 pontos.', active: true },
-  { code: 'UNDERDOG_BONUS', name: 'Café com leite', emoji: '🐶', points: 3, description: 'Bônus de 3 pontos para quem inicia a jogada estando 20 pontos ou mais atrás do líder da edição.', active: true },
+  { code: 'UNDERDOG_BONUS', name: 'Café com leite', emoji: '🐶', points: 3, description: 'Bônus de 3 pontos para quem, no dia em que zerou o jogo, estava 20 pontos ou mais atrás do líder da edição.', active: true },
   { code: 'OBLIGATION_COMPLETED', name: 'Obrigação cumprida', emoji: '📋', points: 3, description: 'Conclusão de obrigação aprovada soma 3 pontos.', active: true },
 ];
 

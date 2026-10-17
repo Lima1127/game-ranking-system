@@ -16,6 +16,7 @@ import com.gameranking.repository.EditionRepository;
 import com.gameranking.repository.ObligationRepository;
 import com.gameranking.repository.ScoreEventRepository;
 import com.gameranking.repository.UserRepository;
+import com.gameranking.service.scoring.CafeComLeite;
 import com.gameranking.service.scoring.ScoringEngine;
 import com.gameranking.web.dto.completion.CompletionResponse;
 import com.gameranking.web.dto.completion.CompletionListItemResponse;
@@ -53,6 +54,7 @@ public class CompletionService {
     private final ObligationService obligationService;
     private final RotativeListService rotativeListService;
     private final SteamVerificationService steamVerificationService;
+    private final EditionScoreRecalculationService editionScoreRecalculationService;
 
     @Transactional
     public CompletionResponse create(UUID userId, CreateCompletionRequest request) {
@@ -428,12 +430,7 @@ public class CompletionService {
             obligationRepository.save(linkedObligation.get());
         }
 
-        Long userCurrentScore = scoreEventRepository.getTotalPointsForUser(edition.getId(), completion.getUser().getId());
-        Long leaderScore = scoreEventRepository.getRanking(edition.getId()).stream()
-                .mapToLong(row -> row.totalPoints() == null ? 0L : row.totalPoints())
-                .max()
-                .orElse(0L);
-        boolean underdogBonus = leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
+        boolean underdogBonus = hasUnderdogPreview(edition.getId(), completion.getUser().getId(), completion.getCompletedAt());
         completion.setUnderdogAwarded(underdogBonus);
         boolean rotativeConsumed = rotativeListService.consumeIfActive(edition.getId(), completion.getGame().getId())
                 || coopGroupAlreadyReceivedRotativeBonus(completion);
@@ -444,6 +441,9 @@ public class CompletionService {
         
         Completion saved = completionRepository.save(completion);
         obligationService.resolveWithApprovedCompletion(saved);
+        // Cafe com leite e pelo dia do jogo: um jogo antigo aprovado agora muda o placar dos dias
+        // seguintes, entao os jogos mais novos sao refeitos.
+        editionScoreRecalculationService.recalculateEdition(edition);
 
         int total = events.stream().mapToInt(ScoreEvent::getPoints).sum();
         adminAuditLogService.log(
@@ -548,7 +548,7 @@ public class CompletionService {
         if (!hypeParticipationOnly && completion.isRotativeList()) {
             preview.add("ROTATIVE_LIST_BONUS");
         }
-        if (!hypeParticipationOnly && hasUnderdogPreview(edition.getId(), completion.getUser().getId())) {
+        if (!hypeParticipationOnly && hasUnderdogPreview(edition.getId(), completion.getUser().getId(), completion.getCompletedAt())) {
             preview.addAll(Arrays.asList("UNDERDOG_BONUS", "UNDERDOG_BONUS", "UNDERDOG_BONUS"));
         }
         if (isPendingObligationCompletion(completion)) {
@@ -587,13 +587,10 @@ public class CompletionService {
                 );
     }
 
-    private boolean hasUnderdogPreview(UUID editionId, UUID userId) {
-        Long userCurrentScore = scoreEventRepository.getTotalPointsForUser(editionId, userId);
-        Long leaderScore = scoreEventRepository.getRanking(editionId).stream()
-                .mapToLong(row -> row.totalPoints() == null ? 0L : row.totalPoints())
-                .max()
-                .orElse(0L);
-        return leaderScore - (userCurrentScore == null ? 0L : userCurrentScore) >= 20;
+    /** Cafe com leite pelo placar do dia em que o jogo foi zerado (ver CafeComLeite). */
+    private boolean hasUnderdogPreview(UUID editionId, UUID userId, java.time.LocalDate completedAt) {
+        java.time.LocalDate dia = completedAt == null ? java.time.LocalDate.now() : completedAt;
+        return CafeComLeite.temDireito(scoreEventRepository.findAllByEditionIdWithCompletion(editionId), userId, dia);
     }
 }
 

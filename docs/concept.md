@@ -200,8 +200,12 @@ Não há limite de pontos nem multiplicadores. O total pode ficar negativo.
   mesmo que outro registro seja aprovado entre eles.
 - **Lista rotativa:** vale se o jogo estiver na lista ativa no momento da aprovação; a entrada é
   consumida. **Todos os membros do mesmo grupo coop** recebem o bônus.
-- **Café com leite:** +3 se, **no momento da aprovação**, o jogador estiver 20 pontos ou mais
-  atrás do líder da edição. Fica gravado no registro (não é recalculado depois).
+- **Café com leite:** +3 se, **no dia em que o jogo foi zerado**, o jogador estava 20 pontos ou
+  mais atrás do líder da edição. O placar desse dia conta só o que aconteceu **antes** dele (jogos
+  pelo dia em que foram zerados; obrigações pelo dia em que aconteceram; jogos do mesmo dia não contam
+  entre si). Assim quem cadastra o histórico atrasado é tratado como se tivesse registrado na hora, e a
+  ordem de aprovação não muda nada. Toda aprovação (e o "Recalcular pontos") refaz o Café com leite da
+  edição em ordem de data. Regra em `CafeComLeite.java`.
 - **Tempo valioso:** `blocos = parte inteira de (horas ÷ 25)`. Ex.: 74h → 2 blocos → +4.
 
 ### Exemplo

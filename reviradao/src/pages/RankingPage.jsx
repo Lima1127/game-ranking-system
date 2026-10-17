@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import JanelaFoco from '../components/JanelaFoco';
 import { steamProfileUrl } from '../components/ContaSteam';
 import RuleEmojiStrip from '../components/RuleEmojiStrip';
+import { EtiquetasDoJogo } from '../components/Etiquetas';
 import { scoringRules, pointsByRuleCode } from '../data/scoringRules';
 import { formatarData, formatarHoras } from '../utils/formatarData';
 
@@ -67,14 +68,6 @@ function CardTitle({ children, acao }) {
   );
 }
 
-function SeloPlatina() {
-  return (
-    <span className="shrink-0 rounded-full border border-[#8da8bf] bg-gradient-to-r from-[#fff6d8] via-[#d5f2ff] to-[#8fd9ff] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#432200] dark:border-[#163a56] dark:from-[#1f2b4b] dark:via-[#1d5d88] dark:to-[#2fc7ff] dark:text-[#fff6d8]">
-      Platina
-    </span>
-  );
-}
-
 /** Cartão de um jogo (histórico e janela de jogos do jogador). */
 function LinhaJogo({ completion, row, mostrarJogador = true }) {
   return (
@@ -86,8 +79,7 @@ function LinhaJogo({ completion, row, mostrarJogador = true }) {
             <span className="truncate font-bold text-slate-900 dark:text-slate-100" title={completion.gameName}>
               {completion.gameName}
             </span>
-            {hasObligationBadge(completion) && <span className="shrink-0" title="Jogo de obrigação">📋</span>}
-            {completion.platinum && <SeloPlatina />}
+            <EtiquetasDoJogo platina={completion.platinum} obrigacao={hasObligationBadge(completion)} />
           </div>
           <div className="truncate text-xs text-slate-500 dark:text-slate-400">
             {mostrarJogador && <span className="font-semibold text-slate-600 dark:text-slate-300">{completion.userDisplayName} · </span>}
@@ -289,7 +281,7 @@ function TabelaRanking({ ranking, jogosPorUsuario, usuarioAtualId, onSelecionar 
                         <span className="shrink-0 text-sm" title={`Café com leite${row.underdogBonusCount > 1 ? ` ×${row.underdogBonusCount}` : ''}`}>🐶</span>
                       )}
                       {souEu && (
-                        <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] text-primary dark:bg-primary/25 dark:text-indigo-200">
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary ring-1 ring-inset ring-primary/30 dark:bg-primary/20 dark:text-indigo-200">
                           Você
                         </span>
                       )}
