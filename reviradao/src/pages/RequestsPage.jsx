@@ -122,6 +122,9 @@ export default function RequestsPage() {
       return response.data;
     },
     enabled: pendingCompletionIds.length > 0,
+    // Sem status = conferencia rodando no servidor: busca de novo a cada 3s (no maximo 10 vezes).
+    refetchInterval: (query) =>
+      (query.state.data || []).some((check) => !check.status) && query.state.dataUpdateCount < 10 ? 3000 : false,
   });
   const steamCheckByCompletionId = useMemo(
     () => new Map(steamChecks.map((check) => [check.completionId, check])),

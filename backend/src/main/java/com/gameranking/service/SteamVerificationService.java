@@ -2,6 +2,7 @@ package com.gameranking.service;
 
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
+import com.gameranking.domain.enums.CompletionStatus;
 import com.gameranking.domain.enums.SteamCheckStatus;
 import com.gameranking.domain.model.Completion;
 import com.gameranking.domain.model.CompletionSteamCheck;
@@ -22,10 +23,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,6 +57,8 @@ public class SteamVerificationService {
     private final SteamWebApiClient steamWebApiClient;
     private final TransactionTemplate transaction;
     private final Executor executor;
+    // Registros com conferencia em andamento agora (evita duas consultas gravando a mesma linha).
+    private final Set<UUID> inFlight = ConcurrentHashMap.newKeySet();
 
     public SteamVerificationService(
             CompletionRepository completionRepository,
@@ -131,12 +137,26 @@ public class SteamVerificationService {
             }
             return null;
         });
-        refresh(completionId);
+        // Se a conferencia automatica deste registro ainda estiver rodando, nao dispara outra:
+        // as duas tentariam gravar a mesma linha ao mesmo tempo. A tela busca o resultado em seguida.
+        if (inFlight.add(completionId)) {
+            try {
+                refresh(completionId);
+            } finally {
+                inFlight.remove(completionId);
+            }
+        }
         return list(requesterId, List.of(completionId)).stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("Registro nao encontrado"));
     }
 
-    /** Conferencias dos registros pedidos que o usuario pode ver (os proprios; a equipe ve todos). */
+    /**
+     * Conferencias dos registros pedidos que o usuario pode ver (os proprios; a equipe ve todos).
+     *
+     * Registro pendente ainda nao conferido, ou conferido quando faltava algo que agora existe
+     * (chave da API, conta Steam do jogador, vinculo do jogo com a Steam), e conferido de novo
+     * sozinho, em segundo plano; ate la ele volta sem status ("ainda nao conferido").
+     */
     public List<CompletionSteamCheckResponse> list(UUID requesterId, List<UUID> completionIds) {
         if (completionIds == null || completionIds.isEmpty()) {
             return List.of();
@@ -145,23 +165,57 @@ public class SteamVerificationService {
             throw new BusinessException("Peca no maximo " + MAX_IDS_PER_LIST + " registros por vez");
         }
 
-        return transaction.execute(status -> {
+        List<UUID> toVerify = new ArrayList<>();
+        List<CompletionSteamCheckResponse> responses = transaction.execute(status -> {
             User requester = findUser(requesterId);
             Map<UUID, CompletionSteamCheck> checks = checkRepository.findAllById(completionIds).stream()
                     .collect(Collectors.toMap(CompletionSteamCheck::getCompletionId, Function.identity()));
 
             return completionRepository.findAllById(completionIds).stream()
                     .filter(completion -> canSee(requester, completion))
-                    .map(completion -> toResponse(completion, checks.get(completion.getId())))
+                    .map(completion -> {
+                        CompletionSteamCheck check = checks.get(completion.getId());
+                        if (needsAutomaticCheck(completion, check)) {
+                            toVerify.add(completion.getId());
+                            return toResponse(completion, null);
+                        }
+                        return toResponse(completion, check);
+                    })
                     .toList();
         });
+
+        if (!toVerify.isEmpty()) {
+            executor.execute(() -> toVerify.forEach(this::refreshQuietly));
+        }
+        return responses;
     }
 
+    private boolean needsAutomaticCheck(Completion completion, CompletionSteamCheck check) {
+        if (completion.getStatus() != CompletionStatus.PENDING) {
+            return false;
+        }
+        if (check == null) {
+            return true;
+        }
+        return switch (check.getStatus()) {
+            case NOT_CONFIGURED -> steamWebApiClient.isConfigured();
+            case NO_STEAM_ACCOUNT -> completion.getUser().getSteamId() != null;
+            case NO_STEAM_GAME -> completion.getGame().getSteamAppId() != null;
+            default -> false;
+        };
+    }
+
+    /** Roda a conferencia em segundo plano; se ja houver uma deste registro em andamento, nao repete. */
     private void refreshQuietly(UUID completionId) {
+        if (!inFlight.add(completionId)) {
+            return;
+        }
         try {
             refresh(completionId);
         } catch (RuntimeException ex) {
             log.warn("Conferencia na Steam do registro {} falhou ({})", completionId, ex.getClass().getSimpleName());
+        } finally {
+            inFlight.remove(completionId);
         }
     }
 

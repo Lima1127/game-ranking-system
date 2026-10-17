@@ -1,6 +1,7 @@
 package com.gameranking.service;
 
 import com.gameranking.common.exception.BusinessException;
+import com.gameranking.domain.enums.CompletionStatus;
 import com.gameranking.domain.enums.SteamCheckStatus;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.Completion;
@@ -140,6 +141,68 @@ class SteamVerificationServiceTest {
 
         assertThat(checks.get(0).status()).isNull();
         assertThat(checks.get(0).editionStartsAt()).isEqualTo(LocalDate.of(2026, 1, 1));
+    }
+
+    @Test
+    void pedidoPendenteAindaNaoConferidoEConferidoSozinho() {
+        completion.setStatus(CompletionStatus.PENDING);
+        when(steamWebApiClient.fetch(STEAM_ID, ELDEN_RING))
+                .thenReturn(new SteamPlayerGameData(SteamCheckStatus.OK, 600, 10, 10, null));
+
+        List<CompletionSteamCheckResponse> checks = service.list(player.getId(), List.of(completion.getId()));
+
+        assertThat(checks.get(0).status()).isNull();
+        verify(steamWebApiClient).fetch(STEAM_ID, ELDEN_RING);
+        verify(checkRepository).save(any(CompletionSteamCheck.class));
+    }
+
+    @Test
+    void conferenciaFeitaSemChaveRepeteQuandoAChaveExiste() {
+        completion.setStatus(CompletionStatus.PENDING);
+        when(checkRepository.findAllById(any())).thenReturn(List.of(storedCheck(SteamCheckStatus.NOT_CONFIGURED)));
+        when(steamWebApiClient.isConfigured()).thenReturn(true);
+        when(steamWebApiClient.fetch(STEAM_ID, ELDEN_RING)).thenReturn(SteamPlayerGameData.of(SteamCheckStatus.PRIVATE_PROFILE));
+
+        assertThat(service.list(player.getId(), List.of(completion.getId())).get(0).status()).isNull();
+        verify(steamWebApiClient).fetch(STEAM_ID, ELDEN_RING);
+    }
+
+    @Test
+    void conferenciaFeitaSemContaSteamRepeteDepoisQueOJogadorConecta() {
+        completion.setStatus(CompletionStatus.PENDING);
+        when(checkRepository.findAllById(any())).thenReturn(List.of(storedCheck(SteamCheckStatus.NO_STEAM_ACCOUNT)));
+        when(steamWebApiClient.fetch(STEAM_ID, ELDEN_RING)).thenReturn(SteamPlayerGameData.of(SteamCheckStatus.PRIVATE_PROFILE));
+
+        service.list(player.getId(), List.of(completion.getId()));
+
+        verify(steamWebApiClient).fetch(STEAM_ID, ELDEN_RING);
+    }
+
+    @Test
+    void conferenciaValidaNaoERepetidaSozinha() {
+        completion.setStatus(CompletionStatus.PENDING);
+        when(checkRepository.findAllById(any())).thenReturn(List.of(storedCheck(SteamCheckStatus.PRIVATE_PROFILE)));
+
+        assertThat(service.list(player.getId(), List.of(completion.getId())).get(0).status())
+                .isEqualTo(SteamCheckStatus.PRIVATE_PROFILE);
+        verify(steamWebApiClient, never()).fetch(anyString(), anyInt());
+    }
+
+    @Test
+    void registroJaAprovadoNaoEConferidoSozinho() {
+        completion.setStatus(CompletionStatus.APPROVED);
+
+        service.list(player.getId(), List.of(completion.getId()));
+
+        verify(steamWebApiClient, never()).fetch(anyString(), anyInt());
+    }
+
+    private CompletionSteamCheck storedCheck(SteamCheckStatus status) {
+        return CompletionSteamCheck.builder()
+                .completionId(completion.getId())
+                .status(status)
+                .checkedAt(OffsetDateTime.now().minusHours(1))
+                .build();
     }
 
     @Test

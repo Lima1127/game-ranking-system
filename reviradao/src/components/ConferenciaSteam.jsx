@@ -60,6 +60,9 @@ export function analisarConferencia(check, submission) {
       alertas.push(`Marcou platina, mas a Steam mostra ${desbloqueadas} de ${total} conquistas.`);
     } else if (antesDaEdicao) {
       alertas.push(`100% das conquistas antes do início da edição (última em ${ultima}).`);
+    } else if (!check.lastUnlockAt) {
+      // Alguns jogos antigos nao informam a data das conquistas: nao da para saber se foi na edicao.
+      confirmacoes.push('100% das conquistas na Steam (a Steam não informa a data; confira pelo anexo)');
     } else {
       confirmacoes.push('Platina confirmada pela Steam');
     }
