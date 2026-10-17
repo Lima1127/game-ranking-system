@@ -8,7 +8,7 @@ export const STATUS = {
   CANCELLED: { rotulo: 'Cancelado', classe: 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-900/30 dark:text-red-300 dark:ring-red-500/30', ponto: 'bg-red-500' },
 };
 
-const classeEtiqueta = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ring-1 ring-inset';
+const classeEtiqueta = 'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold ring-1 ring-inset';
 
 /** Situacao da solicitacao: bolinha colorida + nome em portugues. */
 export function EtiquetaStatus({ status }) {

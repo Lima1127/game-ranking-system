@@ -39,6 +39,15 @@ public interface ScoreEventRepository extends JpaRepository<ScoreEvent, UUID> {
             """)
     List<RankingRowResponse> getRanking(UUID editionId);
 
+    // Usado pela regra Cafe com leite (placar de um dia do passado).
+    @Query("""
+            select se
+            from ScoreEvent se
+            left join fetch se.completion
+            where se.edition.id = :editionId
+            """)
+    List<ScoreEvent> findAllByEditionIdWithCompletion(UUID editionId);
+
     @Query("""
             select coalesce(sum(se.points), 0)
             from ScoreEvent se
