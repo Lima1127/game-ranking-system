@@ -139,6 +139,7 @@ Resumo (passo a passo detalhado em [docs/integration-runbook.md](docs/integratio
 | `app.storage.root-path` | não | Pasta das imagens no modo `disk` (padrão `./storage`) |
 | `app.registration.invite-code` | não | Se preenchido, o cadastro exige este código. Vazio = cadastro aberto |
 | `app.steam.enabled` | não | `true` (padrão) liga as sugestões da loja Steam; `false` desliga. Na nuvem: `APP_STEAM_ENABLED` |
+| `app.public-url` | não | Endereço pelo qual o site é aberto (padrão `http://localhost:5173`). A Steam devolve a pessoa para cá em "Conectar Steam". Na nuvem: `APP_PUBLIC_URL` (obrigatório para esse botão) |
 
 Na nuvem a configuração vem de `application-prod.yml` + variáveis de ambiente do Render
 (`DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `APP_JWT_SECRET`, `APP_INVITE_CODE`).
@@ -201,6 +202,9 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | GET | `/users/me` | Dados atuais de quem está logado (cargo, nome, avatar) |
 | PUT | `/users/me/password` | Troca a própria senha (`currentPassword`, `newPassword`) |
 | GET | `/users/{id}/avatar` | Exibe avatar (**pública**) |
+| POST | `/steam/link/start` | Inicia "Conectar Steam": devolve o endereço do login oficial da Steam |
+| GET | `/steam/callback` | Retorno do login da Steam; confere e volta para `/menu?steam=<resultado>` (**pública**) |
+| DELETE | `/steam/link` | Desconecta a conta Steam |
 | GET / POST | `/obligations` | Lista / cria obrigação |
 | POST | `/obligations/{id}/accept` · `refuse` · `cancel` · `submit-review` | Ações do jogador |
 | POST | `/obligations/{id}/approve-review` · `reject-review` | Revisão (**admin**) |
@@ -252,6 +256,8 @@ no recálculo, armazenamento de imagens (disco e banco) e código de convite. O 
 - Pontos são calculados **somente no servidor**, na aprovação feita por um admin.
 - Uploads: apenas imagens reais (tipo detectado pelo conteúdo), servidas com `nosniff` e CSP `sandbox`.
 - Mensagens de erro não expõem detalhes internos.
+- "Conectar Steam" usa o login OpenID da própria Steam: o site guarda só o SteamID, cada tentativa
+  tem código de uso único (10 min, só o hash é salvo) e toda resposta é confirmada com a Steam.
 - Operações que distribuem pontos travam a edição no banco, evitando bônus duplicados por concorrência.
 
 ## Limitações conhecidas

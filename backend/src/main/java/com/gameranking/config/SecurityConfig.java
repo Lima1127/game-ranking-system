@@ -32,6 +32,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/uploads/proofs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/avatar").permitAll()
+                        // Retorno do login da Steam: chega do site da Steam, sem o token do Reviradao.
+                        // Quem iniciou o vinculo e identificado pelo codigo de uso unico (SteamAccountService).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/steam/callback").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         // Fora de /api ficam as paginas e arquivos do site (React), publicos.

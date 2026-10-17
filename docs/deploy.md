@@ -110,6 +110,7 @@ Se o Neon já tiver tabelas, nada é enviado e o script mostra o que existe lá:
    | `DATABASE_PASSWORD` | SENHA do Neon |
    | `APP_JWT_SECRET` | um segredo **novo** (não reutilize o do seu PC) — gere com o comando abaixo |
    | `APP_INVITE_CODE` | o código de convite que você vai passar aos amigos |
+   | `APP_PUBLIC_URL` | o endereço do site no Render, sem barra no final (ex.: `https://reviradao.onrender.com`). Sem ele, o botão "Conectar Steam" não funciona |
 
    ```powershell
    $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
