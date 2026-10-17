@@ -2,6 +2,7 @@ package com.gameranking.web.controller;
 
 import com.gameranking.security.AuthenticatedUser;
 import com.gameranking.service.RotativeListService;
+import com.gameranking.service.RotativeSteamListService;
 import com.gameranking.web.dto.rotative.RotativeListEntryResponse;
 import com.gameranking.web.dto.rotative.RotativeListGenerationResponse;
 import com.gameranking.web.dto.rotative.RotativeListSourceUploadResponse;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,10 +27,33 @@ import java.util.UUID;
 public class RotativeListController {
 
     private final RotativeListService rotativeListService;
+    private final RotativeSteamListService rotativeSteamListService;
 
+    // A equipe recebe tambem as tags marcadas em vermelho; os demais jogadores, nao.
     @GetMapping
-    public List<RotativeListEntryResponse> list(@RequestParam(required = false) UUID editionId) {
-        return rotativeListService.list(editionId);
+    public List<RotativeListEntryResponse> list(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @RequestParam(required = false) UUID editionId
+    ) {
+        return rotativeListService.list(currentUser.userId(), editionId);
+    }
+
+    /** Sorteia uma lista nova da Steam (22 com 1400+ avaliacoes e 8 com 1000 a 1399), substituindo a atual. */
+    @PostMapping("/steam-draw")
+    public RotativeListGenerationResponse drawFromSteam(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @RequestParam(required = false) UUID editionId
+    ) {
+        return rotativeSteamListService.drawNewList(currentUser.userId(), editionId);
+    }
+
+    /** Troca um jogo da lista ativa por outro sorteado da mesma faixa de avaliacoes. */
+    @PostMapping("/{entryId}/reroll")
+    public RotativeListEntryResponse reroll(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable UUID entryId
+    ) {
+        return rotativeSteamListService.reroll(currentUser.userId(), entryId);
     }
 
     @PostMapping("/source-file")

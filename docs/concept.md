@@ -101,9 +101,30 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 - Não existe cadastro de "qual jogo é o Hype": é uma marcação feita pelo jogador e conferida pelo admin.
 
 ### Lista Rotativa
-- O admin importa uma base de jogos (.csv/.txt) e gera rodadas.
-- Cada nova rodada mantém até **15** jogos da lista atual que ninguém zerou (sorteados) e
-  completa até **30** com jogos da base que ainda não foram zerados na edição.
+- **Sorteio da Steam (principal):** o admin clica em *Sortear nova lista da Steam* e a lista ativa
+  inteira é trocada por **30 jogos aleatórios da loja**:
+  - **22** com **1400 ou mais** avaliações, sendo pelo menos **5 lançados no ano da edição** e pelo
+    menos **10 com 3000 ou mais** avaliações (as outras 7 vagas são 1400+ livres);
+  - **8** com **1000 a 1399** avaliações;
+  - os lançamentos do ano são sorteados entre as **novidades populares da loja** (sorteando pela loja
+    inteira, só ~0,08% dos jogos são lançamentos do ano com 1400+ avaliações). Se não houver 5
+    disponíveis (ex.: começo do ano), as vagas que faltarem viram 1400+ comuns e o admin é avisado;
+  - um jogo que serve para duas vagas ocupa uma só (ex.: lançamento do ano com 3000+ conta como
+    lançamento do ano), por isso a regra é "pelo menos";
+  - nunca entram jogos já zerados (aprovados) na edição, jogos que já estão na lista nem jogos ainda
+    não lançados;
+  - para a lista não sair toda da mesma época, cada consulta à loja contribui com no máximo 2 jogos
+    de cada vaga. Como a maior parte do catálogo da Steam é recente, jogos novos aparecem mais.
+- **Jogos marcados em vermelho (só os admins veem):** jogos com as tags da Steam **Nudez**,
+  **Hentai**, **Conteúdo Sexual** ou **LGBTQIA+**. A lista em `SteamGameDrawService.FLAGGED_TAGS`.
+- **Sortear outro:** qualquer jogo da lista ativa pode ser trocado por outro sorteado da **mesma
+  vaga** (lançamento do ano, 3000+, 1400+ ou 1000–1399), mantendo as proporções. Item de lista
+  montada por arquivo é trocado por um da vaga 1400+. O jogo que entrou fica **destacado** para os
+  admins, com o nome do jogo que ele substituiu, até a próxima lista sorteada.
+- Sortear a lista e trocar um jogo vão para o log (`ROTATIVE_*`).
+- **Por arquivo (opção extra):** o admin importa uma base de jogos (.csv/.txt) e gera rodadas. Cada
+  rodada mantém até **15** jogos da lista atual que ninguém zerou (sorteados) e completa até **30**
+  com jogos da base que ainda não foram zerados na edição.
 - A entrada é **consumida** quando o primeiro registro daquele jogo é aprovado.
 
 ### Obrigações

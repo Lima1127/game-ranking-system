@@ -215,8 +215,10 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | GET / POST | `/obligations` | Lista / cria obrigação |
 | POST | `/obligations/{id}/accept` · `refuse` · `cancel` · `submit-review` | Ações do jogador |
 | POST | `/obligations/{id}/approve-review` · `reject-review` | Revisão (**admin**) |
-| GET | `/rotative-list` | Lista rotativa ativa |
+| GET | `/rotative-list` | Lista rotativa ativa (as tags marcadas em vermelho só vêm para admins) |
 | POST | `/rotative-list/source-file` · `generate-next` | Importar base / gerar rodada (**admin**) |
+| POST | `/rotative-list/steam-draw` | Sorteia lista nova da Steam: 22 jogos com 1400+ avaliações (5 lançamentos do ano e 10 com 3000+) e 8 com 1000–1399 (**admin**) |
+| POST | `/rotative-list/{entryId}/reroll` | Troca um jogo da lista por outro da mesma vaga; o novo fica destacado (**admin**) |
 | GET | `/admin/completions` · `/admin/audit-logs` | Painel admin (**admin**) |
 | GET | `/admin/users` | Usuários, com as ações que o admin logado pode fazer em cada um (**admin**) |
 | PATCH | `/admin/users/{id}/role` · `/display-name` | Muda cargo / nome, conforme as regras de cargo (**admin**) |

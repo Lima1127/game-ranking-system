@@ -99,6 +99,22 @@ class GameServiceSteamTest {
     }
 
     @Test
+    void anoQueBateEmJogoRepetidoAntigoFicaVazio() {
+        // Catalogo antigo: "Doom" sem ano e outro "Doom" de 2016 (antes da regra "um nome = um jogo").
+        Game semAno = Game.builder().id(UUID.randomUUID()).name("Doom").build();
+        Game doom2016 = Game.builder().id(UUID.randomUUID()).name("Doom").releaseYear(2016).build();
+        when(gameRepository.findFirstByNameIgnoreCase("Doom")).thenReturn(Optional.of(semAno));
+        when(gameRepository.findByNameIgnoreCaseAndReleaseYear("Doom", 2016)).thenReturn(Optional.of(doom2016));
+        when(steamStoreClient.fetchAppDetails(379720))
+                .thenReturn(Optional.of(new SteamAppDetails(379720, "Doom", 2016, List.of())));
+
+        service.create(playerId, request("Doom", 379720));
+
+        assertThat(semAno.getSteamAppId()).isEqualTo(379720);
+        assertThat(semAno.getReleaseYear()).isNull();
+    }
+
+    @Test
     void anoDefinidoPorAdminNaoESobrescritoPelaSteam() {
         Game legacy = Game.builder().id(UUID.randomUUID()).name("ELDEN RING").releaseYear(2021).build();
         when(gameRepository.findFirstByNameIgnoreCase("ELDEN RING")).thenReturn(Optional.of(legacy));

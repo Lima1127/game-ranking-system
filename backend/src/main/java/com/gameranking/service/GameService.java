@@ -75,15 +75,32 @@ public class GameService {
         }
 
         return steamStoreClient.fetchAppDetails(request.steamAppId())
-                .map(details -> gameRepository.findFirstByNameIgnoreCase(details.name())
-                        .map(existingGame -> linkToSteam(existingGame, details))
-                        .orElseGet(() -> createGame(
-                                details.name(),
-                                details.releaseYear(),
-                                details.appId(),
-                                details.genres().isEmpty() ? request.genres() : Set.copyOf(details.genres()),
-                                request
-                        )));
+                .map(details -> findOrCreateFromSteamDetails(details, request));
+    }
+
+    /**
+     * Jogo sorteado da loja Steam para a Lista Rotativa: os dados (nome, ano) ja vieram da busca
+     * da loja, entao nao precisa consultar a Steam de novo.
+     */
+    @Transactional
+    public Game findOrCreateFromSteam(int steamAppId, String name, Integer releaseYear) {
+        return gameRepository.findBySteamAppId(steamAppId)
+                .orElseGet(() -> findOrCreateFromSteamDetails(
+                        new SteamAppDetails(steamAppId, name, releaseYear, List.of()),
+                        new CreateGameRequest(name, null, null, null, Set.of("Nao informado"), steamAppId)
+                ));
+    }
+
+    private Game findOrCreateFromSteamDetails(SteamAppDetails details, CreateGameRequest request) {
+        return gameRepository.findFirstByNameIgnoreCase(details.name())
+                .map(existingGame -> linkToSteam(existingGame, details))
+                .orElseGet(() -> createGame(
+                        details.name(),
+                        details.releaseYear(),
+                        details.appId(),
+                        details.genres().isEmpty() ? request.genres() : Set.copyOf(details.genres()),
+                        request
+                ));
     }
 
     /**
@@ -93,7 +110,10 @@ public class GameService {
     private Game linkToSteam(Game game, SteamAppDetails details) {
         if (game.getSteamAppId() == null) {
             game.setSteamAppId(details.appId());
-            if (game.getReleaseYear() == null) {
+            // Catalogo antigo pode ter o mesmo nome em outro cadastro com esse ano (antes da regra
+            // "um nome = um jogo"); nesse caso o ano fica vazio para nao bater no indice nome+ano.
+            if (game.getReleaseYear() == null && details.releaseYear() != null
+                    && gameRepository.findByNameIgnoreCaseAndReleaseYear(game.getName(), details.releaseYear()).isEmpty()) {
                 game.setReleaseYear(details.releaseYear());
             }
         }
@@ -163,6 +183,21 @@ public class GameService {
         return steamStoreClient.fetchAppDetails(steamAppId)
                 .map(details -> new SteamAppSummaryResponse(details.appId(), details.name(), details.releaseYear()))
                 .orElseThrow(() -> new NotFoundException("Jogo nao encontrado na Steam"));
+    }
+
+    /** Nomes dos jogos informados. */
+    @Transactional(readOnly = true)
+    public Set<String> namesOf(java.util.Collection<UUID> gameIds) {
+        return gameRepository.findAllById(gameIds).stream().map(Game::getName).collect(Collectors.toSet());
+    }
+
+    /** Codigos da Steam dos jogos informados (jogos sem vinculo com a Steam ficam de fora). */
+    @Transactional(readOnly = true)
+    public Set<Integer> steamAppIdsOf(java.util.Collection<UUID> gameIds) {
+        return gameRepository.findAllById(gameIds).stream()
+                .map(Game::getSteamAppId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
     @Transactional(readOnly = true)
