@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(usuario, password);
       navigate('/menu');
     } catch (err) {
       setError(err.response?.data?.message || `Erro ao fazer login${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
@@ -41,13 +41,17 @@ export default function LoginPage() {
         )}
 
         <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Email</label>
+          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Usuário</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            placeholder="seu@email.com"
+            placeholder="ex.: samy"
             required
           />
         </div>

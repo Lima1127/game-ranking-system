@@ -28,18 +28,18 @@ public class PasswordResetController {
 
     private final PasswordResetService passwordResetService;
 
-    /** Sempre responde igual, exista ou nao o e-mail (nao revela quem esta cadastrado). */
+    /** Sempre responde igual, exista ou nao o usuario (nao revela quem esta cadastrado). */
     @PostMapping("/api/v1/auth/password-reset/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String, String> solicitar(@Valid @RequestBody PasswordResetResponses.SolicitarRequest request) {
-        passwordResetService.solicitar(request.email());
-        return Map.of("message", "Se o e-mail estiver cadastrado, o pedido foi enviado. Avise um admin do grupo para receber o codigo.");
+        passwordResetService.solicitar(request.username());
+        return Map.of("message", "Se o usuario estiver cadastrado, o pedido foi enviado. Avise um admin do grupo para receber o codigo.");
     }
 
     @PostMapping("/api/v1/auth/password-reset/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void redefinir(@Valid @RequestBody PasswordResetResponses.RedefinirRequest request) {
-        passwordResetService.redefinir(request.email(), request.code(), request.newPassword());
+        passwordResetService.redefinir(request.username(), request.code(), request.newPassword());
     }
 
     @GetMapping("/api/v1/admin/password-resets")

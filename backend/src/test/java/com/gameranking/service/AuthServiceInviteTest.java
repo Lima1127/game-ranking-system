@@ -24,13 +24,13 @@ class AuthServiceInviteTest {
     private final TokenService tokenService = new TokenService("0123456789abcdef0123456789abcdef-test", 7200);
 
     private AuthService service(String inviteCode) {
-        when(userRepository.findByEmailIgnoreCase(any())).thenReturn(Optional.empty());
+        when(userRepository.existsByUsername(any())).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
         return new AuthService(userRepository, new BCryptPasswordEncoder(4), tokenService, inviteCode);
     }
 
     private static RegisterRequest request(String inviteCode) {
-        return new RegisterRequest("Joao", "joao@teste.com", "senha123", inviteCode);
+        return new RegisterRequest("Joao", " Joao.Silva ", "senha123", inviteCode);
     }
 
     @Test
@@ -38,7 +38,7 @@ class AuthServiceInviteTest {
         AuthService service = service("");
 
         assertThat(service.isInviteRequired()).isFalse();
-        assertThat(service.register(request(null)).getEmail()).isEqualTo("joao@teste.com");
+        assertThat(service.register(request(null)).getUsername()).isEqualTo("joao.silva");
     }
 
     @Test
@@ -50,6 +50,14 @@ class AuthServiceInviteTest {
         assertThatThrownBy(() -> service.register(request("errado"))).isInstanceOf(BusinessException.class);
         verify(userRepository, never()).save(any());
 
-        assertThat(service.register(request("  reviradao-2026 ")).getEmail()).isEqualTo("joao@teste.com");
+        assertThat(service.register(request("  reviradao-2026 ")).getUsername()).isEqualTo("joao.silva");
+    }
+
+    @Test
+    void usuarioRepetidoNaoCadastra() {
+        AuthService service = service("");
+        when(userRepository.existsByUsername("joao.silva")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.register(request(null))).isInstanceOf(BusinessException.class);
     }
 }

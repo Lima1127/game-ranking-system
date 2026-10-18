@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import { REGRA_USUARIO, limparUsuario, usuarioValido } from '../utils/usuarioDeLogin';
 
 export default function RegisterPage() {
   const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -26,6 +27,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (!usuarioValido(usuario)) {
+      setError(`Usuário inválido: ${REGRA_USUARIO}`);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('As senhas nao conferem');
       return;
@@ -39,7 +45,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(displayName, email, password, inviteCode);
+      await register(displayName, usuario, password, inviteCode);
       navigate('/menu');
     } catch (err) {
       setError(err.response?.data?.message || `Erro ao criar conta${err.response?.status ? ` (codigo ${err.response.status})` : ' (sem resposta do servidor)'}`);
@@ -64,27 +70,33 @@ export default function RegisterPage() {
         )}
 
         <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Nome de Exibicao</label>
+          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Apelido</label>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            placeholder="Seu Nome"
+            placeholder="Como você aparece no ranking"
+            maxLength={120}
             required
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Email</label>
+          <label className="block text-gray-700 font-bold mb-2 dark:text-slate-200">Usuário (para entrar)</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={usuario}
+            onChange={(e) => setUsuario(limparUsuario(e.target.value))}
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
-            placeholder="seu@email.com"
+            placeholder="ex.: samy"
             required
           />
+          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{REGRA_USUARIO}</p>
         </div>
 
         <div className="mb-4">

@@ -130,7 +130,7 @@ O significado de cada código está no [README](../README.md#formato-de-erro).
 ```powershell
 $api = 'http://localhost:8080/api/v1'
 $login = Invoke-RestMethod -Method Post "$api/auth/login" -ContentType 'application/json' `
-  -Body (@{ email = 'voce@teste.com'; password = 'sua-senha' } | ConvertTo-Json)
+  -Body (@{ username = 'seu.usuario'; password = 'sua-senha' } | ConvertTo-Json)
 $h = @{ Authorization = "Bearer $($login.accessToken)" }
 
 Invoke-RestMethod "$api/ranking" -Headers $h | Format-Table

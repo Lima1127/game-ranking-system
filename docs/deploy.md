@@ -135,7 +135,7 @@ Se o Neon já tiver tabelas, nada é enviado e o script mostra o que existe lá:
 Se sua conta não for admin no banco que subiu: no **Neon → SQL Editor**, rode:
 
 ```sql
-UPDATE users SET role = 'ADMIN' WHERE lower(email) = lower('seu@email.com');
+UPDATE users SET role = 'ADMIN' WHERE username = 'seu.usuario';
 ```
 
 Depois saia e entre de novo no site.

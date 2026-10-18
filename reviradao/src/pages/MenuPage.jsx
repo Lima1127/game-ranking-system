@@ -52,7 +52,7 @@ export default function MenuPage() {
     queryFn: async () => (await api.get('/completions')).data,
   });
 
-  const displayName = user?.displayName || user?.email;
+  const displayName = user?.displayName || user?.username;
   const avatarUrl = user?.avatarUploadedAt
     ? `${api.defaults.baseURL}/users/${user.id}/avatar?v=${encodeURIComponent(user.avatarUploadedAt)}`
     : null;
@@ -206,7 +206,7 @@ export default function MenuPage() {
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <div className="text-2xl font-black text-slate-900 dark:text-slate-100">{displayName}</div>
-            <div className="break-all text-sm text-slate-500 dark:text-slate-400">{user?.email}</div>
+            <div className="break-all text-sm text-slate-500 dark:text-slate-400">{user?.username ? `@${user.username}` : ''}</div>
             <button
               type="button"
               onClick={() => setAlterandoSenha(true)}

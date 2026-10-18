@@ -1,5 +1,6 @@
 package com.gameranking.service;
 
+import com.gameranking.common.UsuarioDeLogin;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.enums.UserRole;
@@ -79,6 +80,28 @@ public class UserAdminService {
     }
 
     @Transactional
+    public AdminUserResponse changeUsername(UUID actorId, UUID targetId, String username) {
+        User actor = ensureStaff(actorId);
+        User target = findUser(targetId);
+
+        if (!UserPermissions.canEditDisplayName(actor, target)) {
+            throw new BusinessException("Voce nao pode alterar o usuario desta pessoa");
+        }
+
+        String novo = UsuarioDeLogin.normalizar(username);
+        String anterior = target.getUsername();
+        if (!anterior.equals(novo)) {
+            if (userRepository.existsByUsername(novo)) {
+                throw new BusinessException("Esse usuario ja existe. Escolha outro.");
+            }
+            target.setUsername(novo);
+            adminAuditLogService.logAboutUser(actor, "USER_USERNAME_CHANGED", target,
+                    "Usuario de login alterado de \"" + anterior + "\" para \"" + novo + "\".");
+        }
+        return toResponse(actor, target);
+    }
+
+    @Transactional
     public void changeOwnPassword(UUID userId, String currentPassword, String newPassword) {
         User user = findUser(userId);
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
@@ -94,7 +117,7 @@ public class UserAdminService {
     @Transactional(readOnly = true)
     public MeResponse me(UUID userId) {
         User user = findUser(userId);
-        return new MeResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getRole(), user.getAvatarUploadedAt(), user.getSteamId());
+        return new MeResponse(user.getId(), user.getDisplayName(), user.getUsername(), user.getRole(), user.getAvatarUploadedAt(), user.getSteamId());
     }
 
     private AdminUserResponse toResponse(User actor, User target) {
@@ -102,7 +125,7 @@ public class UserAdminService {
         return new AdminUserResponse(
                 target.getId(),
                 target.getDisplayName(),
-                target.getEmail(),
+                target.getUsername(),
                 target.getRole(),
                 Boolean.TRUE.equals(target.getActive()),
                 target.getAvatarStorageKey() != null,

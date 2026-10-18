@@ -29,6 +29,7 @@ const TIPOS = {
   OBLIGATION_REVIEW_REJECTED: { rotulo: 'Revisão de obrigação rejeitada', grupo: 'obrigacoes', icone: X, cor: VERMELHO },
   USER_ROLE_CHANGED: { rotulo: 'Cargo alterado', grupo: 'usuarios', icone: Shield, cor: AZUL },
   USER_NAME_CHANGED: { rotulo: 'Nome alterado', grupo: 'usuarios', icone: Pencil, cor: AZUL },
+  USER_USERNAME_CHANGED: { rotulo: 'Usuário de login alterado', grupo: 'usuarios', icone: Pencil, cor: AZUL },
   USER_PASSWORD_CHANGED: { rotulo: 'Senha alterada pelo jogador', grupo: 'usuarios', icone: KeyRound, cor: CINZA },
   PASSWORD_RESET_REQUESTED: { rotulo: 'Pediu código de senha', grupo: 'usuarios', icone: KeyRound, cor: AMBAR },
   PASSWORD_RESET_APPROVED: { rotulo: 'Código de senha gerado', grupo: 'usuarios', icone: KeyRound, cor: VERDE },
