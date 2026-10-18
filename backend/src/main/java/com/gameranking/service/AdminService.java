@@ -54,6 +54,7 @@ public class AdminService {
                 pointsByCompletionId.put(projection.getCompletionId(), projection.getTotalPoints())
         );
 
+        Map<UUID, UUID> segundaImagemPorRegistro = segundaImagemPorRegistro(items.stream().map(item -> item.completionId()).toList());
         return items.stream()
                 .map(item -> new AdminCompletionItemResponse(
                         item.completionId(),
@@ -70,9 +71,20 @@ public class AdminService {
                         item.cancelledAt(),
                         item.proofId(),
                         item.proofContentType(),
+                        segundaImagemPorRegistro.get(item.completionId()),
                         pointsByCompletionId.getOrDefault(item.completionId(), 0L)
                 ))
                 .toList();
+    }
+
+    private Map<UUID, UUID> segundaImagemPorRegistro(List<UUID> completionIds) {
+        Map<UUID, UUID> resultado = new java.util.HashMap<>();
+        completionRepository.findAllById(completionIds).forEach(completion -> {
+            if (completion.getExtraProofId() != null) {
+                resultado.put(completion.getId(), completion.getExtraProofId());
+            }
+        });
+        return resultado;
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +117,12 @@ public class AdminService {
         List<String> reopenedObligations = reopenObligationsLinkedTo(completion);
 
         platinumProofService.deleteByCompletionId(completionId);
+        UUID segundaImagem = completion.getExtraProofId();
         completionRepository.delete(completion);
+        if (segundaImagem != null) {
+            completionRepository.flush();
+            platinumProofService.deleteById(segundaImagem);
+        }
         completionRepository.flush();
 
         if (wasApproved) {

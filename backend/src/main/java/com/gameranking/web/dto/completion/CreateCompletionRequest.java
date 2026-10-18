@@ -21,6 +21,10 @@ public record CreateCompletionRequest(
         boolean hypeCompletedBonus,
         boolean rotativeList,
         String notes,
-        List<UUID> coopPlayerUserIds
+        List<UUID> coopPlayerUserIds,
+        // Outros jogadores que participaram do mesmo Hype: cada um ganha um registro so de participacao.
+        List<UUID> hypePlayerUserIds,
+        // Segunda imagem (opcional), enviada antes por POST /uploads/platinum.
+        UUID extraProofId
 ) {
 }
