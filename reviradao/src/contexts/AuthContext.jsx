@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     const userId = localStorage.getItem('user_id');
-    const userEmail = localStorage.getItem('user_email');
+    const username = localStorage.getItem('user_username');
     const displayName = localStorage.getItem('user_display_name');
     const role = localStorage.getItem('user_role');
     const avatarUploadedAt = localStorage.getItem('user_avatar_uploaded_at');
@@ -18,7 +18,7 @@ export function AuthProvider({ children }) {
     if (token && userId) {
       setUser({
         id: userId,
-        email: userEmail,
+        username,
         displayName,
         role,
         avatarUploadedAt: avatarUploadedAt || null,
@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
       const { data } = await api.get('/users/me');
       localStorage.setItem('user_role', data.role);
       localStorage.setItem('user_display_name', data.displayName);
-      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('user_username', data.username);
       if (data.avatarUploadedAt) {
         localStorage.setItem('user_avatar_uploaded_at', data.avatarUploadedAt);
       } else {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
       }
       setUser((prev) =>
         prev
-          ? { ...prev, role: data.role, displayName: data.displayName, email: data.email, avatarUploadedAt: data.avatarUploadedAt || null }
+          ? { ...prev, role: data.role, displayName: data.displayName, username: data.username, avatarUploadedAt: data.avatarUploadedAt || null }
           : prev
       );
     } catch {
@@ -52,10 +52,11 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const persistSession = ({ accessToken, userId, displayName, email, role, avatarUploadedAt }) => {
+  const persistSession = ({ accessToken, userId, displayName, username, role, avatarUploadedAt }) => {
     localStorage.setItem('auth_token', accessToken);
     localStorage.setItem('user_id', userId);
-    localStorage.setItem('user_email', email);
+    localStorage.setItem('user_username', username);
+    localStorage.removeItem('user_email'); // sobra da versao com e-mail
     localStorage.setItem('user_role', role);
 
     if (displayName) {
@@ -67,31 +68,33 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('user_avatar_uploaded_at');
     }
 
-    setUser({ id: userId, email, displayName, role, avatarUploadedAt: avatarUploadedAt || null });
+    setUser({ id: userId, username, displayName, role, avatarUploadedAt: avatarUploadedAt || null });
   };
 
-  const login = async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
+  const login = async (usuario, password) => {
+    const username = usuario.trim().toLowerCase();
+    const response = await api.post('/auth/login', { username, password });
     const { accessToken, userId, displayName, role, avatarUploadedAt } = response.data;
 
-    persistSession({ accessToken, userId, displayName, email, role, avatarUploadedAt });
+    persistSession({ accessToken, userId, displayName, username, role, avatarUploadedAt });
     return response.data;
   };
 
-  const register = async (displayName, email, password, inviteCode) => {
+  const register = async (displayName, username, password, inviteCode) => {
     await api.post('/auth/register', {
       displayName,
-      email,
+      username,
       password,
       inviteCode: inviteCode || null,
     });
 
-    return login(email, password);
+    return login(username, password);
   };
 
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_id');
+    localStorage.removeItem('user_username');
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_display_name');
     localStorage.removeItem('user_role');

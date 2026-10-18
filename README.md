@@ -176,8 +176,8 @@ Rotas marcadas como **admin** verificam no banco se o usuário é da equipe (Adm
 | POST | `/auth/register` | Cadastro (**pública**) |
 | POST | `/auth/login` | Login; devolve `accessToken` (**pública**) |
 | GET | `/auth/config` | Se o cadastro exige código de convite (**pública**) |
-| POST | `/auth/password-reset/request` | "Esqueci minha senha": cria pedido para um admin (`email`); resposta sempre igual (**pública**) |
-| POST | `/auth/password-reset/confirm` | Redefine com o código do admin (`email`, `code`, `newPassword`) (**pública**) |
+| POST | `/auth/password-reset/request` | "Esqueci minha senha": cria pedido para um admin (`username`); resposta sempre igual (**pública**) |
+| POST | `/auth/password-reset/confirm` | Redefine com o código do admin (`username`, `code`, `newPassword`) (**pública**) |
 | GET | `/health` | Verificação de funcionamento usada pela hospedagem (**pública**) |
 | GET | `/ranking?editionId=` | Ranking da edição (padrão: edição ativa) |
 | GET | `/games` | Catálogo de jogos |

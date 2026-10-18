@@ -12,6 +12,10 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 ### Usuários
 - Qualquer pessoa pode se cadastrar pelo site; todo cadastro nasce como **`USER`** (jogador).
   Na versão publicada na nuvem, o cadastro exige o **código de convite** definido pelo admin.
+- **Login por usuário** (sem e-mail): cada conta tem um **usuário** para entrar (ex.: `samy`) e um
+  **apelido** livre que aparece no site. Usuário: 3 a 20 caracteres, letras minúsculas, números, `.` e `_`,
+  único (o banco garante). A equipe pode trocar o usuário de quem está abaixo dela em *Admin → Usuários*.
+  O site não guarda e-mail (removido na V27).
 - **Cargos**, do maior para o menor: **Fundador > Co-fundador > Admin > Jogador** (`USER`).
   Admin, Co-fundador e Fundador formam a **equipe**: aprovam pedidos, revisam obrigações,
   geram a lista rotativa, excluem registros e recalculam a edição.
@@ -33,7 +37,7 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   *Esqueci minha senha → Já tenho um código* e escolhe a senha nova.
   - O código vale **30 minutos**, é de **uso único** e é guardado só como hash.
   - **5 tentativas erradas** cancelam o código; gerar um código novo invalida o anterior.
-  - No máximo **3 pedidos por hora** por usuário; a tela responde igual exista ou não o e-mail.
+  - No máximo **3 pedidos por hora** por usuário; a tela responde igual exista ou não o usuário.
   - O admin também pode gerar o código direto (botão *Código de senha*), sem pedido.
   - Tudo vai para o log (`PASSWORD_RESET_*`). Não há envio de e-mail: o Render gratuito bloqueia SMTP.
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.

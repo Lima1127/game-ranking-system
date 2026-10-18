@@ -22,8 +22,9 @@ public class User extends AuditableEntity {
     @Column(name = "display_name", nullable = false, length = 120)
     private String displayName;
 
-    @Column(nullable = false, unique = true, length = 180)
-    private String email;
+    // Usuario de login (ex.: samy). Sempre em minusculas; regra em UsuarioDeLogin.
+    @Column(nullable = false, unique = true, length = 20)
+    private String username;
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;

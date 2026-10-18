@@ -52,6 +52,15 @@ public class AdminUserController {
         return userAdminService.changeDisplayName(currentUser.userId(), userId, request.displayName());
     }
 
+    @PatchMapping("/{userId}/username")
+    public AdminUserResponse changeUsername(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable UUID userId,
+            @Valid @RequestBody UserManagementRequests.ChangeUsernameRequest request
+    ) {
+        return userAdminService.changeUsername(currentUser.userId(), userId, request.username());
+    }
+
     /**
      * Gera um codigo de redefinicao (30 min, uso unico) para o admin repassar ao jogador.
      * O admin nunca conhece a senha: o proprio jogador escolhe a nova em "Esqueci minha senha".

@@ -26,7 +26,7 @@ public class AuthController {
         return Map.of(
                 "id", user.getId(),
                 "displayName", user.getDisplayName(),
-                "email", user.getEmail(),
+                "username", user.getUsername(),
                 "role", user.getRole()
         );
     }

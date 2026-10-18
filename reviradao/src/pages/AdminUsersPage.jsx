@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Copy, KeyRound, Pencil, Search, UserCog, X } from 'lucide-react';
+import { AtSign, Check, Copy, KeyRound, Pencil, Search, UserCog, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import JanelaFoco from '../components/JanelaFoco';
 import { isStaffRole, roleLabel } from '../utils/roles';
 import { formatarData } from '../utils/formatarData';
+import { REGRA_USUARIO, limparUsuario, usuarioValido } from '../utils/usuarioDeLogin';
 
 // Cor de cada cargo (selo ao lado do nome).
 const COR_CARGO = {
@@ -136,7 +137,7 @@ function JanelaNome({ usuario, onFechar, onSalvo }) {
   });
 
   return (
-    <JanelaFoco titulo="Editar nome" subtitulo={`Nome que aparece no ranking (${usuario.email})`} largura="max-w-lg" onFechar={onFechar}>
+    <JanelaFoco titulo="Editar nome" subtitulo={`Nome que aparece no ranking (@${usuario.username})`} largura="max-w-lg" onFechar={onFechar}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -165,6 +166,45 @@ function JanelaNome({ usuario, onFechar, onSalvo }) {
 }
 
 /** "2026-10-15T18:30:00-03:00" -> "18:30" */
+function JanelaUsuario({ usuario, onFechar, onSalvo }) {
+  const [novo, setNovo] = useState(usuario.username);
+  const mutation = useMutation({
+    mutationFn: async () => (await api.patch(`/admin/users/${usuario.id}/username`, { username: novo })).data,
+    onSuccess: onSalvo,
+  });
+  const valido = usuarioValido(novo);
+
+  return (
+    <JanelaFoco titulo="Editar usuário" subtitulo={`Usado para entrar no site (${usuario.displayName})`} largura="max-w-lg" onFechar={onFechar}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (valido) mutation.mutate();
+        }}
+      >
+        <input
+          type="text"
+          value={novo}
+          onChange={(event) => setNovo(limparUsuario(event.target.value))}
+          autoFocus
+          autoCapitalize="none"
+          spellCheck={false}
+          className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        />
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{REGRA_USUARIO} Avise a pessoa: ela passa a entrar com o usuário novo.</p>
+        <MensagemErro erro={mutation.error} />
+        <BotoesRodape
+          onCancelar={onFechar}
+          onConfirmar={() => mutation.mutate()}
+          confirmando={mutation.isPending}
+          desabilitado={!valido || novo === usuario.username}
+          textoConfirmar="Salvar usuário"
+        />
+      </form>
+    </JanelaFoco>
+  );
+}
+
 function formatarHora(dataHora) {
   const data = new Date(dataHora);
   return Number.isNaN(data.getTime()) ? '' : data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -217,7 +257,7 @@ function JanelaCodigo({ nome, gerar, onFechar, onGerado }) {
           </div>
           <p className="mt-2 text-center text-xs font-semibold text-amber-700 dark:text-amber-300">Vale até às {formatarHora(mutation.data.expiresAt)}</p>
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-            O jogador deve ir em <strong>Login → Esqueci minha senha → Já tenho um código</strong> e informar o e-mail, o código e a senha nova.
+            O jogador deve ir em <strong>Login → Esqueci minha senha → Já tenho um código</strong> e informar o usuário, o código e a senha nova.
           </p>
           <div className="mt-5 flex justify-end">
             <button type="button" onClick={onFechar} className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-secondary">
@@ -245,7 +285,7 @@ function PedidosDeSenha({ pedidos, onGerarCodigo, onRecusar, recusandoId }) {
             <div className="min-w-0 flex-1">
               <div className="truncate font-bold text-slate-900 dark:text-slate-100">{pedido.displayName}</div>
               <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {pedido.email} · pediu em {formatarData(pedido.requestedAt)} às {formatarHora(pedido.requestedAt)}
+                @{pedido.username} · pediu em {formatarData(pedido.requestedAt)} às {formatarHora(pedido.requestedAt)}
               </div>
             </div>
             {pedido.canDecide ? (
@@ -291,7 +331,7 @@ export default function AdminUsersPage() {
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return usuarios;
-    return usuarios.filter((u) => u.displayName.toLowerCase().includes(termo) || u.email.toLowerCase().includes(termo));
+    return usuarios.filter((u) => u.displayName.toLowerCase().includes(termo) || u.username.toLowerCase().includes(termo));
   }, [usuarios, busca]);
 
   const fecharJanela = () => setJanela(null);
@@ -327,7 +367,7 @@ export default function AdminUsersPage() {
             type="search"
             value={busca}
             onChange={(event) => setBusca(event.target.value)}
-            placeholder="Buscar por nome ou e-mail"
+            placeholder="Buscar por nome ou usuário"
             className="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           />
         </label>
@@ -370,7 +410,7 @@ export default function AdminUsersPage() {
                         )}
                       </div>
                       <div className="truncate text-xs text-slate-500 dark:text-slate-400">
-                        {usuario.email}
+                        @{usuario.username}
                         {usuario.createdAt && <> · desde {formatarData(usuario.createdAt)}</>}
                       </div>
                     </div>
@@ -381,7 +421,10 @@ export default function AdminUsersPage() {
                         <BotaoAcao icone={UserCog} onClick={() => setJanela({ tipo: 'cargo', usuario })}>Cargo</BotaoAcao>
                       )}
                       {usuario.canEditDisplayName && (
-                        <BotaoAcao icone={Pencil} onClick={() => setJanela({ tipo: 'nome', usuario })}>Nome</BotaoAcao>
+                        <>
+                          <BotaoAcao icone={Pencil} onClick={() => setJanela({ tipo: 'nome', usuario })}>Nome</BotaoAcao>
+                          <BotaoAcao icone={AtSign} onClick={() => setJanela({ tipo: 'usuario', usuario })}>Usuário</BotaoAcao>
+                        </>
                       )}
                       {usuario.canResetPassword && (
                         <BotaoAcao icone={KeyRound} onClick={() => setJanela({ tipo: 'codigo-usuario', usuario })}>Código de senha</BotaoAcao>
@@ -404,6 +447,7 @@ export default function AdminUsersPage() {
 
       {janela?.tipo === 'cargo' && <JanelaCargo usuario={janela.usuario} onFechar={fecharJanela} onSalvo={aposSalvar} />}
       {janela?.tipo === 'nome' && <JanelaNome usuario={janela.usuario} onFechar={fecharJanela} onSalvo={aposSalvar} />}
+      {janela?.tipo === 'usuario' && <JanelaUsuario usuario={janela.usuario} onFechar={fecharJanela} onSalvo={aposSalvar} />}
       {janela?.tipo === 'codigo-usuario' && (
         <JanelaCodigo
           nome={janela.usuario.displayName}

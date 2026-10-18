@@ -13,7 +13,7 @@ import java.util.UUID;
 public record AdminUserResponse(
         UUID id,
         String displayName,
-        String email,
+        String username,
         UserRole role,
         boolean active,
         boolean hasAvatar,

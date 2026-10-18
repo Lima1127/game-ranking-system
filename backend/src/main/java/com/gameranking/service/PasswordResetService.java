@@ -1,5 +1,6 @@
 package com.gameranking.service;
 
+import com.gameranking.common.UsuarioDeLogin;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.common.exception.NotFoundException;
 import com.gameranking.domain.model.PasswordResetRequest;
@@ -55,8 +56,8 @@ public class PasswordResetService {
      * Pedido do jogador. Nunca informa se o e-mail existe (a resposta e sempre a mesma).
      */
     @Transactional
-    public void solicitar(String email) {
-        Optional<User> encontrado = userRepository.findByEmailIgnoreCase(email.trim());
+    public void solicitar(String username) {
+        Optional<User> encontrado = userRepository.findByUsername(UsuarioDeLogin.normalizar(username));
         if (encontrado.isEmpty() || !Boolean.TRUE.equals(encontrado.get().getActive())) {
             return;
         }
@@ -88,7 +89,7 @@ public class PasswordResetService {
                         pedido.getId(),
                         pedido.getUser().getId(),
                         pedido.getUser().getDisplayName(),
-                        pedido.getUser().getEmail(),
+                        pedido.getUser().getUsername(),
                         pedido.getRequestedAt(),
                         UserPermissions.canResetPassword(actor, pedido.getUser())
                 ))
@@ -138,10 +139,10 @@ public class PasswordResetService {
      * para nao dar pistas a quem estiver tentando adivinhar.
      */
     @Transactional(noRollbackFor = BusinessException.class)
-    public void redefinir(String email, String codigo, String novaSenha) {
+    public void redefinir(String username, String codigo, String novaSenha) {
         BusinessException invalido = new BusinessException("Codigo invalido ou expirado. Peca um novo codigo a um admin.");
 
-        User user = userRepository.findByEmailIgnoreCase(email.trim()).orElseThrow(() -> invalido);
+        User user = userRepository.findByUsername(UsuarioDeLogin.normalizar(username)).orElseThrow(() -> invalido);
         PasswordResetRequest pedido = repository.findAllByUserIdAndStatusIn(user.getId(), List.of(Status.APPROVED)).stream()
                 .findFirst()
                 .orElseThrow(() -> invalido);

@@ -8,7 +8,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByEmailIgnoreCase(String email);
+    /** O usuario e guardado sempre em minusculas: normalize antes (UsuarioDeLogin.normalizar). */
+    Optional<User> findByUsername(String username);
+
+    boolean existsByUsername(String username);
 
     Optional<User> findBySteamId(String steamId);
 
