@@ -59,6 +59,15 @@ export function useSugestoesSteam({ gameName, games, ativo = true, idsJaSugerido
     return jogoExistente || null;
   };
 
+  // Ano de lancamento do jogo escolhido (ele ainda nao esta no catalogo), para o bonus "Em dia".
+  const { data: detalhesSteam } = useQuery({
+    queryKey: ['steam-app', selecao?.appId],
+    queryFn: async () => (await api.get(`/games/steam-apps/${selecao.appId}`)).data,
+    enabled: jogoSteamSelecionado,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+
   return {
     sugestoesSteam,
     jogoSteamSelecionado,
@@ -66,5 +75,6 @@ export function useSugestoesSteam({ gameName, games, ativo = true, idsJaSugerido
     limparSelecaoSteam: () => setSelecao(null),
     // Vai no POST /games: o servidor confere na Steam e usa o nome e o ano oficiais.
     steamAppIdParaCadastro: jogoSteamSelecionado ? selecao.appId : null,
+    anoLancamentoSteam: jogoSteamSelecionado ? detalhesSteam?.releaseYear ?? null : null,
   };
 }

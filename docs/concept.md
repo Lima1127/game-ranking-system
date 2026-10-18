@@ -12,6 +12,10 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 ### Usuários
 - Qualquer pessoa pode se cadastrar pelo site; todo cadastro nasce como **`USER`** (jogador).
   Na versão publicada na nuvem, o cadastro exige o **código de convite** definido pelo admin.
+- **Login por usuário** (sem e-mail): cada conta tem um **usuário** para entrar (ex.: `samy`) e um
+  **apelido** livre que aparece no site. Usuário: 3 a 20 caracteres, letras minúsculas, números, `.` e `_`,
+  único (o banco garante). A equipe pode trocar o usuário de quem está abaixo dela em *Admin → Usuários*.
+  O site não guarda e-mail (removido na V27).
 - **Cargos**, do maior para o menor: **Fundador > Co-fundador > Admin > Jogador** (`USER`).
   Admin, Co-fundador e Fundador formam a **equipe**: aprovam pedidos, revisam obrigações,
   geram a lista rotativa, excluem registros e recalculam a edição.
@@ -33,7 +37,7 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   *Esqueci minha senha → Já tenho um código* e escolhe a senha nova.
   - O código vale **30 minutos**, é de **uso único** e é guardado só como hash.
   - **5 tentativas erradas** cancelam o código; gerar um código novo invalida o anterior.
-  - No máximo **3 pedidos por hora** por usuário; a tela responde igual exista ou não o e-mail.
+  - No máximo **3 pedidos por hora** por usuário; a tela responde igual exista ou não o usuário.
   - O admin também pode gerar o código direto (botão *Código de senha*), sem pedido.
   - Tudo vai para o log (`PASSWORD_RESET_*`). Não há envio de e-mail: o Render gratuito bloqueia SMTP.
 - Usuários desativados (`active = false`) perdem o acesso imediatamente.
@@ -77,6 +81,18 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   primeira vez, em dia, observações, novo anexo). **Coop e lista rotativa não podem ser
   alterados** por atualização. O admin vê a **prévia dos pontos** antes de aprovar; ao aprovar,
   a edição inteira é recalculada.
+- **Conferência na Steam:** se o jogo está ligado à Steam e o jogador conectou a conta Steam, o
+  servidor consulta as **horas** e as **conquistas** do jogo no perfil dele ao enviar o registro,
+  ao editar um pedido pendente e ao pedir atualização. O resultado aparece no pedido, na tela de
+  Solicitações, com avisos quando:
+  - as horas declaradas passam das registradas na Steam (folga de 2h ou 20%, o que for maior);
+  - marcou platina, mas a Steam não mostra 100% das conquistas;
+  - marcou platina num jogo com menos de 9 conquistas (não conta como platina).
+  É **só evidência**: não muda pontos sozinha, e a decisão continua com o admin. A Steam registra o
+  tempo total desde sempre (não só o da edição) e não sabe se o jogo foi "zerado"; o comprovante
+  continua obrigatório. Perfil privado, jogo fora da biblioteca ou Steam fora do ar aparecem como
+  aviso, sem travar o registro. O dono do registro e a equipe podem "Conferir de novo".
+  Exige a chave da Steam Web API no servidor (`app.steam.api-key` / `STEAM_API_KEY`).
 
 ### Coop
 - De 2 a 4 jogadores contando com quem registra. Quem registra escolhe os parceiros e o sistema
@@ -89,9 +105,30 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
 - Não existe cadastro de "qual jogo é o Hype": é uma marcação feita pelo jogador e conferida pelo admin.
 
 ### Lista Rotativa
-- O admin importa uma base de jogos (.csv/.txt) e gera rodadas.
-- Cada nova rodada mantém até **15** jogos da lista atual que ninguém zerou (sorteados) e
-  completa até **30** com jogos da base que ainda não foram zerados na edição.
+- **Sorteio da Steam (principal):** o admin clica em *Sortear nova lista da Steam* e a lista ativa
+  inteira é trocada por **30 jogos aleatórios da loja**:
+  - **22** com **1400 ou mais** avaliações, sendo pelo menos **5 lançados no ano da edição** e pelo
+    menos **10 com 3000 ou mais** avaliações (as outras 7 vagas são 1400+ livres);
+  - **8** com **1000 a 1399** avaliações;
+  - os lançamentos do ano são sorteados entre as **novidades populares da loja** (sorteando pela loja
+    inteira, só ~0,08% dos jogos são lançamentos do ano com 1400+ avaliações). Se não houver 5
+    disponíveis (ex.: começo do ano), as vagas que faltarem viram 1400+ comuns e o admin é avisado;
+  - um jogo que serve para duas vagas ocupa uma só (ex.: lançamento do ano com 3000+ conta como
+    lançamento do ano), por isso a regra é "pelo menos";
+  - nunca entram jogos já zerados (aprovados) na edição, jogos que já estão na lista nem jogos ainda
+    não lançados;
+  - para a lista não sair toda da mesma época, cada consulta à loja contribui com no máximo 2 jogos
+    de cada vaga. Como a maior parte do catálogo da Steam é recente, jogos novos aparecem mais.
+- **Jogos marcados em vermelho (só os admins veem):** jogos com as tags da Steam **Nudez**,
+  **Hentai**, **Conteúdo Sexual** ou **LGBTQIA+**. A lista em `SteamGameDrawService.FLAGGED_TAGS`.
+- **Sortear outro:** qualquer jogo da lista ativa pode ser trocado por outro sorteado da **mesma
+  vaga** (lançamento do ano, 3000+, 1400+ ou 1000–1399), mantendo as proporções. Item de lista
+  montada por arquivo é trocado por um da vaga 1400+. O jogo que entrou fica **destacado** para os
+  admins, com o nome do jogo que ele substituiu, até a próxima lista sorteada.
+- Sortear a lista e trocar um jogo vão para o log (`ROTATIVE_*`).
+- **Por arquivo (opção extra):** o admin importa uma base de jogos (.csv/.txt) e gera rodadas. Cada
+  rodada mantém até **15** jogos da lista atual que ninguém zerou (sorteados) e completa até **30**
+  com jogos da base que ainda não foram zerados na edição.
 - A entrada é **consumida** quando o primeiro registro daquele jogo é aprovado.
 
 ### Obrigações
@@ -117,9 +154,9 @@ vira um evento na tabela `score_events`.
 | `GAME_COMPLETED` | Jogo fechado | +1 | automático |
 | `FIRST_EXPERIENCE` | Primeira experiência | +1 | jogador marca, admin confere |
 | `FIRST_IN_EDITION` | Primeiro no Reviradão | +1 | servidor (ver abaixo) |
-| `IN_RELEASE_YEAR` | Em dia | +1 | jogador marca, admin confere |
+| `IN_RELEASE_YEAR` | Em dia | +1 | sistema sugere pelo ano de lançamento; jogador pode mudar; admin confere (ver abaixo) |
 | `TIME_VALUABLE_BLOCK` | Tempo valioso | +2 **a cada 25h** completas | horas informadas (máx. 1000h) |
-| `PLATINUM` | Platina | +3 | jogador marca, admin confere |
+| `PLATINUM` | Platina | +3 | sistema sugere pelas conquistas da Steam; jogador pode mudar; admin confere (ver abaixo) |
 | `COOP_RIGHT_HAND` | Braço direito | +2 | coop com até 4 jogadores |
 | `HYPE_PARTICIPATION` | Participação no Hype | +1 | jogador marca, admin confere |
 | `HYPE_COMPLETION_BONUS` | Hype concluído | +2 | jogador marca, admin confere |
@@ -127,6 +164,27 @@ vira um evento na tabela `score_events`.
 | `UNDERDOG_BONUS` | Café com leite | +3 | servidor (ver abaixo) |
 
 Registro de **"só participação no Hype"** gera apenas `HYPE_PARTICIPATION`.
+
+**"Em dia" (`IN_RELEASE_YEAR`):** vale para jogo **lançado no ano da edição**. Quando o ano de
+lançamento é conhecido (veio da Steam ou foi definido por um admin), a tela de registro (e a
+conclusão de obrigação) **já marca ou desmarca** o bônus sozinha e mostra de onde veio o ano. O
+jogador ainda pode mudar, porque a data da Steam às vezes é a do PC e não a original (ports de
+console, acesso antecipado). Se ele marcar "Em dia" num jogo de outro ano, a tela de Solicitações
+mostra o alerta *"Marcou Em dia, mas o jogo foi lançado em ..."* para o admin conferir. Sem ano
+conhecido, segue como antes: o jogador marca e o admin confere.
+
+**"Platina" (`PLATINUM`):** em jogo da Steam, se o jogador conectou a conta Steam, a tela de
+registro (e a conclusão de obrigação) consulta as conquistas **dele** e **já marca a platina**
+quando ele tem **100% das conquistas**, **não importa quando** foram desbloqueadas.
+- **Mínimo de 9 conquistas:** jogo com menos de 9 conquistas no total **não conta como platina**,
+  mesmo com 100% (5/5 não conta; 9/9 conta). O número fica em
+  `SteamPlatinumPreviewService.MIN_ACHIEVEMENTS_FOR_PLATINUM`.
+- Faltando conquista, ou com menos de 9 no total, a opção vem desmarcada.
+- Não marca nem desmarca sozinha quando não dá para afirmar: sem conta Steam conectada, perfil
+  privado ou jogo sem conquistas na Steam (pode ser platina de console, que a Steam não conhece).
+
+O jogador pode mudar, e a conferência na Steam do pedido mostra ao admin qualquer divergência. O
+anexo continua obrigatório.
 
 ### Regras de obrigação
 
@@ -146,8 +204,12 @@ Não há limite de pontos nem multiplicadores. O total pode ficar negativo.
   mesmo que outro registro seja aprovado entre eles.
 - **Lista rotativa:** vale se o jogo estiver na lista ativa no momento da aprovação; a entrada é
   consumida. **Todos os membros do mesmo grupo coop** recebem o bônus.
-- **Café com leite:** +3 se, **no momento da aprovação**, o jogador estiver 20 pontos ou mais
-  atrás do líder da edição. Fica gravado no registro (não é recalculado depois).
+- **Café com leite:** +3 se, **no dia em que o jogo foi zerado**, o jogador estava 20 pontos ou
+  mais atrás do líder da edição. O placar desse dia conta só o que aconteceu **antes** dele (jogos
+  pelo dia em que foram zerados; obrigações pelo dia em que aconteceram; jogos do mesmo dia não contam
+  entre si). Assim quem cadastra o histórico atrasado é tratado como se tivesse registrado na hora, e a
+  ordem de aprovação não muda nada. Toda aprovação (e o "Recalcular pontos") refaz o Café com leite da
+  edição em ordem de data. Regra em `CafeComLeite.java`.
 - **Tempo valioso:** `blocos = parte inteira de (horas ÷ 25)`. Ex.: 74h → 2 blocos → +4.
 
 ### Exemplo
@@ -177,6 +239,8 @@ Zerou pela primeira vez, foi o primeiro da edição, 30h, sem platina:
 | 28/09/2026 | Pedido **cancelado** não impede reenviar o mesmo jogo. |
 | 28/09/2026 | Excluir um registro que concluiu obrigação **reabre a obrigação** (volta para ACEITA, sem o +3). |
 | 28/09/2026 | Pedido de atualização **não altera coop nem lista rotativa**. |
+| 17/10/2026 | "Em dia" = jogo **lançado no ano da edição**. |
+| 17/10/2026 | Platina = **100% das conquistas**, não importa quando; jogo com **menos de 9 conquistas** não conta. |
 | 28/09/2026 | Ano de lançamento dos jogos é opcional e **definido apenas por admin**. |
 | 15/10/2026 | Cargos **Fundador > Co-fundador > Admin > Jogador**; Fundador só pelo banco. |
 | 15/10/2026 | Nome de exibição só é alterado pela equipe; senha, pelo próprio jogador (Menu). |
@@ -189,7 +253,8 @@ Precisam de decisão do grupo antes de mudar o código:
 2. "Primeiro no Reviradão": deve ser o primeiro **aprovado** (atual) ou o primeiro a **zerar** (data)?
 3. Café com leite: avaliar na **aprovação** (atual) ou quando o jogador **começa** o jogo, como diz o texto do site?
 4. Pode registrar o mesmo jogo em **edições diferentes**? Hoje não pode.
-5. "Em dia": zerou no **ano de lançamento** do jogo, ou é um jogo **lançado no ano da edição**?
+5. ~~"Em dia": zerou no ano de lançamento ou é lançado no ano da edição?~~ **Decidido em 17/10/2026:**
+   jogo **lançado no ano da edição** (como a conclusão sempre fica dentro da edição, dá no mesmo). Ver a regra `IN_RELEASE_YEAR` acima.
 6. **Hype**: qual jogo é o Hype e quem define?
 7. Obrigação **parcial ("25%")**: 25% de quê? Hoje não é validado.
 8. **Prazo** para obrigações.

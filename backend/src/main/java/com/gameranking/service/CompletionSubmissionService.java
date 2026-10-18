@@ -86,7 +86,8 @@ public class CompletionSubmissionService {
                 request.status() == CompletionStatus.PENDING
                         && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
                 request.fromObligation(),
-                request.ruleCodes()
+                request.ruleCodes(),
+                request.completedInReleaseYear()
         )));
 
         updateRequests.forEach(request -> items.add(new CompletionSubmissionItemResponse(
@@ -110,7 +111,8 @@ public class CompletionSubmissionService {
                 "PENDING".equals(request.status().name())
                         && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
                 request.fromObligation(),
-                request.ruleCodes()
+                request.ruleCodes(),
+                request.completedInReleaseYear()
         )));
 
         items.sort(Comparator.comparing(CompletionSubmissionItemResponse::createdAt).reversed());

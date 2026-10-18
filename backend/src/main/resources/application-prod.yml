@@ -47,6 +47,8 @@ app:
   steam:
     # Sugestoes da loja Steam no campo "Jogo". Ligado por padrao; APP_STEAM_ENABLED=false desliga.
     enabled: ${APP_STEAM_ENABLED:true}
+    # Chave da Steam Web API (conferencia de horas e conquistas). Vazio = conferencia desligada.
+    api-key: ${STEAM_API_KEY:}
   # Endereco publico do site (ex.: https://reviradao.onrender.com), usado no retorno do login da
   # Steam. Vazio = o botao "Conectar Steam" avisa que o vinculo nao esta configurado.
   public-url: ${APP_PUBLIC_URL:}

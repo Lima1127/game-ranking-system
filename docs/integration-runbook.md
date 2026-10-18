@@ -106,7 +106,7 @@ do painel Admin. O cargo de **Fundador** só pode ser definido direto no banco:
 ```sql
 -- psql local (troque o banco por game_ranking_teste para o teste)
 -- ou no Neon: painel do projeto -> SQL Editor
-UPDATE users SET role = 'FUNDADOR' WHERE lower(email) = lower('seu@email.com');
+UPDATE users SET role = 'FUNDADOR' WHERE username = 'seu.usuario';
 ```
 
 Depois, saia e entre de novo no site (ou só recarregue a página).
@@ -117,16 +117,16 @@ Com o backend ligado, na pasta do projeto:
 
 ```powershell
 # jogador comum (banco de TESTE, padrão)
-powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123"
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Usuario "joao" -Senha "senha123"
 
-# admin (se o e-mail já existir, apenas promove)
-powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@teste.com" -Senha "senha123" -Admin
+# admin (se o usuário já existir, apenas promove)
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Usuario "alex" -Senha "senha123" -Admin
 
 # no banco REAL
-powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@x.com" -Senha "senha123" -Admin -Banco game_ranking
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Usuario "alex" -Senha "senha123" -Admin -Banco game_ranking
 
 # se o backend exigir codigo de convite
-powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123" -Convite "codigo"
+powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Usuario "joao" -Senha "senha123" -Convite "codigo"
 ```
 
 - O cadastro passa pela API (senha criptografada como no site); a promoção a admin é feita no banco.

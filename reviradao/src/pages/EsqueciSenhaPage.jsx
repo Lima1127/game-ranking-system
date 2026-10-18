@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { limparUsuario } from '../utils/usuarioDeLogin';
 
 const campoClasse =
   'w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400';
 
 /**
- * "Esqueci minha senha" sem e-mail:
- * 1) o jogador pede (só o e-mail) e avisa um admin do grupo;
+ * "Esqueci minha senha" (sem e-mail: o codigo vem de um admin):
+ * 1) o jogador pede (só o usuário) e avisa um admin do grupo;
  * 2) o admin gera um código na tela Usuários e passa para ele;
  * 3) o jogador volta aqui, em "Já tenho um código", e escolhe a senha nova.
  */
 export default function EsqueciSenhaPage() {
   const navigate = useNavigate();
   const [etapa, setEtapa] = useState('pedir'); // 'pedir' | 'pedido-enviado' | 'codigo' | 'pronto'
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [codigo, setCodigo] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
@@ -26,7 +27,7 @@ export default function EsqueciSenhaPage() {
     setErro('');
     setEnviando(true);
     try {
-      await api.post('/auth/password-reset/request', { email });
+      await api.post('/auth/password-reset/request', { username: usuario });
       setEtapa('pedido-enviado');
     } catch (err) {
       setErro(err.message || 'Não foi possível enviar o pedido. Tente novamente.');
@@ -48,7 +49,7 @@ export default function EsqueciSenhaPage() {
     }
     setEnviando(true);
     try {
-      await api.post('/auth/password-reset/confirm', { email, code: codigo, newPassword: senha });
+      await api.post('/auth/password-reset/confirm', { username: usuario, code: codigo, newPassword: senha });
       setEtapa('pronto');
     } catch (err) {
       setErro(err.message || 'Não foi possível redefinir a senha.');
@@ -67,10 +68,10 @@ export default function EsqueciSenhaPage() {
         {etapa === 'pedir' && (
           <form onSubmit={pedirCodigo}>
             <p className="mb-6 text-center text-gray-600 dark:text-slate-300">
-              Informe seu e-mail. Um admin do grupo vai aprovar e te passar um <strong>código</strong> para criar uma senha nova.
+              Informe seu usuário. Um admin do grupo vai aprovar e te passar um <strong>código</strong> para criar uma senha nova.
             </p>
-            <label className="mb-2 block font-bold text-gray-700 dark:text-slate-200">E-mail</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={campoClasse} placeholder="seu@email.com" required />
+            <label className="mb-2 block font-bold text-gray-700 dark:text-slate-200">Usuário</label>
+            <input type="text" value={usuario} onChange={(e) => setUsuario(limparUsuario(e.target.value))} className={campoClasse} placeholder="ex.: samy" autoComplete="username" autoCapitalize="none" spellCheck={false} required />
             <button type="submit" disabled={enviando} className="mt-6 w-full rounded-lg bg-primary py-2 font-bold text-white transition hover:bg-secondary disabled:opacity-50">
               {enviando ? 'Enviando...' : 'Pedir código'}
             </button>
@@ -83,7 +84,7 @@ export default function EsqueciSenhaPage() {
         {etapa === 'pedido-enviado' && (
           <div className="text-center">
             <p className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800 dark:bg-green-950/40 dark:text-green-300">
-              Pedido enviado! Se o e-mail estiver cadastrado, um admin já consegue ver o seu pedido.
+              Pedido enviado! Se o usuário estiver cadastrado, um admin já consegue ver o seu pedido.
             </p>
             <p className="mb-6 text-sm text-gray-600 dark:text-slate-300">
               <strong>Avise um admin do grupo</strong> (pelo WhatsApp, por exemplo). Ele vai gerar um código que vale por <strong>30 minutos</strong>.
@@ -98,8 +99,8 @@ export default function EsqueciSenhaPage() {
           <form onSubmit={redefinir} className="space-y-4">
             <p className="text-center text-sm text-gray-600 dark:text-slate-300">Use o código que o admin te passou e escolha a senha nova.</p>
             <label className="block">
-              <span className="mb-1 block font-bold text-gray-700 dark:text-slate-200">E-mail</span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={campoClasse} placeholder="seu@email.com" required />
+              <span className="mb-1 block font-bold text-gray-700 dark:text-slate-200">Usuário</span>
+              <input type="text" value={usuario} onChange={(e) => setUsuario(limparUsuario(e.target.value))} className={campoClasse} placeholder="ex.: samy" autoComplete="username" autoCapitalize="none" spellCheck={false} required />
             </label>
             <label className="block">
               <span className="mb-1 block font-bold text-gray-700 dark:text-slate-200">Código</span>

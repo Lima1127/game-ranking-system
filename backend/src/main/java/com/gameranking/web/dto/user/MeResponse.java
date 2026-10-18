@@ -9,7 +9,7 @@ import java.util.UUID;
 public record MeResponse(
         UUID userId,
         String displayName,
-        String email,
+        String username,
         UserRole role,
         OffsetDateTime avatarUploadedAt,
         // SteamID do perfil vinculado (null = sem vinculo). Texto: 17 digitos nao cabem num numero do JavaScript.

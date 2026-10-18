@@ -44,6 +44,7 @@ public class CompletionUpdateService {
     private final AdminAuditLogService adminAuditLogService;
     private final EditionScoreRecalculationService editionScoreRecalculationService;
     private final ScoringEngine scoringEngine;
+    private final SteamVerificationService steamVerificationService;
 
     @Transactional(readOnly = true)
     public CompletionDetailsResponse getCompletion(UUID requesterId, UUID completionId) {
@@ -119,7 +120,8 @@ public class CompletionUpdateService {
                         previewByUpdateRequestId.getOrDefault(
                                 p.getId(),
                                 ruleCodesByCompletionId.getOrDefault(p.getCompletionId(), java.util.Collections.emptyList())
-                        )
+                        ),
+                        p.isCompletedInReleaseYear()
                 ))
                 .toList();
     }
@@ -178,6 +180,8 @@ public class CompletionUpdateService {
                 completion,
                 "Solicitacao de atualizacao criada para o registro aprovado."
         );
+        // A atualizacao pode marcar platina ou mudar horas: confere de novo na Steam.
+        steamVerificationService.verifyAfterCommit(List.of(completion.getId()));
 
         return new CompletionUpdateRequestResponse(
                 saved.getId(),
@@ -194,7 +198,8 @@ public class CompletionUpdateService {
                 saved.getProofId(),
                 platinumProofService.getContentTypeIfExists(saved.getProofId()),
                 completion.isFromObligation(),
-                java.util.Collections.emptyList()
+                java.util.Collections.emptyList(),
+                saved.isCompletedInReleaseYear()
         );
     }
 
@@ -281,7 +286,8 @@ public class CompletionUpdateService {
                 updateRequest.getProofId(),
                 platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
                 updateRequest.getCompletion().isFromObligation(),
-                java.util.Collections.emptyList()
+                java.util.Collections.emptyList(),
+                updateRequest.isCompletedInReleaseYear()
         );
     }
 
@@ -382,7 +388,8 @@ public class CompletionUpdateService {
                 updateRequest.getProofId(),
                 platinumProofService.getContentTypeIfExists(updateRequest.getProofId()),
                 updateRequest.getCompletion().isFromObligation(),
-                java.util.Collections.emptyList()
+                java.util.Collections.emptyList(),
+                updateRequest.isCompletedInReleaseYear()
         );
     }
 

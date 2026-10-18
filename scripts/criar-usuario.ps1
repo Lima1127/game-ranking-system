@@ -11,23 +11,23 @@
 
 .EXAMPLE
   # Jogador comum no banco de TESTE (padrao)
-  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123"
+  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Usuario "joao" -Senha "senha123"
 
 .EXAMPLE
-  # Admin (se o e-mail ja existir, so promove para ADMIN)
-  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@teste.com" -Senha "senha123" -Admin
+  # Admin (se o usuario ja existir, so promove para ADMIN)
+  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Usuario "alex" -Senha "senha123" -Admin
 
 .EXAMPLE
   # Mesmo coisa, mas no banco REAL
-  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Email "alex@x.com" -Senha "senha123" -Admin -Banco game_ranking
+  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Alex" -Usuario "alex" -Senha "senha123" -Admin -Banco game_ranking
 
 .EXAMPLE
   # Quando o cadastro exige codigo de convite (app.registration.invite-code)
-  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Email "joao@teste.com" -Senha "senha123" -Convite "codigo-do-grupo"
+  powershell -ExecutionPolicy Bypass -File .\scripts\criar-usuario.ps1 -Nome "Joao" -Usuario "joao" -Senha "senha123" -Convite "codigo-do-grupo"
 #>
 param(
     [Parameter(Mandatory = $true)] [string] $Nome,
-    [Parameter(Mandatory = $true)] [string] $Email,
+    [Parameter(Mandatory = $true)] [string] $Usuario,
     [Parameter(Mandatory = $true)] [string] $Senha,
     [string] $Convite = '',
     [switch] $Admin,
@@ -44,8 +44,9 @@ if ($Senha.Length -lt 6) {
 }
 
 # 1) Cadastro pela API -------------------------------------------------------
-Write-Host "Cadastrando $Email ..."
-$body = @{ displayName = $Nome; email = $Email; password = $Senha; inviteCode = $Convite } | ConvertTo-Json
+$Usuario = $Usuario.Trim().ToLower()
+Write-Host "Cadastrando $Usuario ..."
+$body = @{ displayName = $Nome; username = $Usuario; password = $Senha; inviteCode = $Convite } | ConvertTo-Json
 try {
     Invoke-RestMethod -Method Post -Uri "$Api/auth/register" -ContentType 'application/json; charset=utf-8' -Body $body | Out-Null
     Write-Host '  Usuario criado.' -ForegroundColor Green
@@ -57,8 +58,8 @@ catch {
         $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
         $mensagem = $reader.ReadToEnd()
     }
-    if ($mensagem -match 'Email ja cadastrado') {
-        Write-Host '  Este e-mail ja estava cadastrado.' -ForegroundColor Yellow
+    if ($mensagem -match 'usuario ja existe') {
+        Write-Host '  Este usuario ja estava cadastrado.' -ForegroundColor Yellow
         if (-not $Admin) { exit 0 }
     }
     elseif (-not $_.Exception.Response) {
@@ -72,7 +73,7 @@ catch {
 }
 
 if (-not $Admin) {
-    Write-Host "Pronto! Login: $Email"
+    Write-Host "Pronto! Login: $Usuario"
     exit 0
 }
 
@@ -88,20 +89,20 @@ $dbUser = ($yml | Select-String '^\s+username:' | Select-Object -First 1).Line.S
 $env:PGPASSWORD = ($yml | Select-String '^\s+password:' | Select-Object -First 1).Line.Split(':', 2)[1].Trim()
 
 try {
-    # O e-mail vai como variavel do psql (:'email'), nunca colado dentro do SQL.
-    $sql = "UPDATE users SET role = 'ADMIN', updated_at = NOW() WHERE lower(email) = lower(:'email');"
-    $resultado = $sql | & $Psql -h localhost -U $dbUser -d $Banco -v "email=$Email" -v ON_ERROR_STOP=1 -tA
+    # O usuario vai como variavel do psql (:'usuario'), nunca colado dentro do SQL.
+    $sql = "UPDATE users SET role = 'ADMIN', updated_at = NOW() WHERE username = :'usuario';"
+    $resultado = $sql | & $Psql -h localhost -U $dbUser -d $Banco -v "usuario=$Usuario" -v ON_ERROR_STOP=1 -tA
 }
 finally {
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
 }
 
 if ($resultado -match 'UPDATE 1') {
-    Write-Host "  $Email agora e ADMIN no banco '$Banco'." -ForegroundColor Green
+    Write-Host "  $Usuario agora e ADMIN no banco '$Banco'." -ForegroundColor Green
     Write-Host '  Se a pessoa ja estava logada, ela precisa sair e entrar de novo para ver o menu Admin.'
 }
 else {
-    Write-Host "  Nenhum usuario com o e-mail $Email no banco '$Banco'." -ForegroundColor Red
+    Write-Host "  Nenhum usuario '$Usuario' no banco '$Banco'." -ForegroundColor Red
     Write-Host '  Confira se o backend esta rodando no mesmo banco (TESTE x REAL).'
     exit 1
 }

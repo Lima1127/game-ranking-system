@@ -12,6 +12,7 @@ import com.gameranking.service.scoring.ScoringEngine;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,6 +58,76 @@ class EditionScoreRecalculationServiceTest {
 
         assertThat(first.isFirstInEdition()).isTrue();
         assertThat(second.isFirstInEdition()).isFalse();
+    }
+
+    // ---------- Cafe com leite pelo placar do dia em que o jogo foi zerado ----------
+
+    private final User lider = User.builder().id(UUID.randomUUID()).build();
+    private final User novato = User.builder().id(UUID.randomUUID()).build();
+
+    /** Jogo aprovado do jogador, zerado em `dia`. 250h = 10 blocos de tempo valioso (20 pts) + 1 = 21 pts ou mais. */
+    private Completion jogo(User dono, LocalDate dia, int horas) {
+        return Completion.builder()
+                .id(UUID.randomUUID())
+                .edition(edition)
+                .user(dono)
+                .game(Game.builder().id(UUID.randomUUID()).name("Jogo " + dia).build())
+                .completedAt(dia)
+                .hoursPlayed(BigDecimal.valueOf(horas))
+                .status(CompletionStatus.APPROVED)
+                .build();
+    }
+
+    @Test
+    void cafeComLeiteUsaOPlacarDoDiaEmQueOJogoFoiZerado() {
+        // 300h: 12 blocos de tempo valioso (24) + jogo fechado + primeiro na edicao = 26 pts.
+        // O novato chega a 1/02 com uns 4 pts dos dois jogos de janeiro: 22 atras.
+        Completion doLider = jogo(lider, LocalDate.of(2026, 1, 10), 300);
+        Completion novatoAntes = jogo(novato, LocalDate.of(2026, 1, 5), 10);   // antes do lider pontuar
+        Completion novatoMesmoDia = jogo(novato, LocalDate.of(2026, 1, 10), 10);
+        Completion novatoDepois = jogo(novato, LocalDate.of(2026, 2, 1), 10);   // lider ja 20+ na frente
+        // O novato cadastrou tudo depois (aprovado por ultimo) e fora de ordem.
+        when(completionRepository.listApprovedEntitiesByEditionId(edition.getId()))
+                .thenReturn(List.of(doLider, novatoDepois, novatoMesmoDia, novatoAntes));
+
+        service.recalculateEdition(edition);
+
+        assertThat(doLider.isUnderdogAwarded()).isFalse();
+        assertThat(novatoAntes.isUnderdogAwarded()).isFalse();
+        assertThat(novatoMesmoDia.isUnderdogAwarded()).isFalse(); // mesmo dia nao conta
+        assertThat(novatoDepois.isUnderdogAwarded()).isTrue();
+    }
+
+    @Test
+    void cadastrarOHistoricoAtrasadoNaoDaCafeComLeiteEmTudo() {
+        // Os dois jogaram o ano todo no mesmo ritmo; o novato so cadastrou tudo em outubro.
+        Completion liderJan = jogo(lider, LocalDate.of(2026, 1, 15), 30);
+        Completion liderMar = jogo(lider, LocalDate.of(2026, 3, 15), 30);
+        Completion novatoJan = jogo(novato, LocalDate.of(2026, 1, 20), 30);
+        Completion novatoMar = jogo(novato, LocalDate.of(2026, 3, 20), 30);
+        when(completionRepository.listApprovedEntitiesByEditionId(edition.getId()))
+                .thenReturn(List.of(liderJan, liderMar, novatoJan, novatoMar));
+
+        service.recalculateEdition(edition);
+
+        assertThat(List.of(liderJan, liderMar, novatoJan, novatoMar))
+                .noneMatch(Completion::isUnderdogAwarded);
+    }
+
+    @Test
+    void ordemDeAprovacaoNaoMudaOResultado() {
+        Completion doLider = jogo(lider, LocalDate.of(2026, 1, 10), 250);
+        Completion doNovato = jogo(novato, LocalDate.of(2026, 2, 1), 10);
+
+        when(completionRepository.listApprovedEntitiesByEditionId(edition.getId())).thenReturn(List.of(doNovato, doLider));
+        service.recalculateEdition(edition);
+        boolean primeiraOrdem = doNovato.isUnderdogAwarded();
+
+        when(completionRepository.listApprovedEntitiesByEditionId(edition.getId())).thenReturn(List.of(doLider, doNovato));
+        service.recalculateEdition(edition);
+
+        assertThat(primeiraOrdem).isTrue();
+        assertThat(doNovato.isUnderdogAwarded()).isTrue();
     }
 
     private Completion completion(UUID coopGroupId) {

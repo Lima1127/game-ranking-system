@@ -1,5 +1,6 @@
 package com.gameranking.service;
 
+import com.gameranking.common.UsuarioDeLogin;
 import com.gameranking.common.exception.BusinessException;
 import com.gameranking.domain.enums.UserRole;
 import com.gameranking.domain.model.User;
@@ -51,14 +52,15 @@ public class AuthService {
             }
         }
 
-        userRepository.findByEmailIgnoreCase(request.email()).ifPresent(u -> {
-            throw new BusinessException("Email ja cadastrado");
-        });
+        String username = UsuarioDeLogin.normalizar(request.username());
+        if (userRepository.existsByUsername(username)) {
+            throw new BusinessException("Esse usuario ja existe. Escolha outro.");
+        }
 
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .displayName(request.displayName())
-                .email(request.email().toLowerCase())
+                .username(username)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .role(UserRole.USER)
                 .active(true)
@@ -68,7 +70,7 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmailIgnoreCase(request.email())
+        User user = userRepository.findByUsername(UsuarioDeLogin.normalizar(request.username()))
                 .orElseThrow(() -> new BusinessException("Credenciais invalidas"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())

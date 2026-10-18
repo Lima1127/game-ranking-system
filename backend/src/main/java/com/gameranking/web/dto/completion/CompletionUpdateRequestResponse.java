@@ -23,6 +23,8 @@ public record CompletionUpdateRequestResponse(
         UUID proofId,
         String proofContentType,
         boolean fromObligation,
-        List<String> ruleCodes
+        List<String> ruleCodes,
+        // Valor de "Em dia" pedido na atualizacao.
+        boolean completedInReleaseYear
 ) {
 }

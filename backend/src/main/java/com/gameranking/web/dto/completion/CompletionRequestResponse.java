@@ -24,7 +24,9 @@ public record CompletionRequestResponse(
         UUID proofId,
         String proofContentType,
         UUID coopGroupId,
-        List<String> ruleCodes
+        List<String> ruleCodes,
+        // Jogador marcou "Em dia" (a tela compara com o ano de lancamento do jogo).
+        boolean completedInReleaseYear
 ) {
     public CompletionRequestResponse(
             UUID completionId,
@@ -41,9 +43,10 @@ public record CompletionRequestResponse(
             OffsetDateTime approvedAt,
             UUID proofId,
             String proofContentType,
-            UUID coopGroupId
+            UUID coopGroupId,
+            boolean completedInReleaseYear
     ) {
-        this(completionId, userId, userDisplayName, gameId, gameName, completedAt, hoursPlayed, platinum, fromObligation, status, createdAt, approvedAt, proofId, proofContentType, coopGroupId, List.of());
+        this(completionId, userId, userDisplayName, gameId, gameName, completedAt, hoursPlayed, platinum, fromObligation, status, createdAt, approvedAt, proofId, proofContentType, coopGroupId, List.of(), completedInReleaseYear);
     }
 }
 
