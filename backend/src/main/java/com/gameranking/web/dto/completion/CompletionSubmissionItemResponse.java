@@ -26,6 +26,7 @@ public record CompletionSubmissionItemResponse(
         String approvedByDisplayName,
         UUID proofId,
         String proofContentType,
+        UUID extraProofId,
         UUID coopGroupId,
         boolean editable,
         boolean fromObligation,

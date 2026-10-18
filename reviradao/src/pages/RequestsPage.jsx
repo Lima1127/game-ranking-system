@@ -286,6 +286,17 @@ export default function RequestsPage() {
         ) : (
           <span className="flex h-28 w-28 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500 dark:bg-slate-800">Anexo</span>
         )}
+        {proofSource.extraProofId && (
+          <button
+            type="button"
+            onClick={() => setPreviewImage({ src: buildProofUrl(proofSource.extraProofId), alt: `2ª imagem de ${gameName}` })}
+            className="relative overflow-hidden rounded-lg ring-1 ring-slate-200 transition hover:ring-2 hover:ring-primary dark:ring-slate-700"
+            title="Ampliar 2ª imagem"
+          >
+            <img src={buildProofUrl(proofSource.extraProofId)} alt={`2ª imagem de ${gameName}`} className="h-14 w-28 cursor-zoom-in bg-slate-100 object-cover dark:bg-slate-800" />
+            <span className="absolute bottom-1 right-1 rounded bg-slate-900/80 px-1 text-[10px] font-bold text-white">2ª</span>
+          </button>
+        )}
         <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
           Abrir <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </a>
@@ -395,7 +406,12 @@ export default function RequestsPage() {
         <div className="flex min-w-0 flex-1 flex-col gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="mr-1 text-xl font-bold leading-tight text-slate-900 dark:text-slate-100">{firstSubmission.gameName}</h2>
-            <Etiqueta icone={Users} classe={etiquetaCoop}>Coop · {group.entries.length}</Etiqueta>
+            {/* Mesmo agrupamento serve para coop e para participantes do Hype registrados juntos */}
+            {group.entries.some((entry) => (entry.ruleCodes || []).includes('COOP_RIGHT_HAND')) ? (
+              <Etiqueta icone={Users} classe={etiquetaCoop}>Coop · {group.entries.length}</Etiqueta>
+            ) : (
+              <Etiqueta icone={Users} classe={etiquetaCoop}>🔥 Hype · {group.entries.length}</Etiqueta>
+            )}
             <EtiquetasDoJogo
               platina={group.entries.some((entry) => entry.platinum)}
               obrigacao={group.entries.some((entry) => hasObligationBadge(entry))}

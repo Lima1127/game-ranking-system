@@ -27,6 +27,17 @@ function AdminCompletionCard({ item, onDelete, isPending, proofUrl, onPreview })
           {item.proofId ? 'Anexo' : 'Sem anexo'}
         </span>
       )}
+      {item.extraProofId && (
+        <button
+          type="button"
+          onClick={() => onPreview(`${api.defaults.baseURL}/uploads/proofs/${item.extraProofId}`, `2ª imagem de ${item.gameName}`)}
+          className="relative -ml-2 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200 transition hover:ring-2 hover:ring-primary dark:ring-slate-700"
+          title="Ampliar 2ª imagem"
+        >
+          <img src={`${api.defaults.baseURL}/uploads/proofs/${item.extraProofId}`} alt="" className="h-16 w-12 cursor-zoom-in bg-slate-100 object-cover dark:bg-slate-800" />
+          <span className="absolute bottom-0.5 right-0.5 rounded bg-slate-900/80 px-1 text-[10px] font-bold text-white">2ª</span>
+        </button>
+      )}
 
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">

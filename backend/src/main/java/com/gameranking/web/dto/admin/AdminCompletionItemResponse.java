@@ -22,6 +22,7 @@ public record AdminCompletionItemResponse(
         OffsetDateTime cancelledAt,
         UUID proofId,
         String proofContentType,
+        UUID extraProofId,
         long awardedPoints
 ) {
     public AdminCompletionItemResponse(
@@ -55,6 +56,7 @@ public record AdminCompletionItemResponse(
                 cancelledAt,
                 proofId,
                 proofContentType,
+                null,
                 0L
         );
     }

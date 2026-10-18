@@ -36,6 +36,10 @@ public class Completion extends AuditableEntity {
     @OneToOne(mappedBy = "completion")
     private PlatinumProof proof;
 
+    // Segunda imagem (opcional) do registro: id de um comprovante em platinum_proofs.
+    @Column(name = "extra_proof_id")
+    private UUID extraProofId;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "game_id")
     private Game game;
