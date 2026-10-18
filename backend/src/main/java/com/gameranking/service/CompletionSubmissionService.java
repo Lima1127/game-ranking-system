@@ -64,6 +64,15 @@ public class CompletionSubmissionService {
                 .filter(update -> update.getApprovedBy() != null)
                 .collect(Collectors.toMap(update -> update.getId(), update -> update.getApprovedBy().getDisplayName()));
 
+        // Segunda imagem de cada registro (so registros novos tem; atualizacoes nao).
+        Map<UUID, UUID> segundaImagem = new java.util.HashMap<>();
+        completionRepository.findAllById(completionRequests.stream().map(CompletionRequestResponse::completionId).toList())
+                .forEach(completion -> {
+                    if (completion.getExtraProofId() != null) {
+                        segundaImagem.put(completion.getId(), completion.getExtraProofId());
+                    }
+                });
+
         List<CompletionSubmissionItemResponse> items = new java.util.ArrayList<>();
         completionRequests.forEach(request -> items.add(new CompletionSubmissionItemResponse(
                 CompletionSubmissionKind.NEW_COMPLETION,
@@ -82,6 +91,7 @@ public class CompletionSubmissionService {
                 aprovadorDoRegistro.get(request.completionId()),
                 request.proofId(),
                 request.proofContentType(),
+                segundaImagem.get(request.completionId()),
                 request.coopGroupId(),
                 request.status() == CompletionStatus.PENDING
                         && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
@@ -107,6 +117,7 @@ public class CompletionSubmissionService {
                 aprovadorDaAtualizacao.get(request.updateRequestId()),
                 request.proofId(),
                 request.proofContentType(),
+                null,
                 null,
                 "PENDING".equals(request.status().name())
                         && (request.userId().equals(requesterId) || requester.getRole().isStaff()),
@@ -181,7 +192,9 @@ public class CompletionSubmissionService {
                             request.hypeCompletedBonus(),
                             request.rotativeList(),
                             request.notes(),
-                            List.of()
+                            List.of(),
+                            List.of(),
+                            null
                     )
             );
 

@@ -71,6 +71,12 @@ public class CompletionController {
         return completionService.listRequests(currentUser.userId(), editionId);
     }
 
+    /** Ids de quem ja tem registro (nao cancelado) desse jogo: nao aparecem para coop/hype. */
+    @GetMapping("/registered-users")
+    public List<UUID> registeredUsers(@RequestParam UUID gameId) {
+        return completionService.listRegisteredUserIds(gameId);
+    }
+
     @PostMapping("/{completionId}/approve")
     public CompletionResponse approve(
             @AuthenticationPrincipal AuthenticatedUser currentUser,

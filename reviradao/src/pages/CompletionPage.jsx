@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, ImagePlus, Info, RotateCcw, Sparkles, TriangleAlert, Users } from 'lucide-react';
+import { CheckCircle2, ImagePlus, Info, RotateCcw, Sparkles, TriangleAlert, Users, X } from 'lucide-react';
 import api from '../services/api';
 import { compressImage, MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,7 @@ const buildInitialForm = () => ({
   rotativeList: false,
   coop: false,
   coopPlayerUserIds: [],
+  hypePlayerUserIds: [],
   hypeParticipation: false,
   hypeCompletedBonus: false,
 });
@@ -48,6 +49,7 @@ export default function CompletionPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(buildInitialForm);
   const [platinumFile, setPlatinumFile] = useState(null);
+  const [segundaImagem, setSegundaImagem] = useState(null); // opcional
   // Mensagens na propria tela (no lugar das janelinhas de alerta do navegador).
   const [aviso, setAviso] = useState(null); // { tipo: 'erro' | 'sucesso', texto }
   const avisar = (texto, tipo = 'erro') => setAviso({ tipo, texto });
@@ -55,6 +57,8 @@ export default function CompletionPage() {
   // Miniatura da imagem anexada
   const previewUrl = useMemo(() => (platinumFile ? URL.createObjectURL(platinumFile) : null), [platinumFile]);
   useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl]);
+  const previewSegunda = useMemo(() => (segundaImagem ? URL.createObjectURL(segundaImagem) : null), [segundaImagem]);
+  useEffect(() => () => previewSegunda && URL.revokeObjectURL(previewSegunda), [previewSegunda]);
 
   const { data: games = [], isLoading: gamesLoading, isError: gamesLoadError } = useQuery({
     queryKey: ['games'],
@@ -115,13 +119,13 @@ export default function CompletionPage() {
     return response.data.id;
   };
 
-  const uploadPlatinumProof = async () => {
-    if (!platinumFile) {
+  const uploadPlatinumProof = async (arquivo = platinumFile) => {
+    if (!arquivo) {
       return null;
     }
 
     const payload = new FormData();
-    payload.append('file', await compressImage(platinumFile));
+    payload.append('file', await compressImage(arquivo));
 
     const response = await api.post('/uploads/platinum', payload, {
       headers: {
@@ -136,6 +140,7 @@ export default function CompletionPage() {
     mutationFn: async () => {
       const gameId = await resolveGameId();
       const platinumProofId = await uploadPlatinumProof();
+      const extraProofId = await uploadPlatinumProof(segundaImagem);
 
       return api.post(
         '/completions',
@@ -147,9 +152,11 @@ export default function CompletionPage() {
           completedInReleaseYear: form.completedInReleaseYear,
           platinum: form.platinum,
           platinumProofId,
+          extraProofId,
           coop: form.coop,
           coopPlayers: form.coop ? form.coopPlayerUserIds.length + 1 : null,
           coopPlayerUserIds: form.coop ? form.coopPlayerUserIds : [],
+          hypePlayerUserIds: form.hypeParticipation && !form.coop ? form.hypePlayerUserIds : [],
           hypeParticipation: form.hypeParticipation,
           hypeCompletedBonus: form.hypeCompletedBonus,
           rotativeList: form.rotativeList,
@@ -163,11 +170,14 @@ export default function CompletionPage() {
     onSuccess: () => {
       if (form.coop) {
         avisar(`Solicitação de coop enviada para você e mais ${form.coopPlayerUserIds.length} jogador(es). Todas contarão pontos apenas após a aprovação.`, 'sucesso');
+      } else if (form.hypeParticipation && form.hypePlayerUserIds.length > 0) {
+        avisar(`Participação no Hype enviada para você e mais ${form.hypePlayerUserIds.length} jogador(es). Os pontos entram depois da aprovação.`, 'sucesso');
       } else {
         avisar('Solicitação enviada! Ela só contará pontos depois da aprovação.', 'sucesso');
       }
       setForm(buildInitialForm());
       setPlatinumFile(null);
+      setSegundaImagem(null);
       limparSelecaoSteam();
       queryClient.invalidateQueries({ queryKey: ['completion-requests'] });
       queryClient.invalidateQueries({ queryKey: ['completion-submissions'] });
@@ -185,11 +195,12 @@ export default function CompletionPage() {
     }));
   };
 
-  const handleFileChange = (e) => {
+  // `guardar`: setPlatinumFile (1a imagem) ou setSegundaImagem (2a, opcional)
+  const handleFileChange = (e, guardar = setPlatinumFile) => {
     const file = e.target.files?.[0];
 
     if (!file) {
-      setPlatinumFile(null);
+      guardar(null);
       return;
     }
 
@@ -206,7 +217,7 @@ export default function CompletionPage() {
     }
 
     setAviso(null);
-    setPlatinumFile(file);
+    guardar(file);
   };
 
   const handleSubmit = (e) => {
@@ -244,6 +255,16 @@ export default function CompletionPage() {
   };
 
   const matchingGame = games.find((game) => game.name.trim().toLowerCase() === form.gameName.trim().toLowerCase());
+
+  // Quem ja tem esse jogo cadastrado nao pode entrar de novo (coop ou Hype).
+  const { data: registeredUserIds = [] } = useQuery({
+    queryKey: ['registered-users', matchingGame?.id],
+    queryFn: async () => (await api.get('/completions/registered-users', { params: { gameId: matchingGame.id } })).data,
+    enabled: Boolean(matchingGame?.id),
+  });
+  const jaCadastrados = new Set(matchingGame ? registeredUserIds : []);
+  const outrosJogadores = users.filter((candidate) => candidate.id !== user?.id && !jaCadastrados.has(candidate.id));
+  const nomesJaCadastrados = users.filter((candidate) => candidate.id !== user?.id && jaCadastrados.has(candidate.id)).map((candidate) => candidate.displayName);
   const rotativeByGameId = useMemo(
     () => new Map(rotativeEntries.map((entry) => [entry.gameId, entry])),
     [rotativeEntries]
@@ -252,7 +273,10 @@ export default function CompletionPage() {
   const isSelectedGameInRotativeList = matchingGame ? rotativeByGameId.has(matchingGame.id) : false;
   const isHypeParticipationOnly = form.hypeParticipation && !form.hypeCompletedBonus;
   const hasUserCompletionForGame = matchingGame
-    ? myCompletionRequests.some((request) => request.gameId === matchingGame.id && request.status !== 'CANCELLED')
+    ? myCompletionRequests.some(
+        // A equipe recebe os pedidos de todo mundo: conta so os da propria pessoa.
+        (request) => request.userId === user?.id && request.gameId === matchingGame.id && request.status !== 'CANCELLED'
+      )
     : false;
   const gameSuggestions = useMemo(() => {
     const normalizedQuery = form.gameName.trim().toLowerCase();
@@ -343,6 +367,7 @@ export default function CompletionPage() {
   const resetForm = () => {
     setForm(buildInitialForm());
     setPlatinumFile(null);
+    setSegundaImagem(null);
     limparSelecaoSteam();
     setAviso(null);
   };
@@ -380,6 +405,16 @@ export default function CompletionPage() {
       platinum: checked ? false : prev.platinum,
       coop: checked ? false : prev.coop,
       coopPlayerUserIds: checked ? [] : prev.coopPlayerUserIds,
+      hypePlayerUserIds: checked ? prev.hypePlayerUserIds : [],
+    }));
+  };
+
+  const toggleHypePlayer = (selectedUserId) => {
+    setForm((prev) => ({
+      ...prev,
+      hypePlayerUserIds: prev.hypePlayerUserIds.includes(selectedUserId)
+        ? prev.hypePlayerUserIds.filter((id) => id !== selectedUserId)
+        : [...prev.hypePlayerUserIds, selectedUserId],
     }));
   };
 
@@ -540,6 +575,8 @@ export default function CompletionPage() {
                   ...prev,
                   coop: event.target.checked,
                   coopPlayerUserIds: event.target.checked ? prev.coopPlayerUserIds : [],
+                  // Coop e participantes do Hype nao vao juntos no mesmo registro.
+                  hypePlayerUserIds: event.target.checked ? [] : prev.hypePlayerUserIds,
                 }))
               }
               disabled={isHypeParticipationOnly}
@@ -568,8 +605,7 @@ export default function CompletionPage() {
                 <Users className="h-4 w-4" aria-hidden="true" /> Quem jogou com você ({form.coopPlayerUserIds.length + 1}/4)
               </p>
               <div className="flex flex-wrap gap-2">
-                {users
-                  .filter((candidate) => candidate.id !== user.id)
+                {outrosJogadores
                   .map((candidate) => {
                     const checked = form.coopPlayerUserIds.includes(candidate.id);
                     return (
@@ -588,15 +624,55 @@ export default function CompletionPage() {
                     );
                   })}
               </div>
+              {nomesJaCadastrados.length > 0 && (
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Já têm esse jogo cadastrado: {nomesJaCadastrados.join(', ')}</p>
+              )}
+            </div>
+          )}
+
+          {/* Outros participantes do Hype: cada um ganha um registro so de participacao (+1) */}
+          {form.hypeParticipation && !form.coop && (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                <Users className="h-4 w-4" aria-hidden="true" /> Quem mais participou do Hype?
+                {form.hypePlayerUserIds.length > 0 && <span className="normal-case tracking-normal">({form.hypePlayerUserIds.length})</span>}
+              </p>
+              <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                Opcional. Cada pessoa marcada ganha um registro de <strong>participação</strong> (+1), aprovado junto com o seu.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {outrosJogadores.map((candidate) => {
+                  const checked = form.hypePlayerUserIds.includes(candidate.id);
+                  return (
+                    <label
+                      key={candidate.id}
+                      className={`cursor-pointer rounded-full border px-3 py-1 text-sm font-semibold transition ${
+                        checked
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-slate-300 bg-white text-slate-700 hover:border-primary/60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200'
+                      }`}
+                    >
+                      <input type="checkbox" checked={checked} onChange={() => toggleHypePlayer(candidate.id)} className="sr-only" />
+                      {checked ? '✓ ' : ''}
+                      {candidate.displayName}
+                    </label>
+                  );
+                })}
+                {outrosJogadores.length === 0 && <span className="text-sm text-slate-500 dark:text-slate-400">Todo mundo já tem esse jogo cadastrado.</span>}
+              </div>
+              {nomesJaCadastrados.length > 0 && (
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Já têm esse jogo cadastrado: {nomesJaCadastrados.join(', ')}</p>
+              )}
             </div>
           )}
         </div>
 
-        {/* Anexo */}
+        {/* Anexo: 1a imagem obrigatoria, 2a opcional */}
         <div>
           <h2 className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
             Comprovante <span className="text-red-500">*</span>
           </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 p-3 transition hover:border-primary hover:bg-primary/5 dark:border-slate-700">
             <input type="file" accept="image/*" onChange={handleFileChange} className="sr-only" />
             {previewUrl ? (
@@ -617,6 +693,38 @@ export default function CompletionPage() {
               </span>
             </span>
           </label>
+
+          <div className="relative">
+            <label className="flex h-full cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 p-3 transition hover:border-primary hover:bg-primary/5 dark:border-slate-700">
+              <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setSegundaImagem)} className="sr-only" />
+              {previewSegunda ? (
+                <img src={previewSegunda} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+              ) : (
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+                  <ImagePlus className="h-6 w-6" aria-hidden="true" />
+                </span>
+              )}
+              <span className="min-w-0 pr-6">
+                <span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">
+                  {segundaImagem ? segundaImagem.name : '2ª imagem (opcional)'}
+                </span>
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  {segundaImagem ? `${formatFileSize(segundaImagem.size)} · clique para trocar` : 'Ex.: tempo de jogo, troféu ou outra tela'}
+                </span>
+              </span>
+            </label>
+            {segundaImagem && (
+              <button
+                type="button"
+                onClick={() => setSegundaImagem(null)}
+                title="Tirar a 2ª imagem"
+                className="absolute right-2 top-2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          </div>
         </div>
 
         {aviso && (

@@ -17,6 +17,12 @@ public interface CompletionRepository extends JpaRepository<Completion, UUID> {
     boolean existsByEditionIdAndGameIdAndStatus(UUID editionId, UUID gameId, CompletionStatus status);
     /** Pedidos cancelados nao bloqueiam um novo registro do mesmo jogo. */
     boolean existsByUserIdAndGameIdAndStatusNot(UUID userId, UUID gameId, CompletionStatus status);
+
+    boolean existsByExtraProofId(UUID extraProofId);
+
+    // Quem ja tem registro (nao cancelado) desse jogo: a tela esconde essas pessoas das listas de coop/hype.
+    @Query("select distinct c.user.id from Completion c where c.game.id = :gameId and c.status <> :status")
+    List<UUID> listUserIdsByGameIdAndStatusNot(UUID gameId, CompletionStatus status);
     boolean existsByUserIdAndGameIdAndStatus(UUID userId, UUID gameId, CompletionStatus status);
     Optional<Completion> findByIdAndEditionId(UUID completionId, UUID editionId);
 

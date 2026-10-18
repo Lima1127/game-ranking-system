@@ -91,6 +91,22 @@ public class PlatinumProofService {
     }
 
     @Transactional
+    /** Segunda imagem de um registro: precisa existir e ainda nao estar ligada a nenhum registro. */
+    public void ensureAvailableAsExtra(UUID proofId, UUID mainProofId) {
+        PlatinumProof proof = findById(proofId);
+        if (proofId.equals(mainProofId) || proof.getCompletion() != null) {
+            throw new BusinessException("A segunda imagem precisa ser diferente da primeira");
+        }
+    }
+
+    public void deleteById(UUID proofId) {
+        platinumProofRepository.findById(proofId).ifPresent(proof -> {
+            platinumProofRepository.delete(proof);
+            platinumProofRepository.flush();
+            fileStorageService.delete(proof.getStorageKey());
+        });
+    }
+
     public void deleteByCompletionId(UUID completionId) {
         platinumProofRepository.findByCompletionId(completionId).ifPresent(proof -> {
             platinumProofRepository.delete(proof);

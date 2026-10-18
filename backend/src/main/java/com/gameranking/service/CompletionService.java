@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,16 +67,20 @@ public class CompletionService {
 
         Game game = gameService.getById(request.gameId());
         List<User> coopParticipants = resolveCoopParticipants(user, request);
+        List<User> hypeParticipants = resolveHypeParticipants(user, request);
         int coopPlayersCount = request.coop() ? coopParticipants.size() + 1 : 0;
         boolean hypeParticipationOnly = request.hypeParticipation() && !request.hypeCompletedBonus();
         UUID coopGroupId = request.coop() ? UUID.randomUUID() : null;
-        Set<UUID> involvedUserIds = request.coop()
-                ? java.util.stream.Stream.concat(
-                                java.util.stream.Stream.of(user.getId()),
-                                coopParticipants.stream().map(User::getId)
-                        )
-                        .collect(Collectors.toSet())
-                : Set.of(user.getId());
+        // Grupo de Hype: os registros aparecem e sao aprovados juntos em Solicitacoes (mesmo campo do grupo coop).
+        if (coopGroupId == null && !hypeParticipants.isEmpty()) {
+            coopGroupId = UUID.randomUUID();
+        }
+        Set<UUID> involvedUserIds = java.util.stream.Stream.of(
+                        java.util.stream.Stream.of(user.getId()),
+                        coopParticipants.stream().map(User::getId),
+                        hypeParticipants.stream().map(User::getId))
+                .flatMap(ids -> ids)
+                .collect(Collectors.toSet());
 
         List<String> duplicatedUsers = involvedUserIds.stream()
                 .map(involvedUserId -> userRepository.findById(involvedUserId).orElse(null))
@@ -88,6 +93,12 @@ public class CompletionService {
 
         if (request.platinumProofId() == null) {
             throw new BusinessException("Toda solicitacao exige um anexo");
+        }
+        if (request.extraProofId() != null) {
+            platinumProofService.ensureAvailableAsExtra(request.extraProofId(), request.platinumProofId());
+            if (completionRepository.existsByExtraProofId(request.extraProofId())) {
+                throw new BusinessException("Essa imagem ja foi usada em outro registro");
+            }
         }
 
         CompletionDateRules.validate(edition, request.completedAt());
@@ -127,6 +138,7 @@ public class CompletionService {
                 .hypeCompletedBonus(request.hypeCompletedBonus())
                 .rotativeList(request.rotativeList() || rotativeListService.isGameInActiveList(edition.getId(), game.getId()))
                 .notes(request.notes())
+                .extraProofId(request.extraProofId())
                 .status(CompletionStatus.PENDING)
                 .build();
 
@@ -162,6 +174,35 @@ public class CompletionService {
             }
             completionRepository.saveAll(additionalRequests);
             additionalRequests.forEach(additional -> createdIds.add(additional.getId()));
+        }
+
+        // Outros participantes do Hype: so participacao (+1), sem horas nem outros bonus.
+        if (!hypeParticipants.isEmpty()) {
+            List<Completion> hypeRequests = new ArrayList<>();
+            for (User participant : hypeParticipants) {
+                hypeRequests.add(Completion.builder()
+                        .id(UUID.randomUUID())
+                        .edition(edition)
+                        .user(participant)
+                        .game(game)
+                        .completedAt(request.completedAt() == null ? LocalDate.now() : request.completedAt())
+                        .hoursPlayed(BigDecimal.ZERO)
+                        .firstTimeEver(false)
+                        .firstInEdition(false)
+                        .underdogAwarded(false)
+                        .completedInReleaseYear(false)
+                        .platinum(false)
+                        .coop(false)
+                        .coopGroupId(coopGroupId)
+                        .hypeParticipation(true)
+                        .hypeCompletedBonus(false)
+                        .rotativeList(false)
+                        .notes("Participacao no Hype registrada por " + user.getDisplayName())
+                        .status(CompletionStatus.PENDING)
+                        .build());
+            }
+            completionRepository.saveAll(hypeRequests);
+            hypeRequests.forEach(additional -> createdIds.add(additional.getId()));
         }
 
         // Cada jogador do coop e conferido no proprio perfil Steam. Roda depois de salvar, em segundo plano.
@@ -243,6 +284,37 @@ public class CompletionService {
         // O jogo pode ter sido trocado: confere de novo na Steam.
         steamVerificationService.verifyAfterCommit(List.of(completion.getId()));
         return new CompletionResponse(completion.getId(), completion.getUser().getId(), completion.getGame().getId(), 0, completion.getStatus());
+    }
+
+    private List<User> resolveHypeParticipants(User requester, CreateCompletionRequest request) {
+        List<UUID> ids = request.hypePlayerUserIds() == null
+                ? List.of()
+                : request.hypePlayerUserIds().stream().distinct().toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        if (!request.hypeParticipation()) {
+            throw new BusinessException("Outros participantes so podem ser informados na participacao do Hype");
+        }
+        if (request.coop()) {
+            throw new BusinessException("Use o cooperativo ou os participantes do Hype, nao os dois no mesmo registro");
+        }
+        if (ids.contains(requester.getId())) {
+            throw new BusinessException("Nao inclua voce mesmo na lista do Hype");
+        }
+
+        List<User> participants = userRepository.findAllById(ids).stream()
+                .filter(candidate -> Boolean.TRUE.equals(candidate.getActive()))
+                .toList();
+        if (participants.size() != ids.size()) {
+            throw new BusinessException("Um ou mais jogadores selecionados nao foram encontrados");
+        }
+        return participants;
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> listRegisteredUserIds(UUID gameId) {
+        return completionRepository.listUserIdsByGameIdAndStatusNot(gameId, CompletionStatus.CANCELLED);
     }
 
     private List<User> resolveCoopParticipants(User requester, CreateCompletionRequest request) {
