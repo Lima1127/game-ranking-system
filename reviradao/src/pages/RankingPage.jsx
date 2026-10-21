@@ -10,6 +10,7 @@ import RuleEmojiStrip from '../components/RuleEmojiStrip';
 import { EtiquetasDoJogo } from '../components/Etiquetas';
 import { scoringRules, pointsByRuleCode } from '../data/scoringRules';
 import { formatarData, formatarHoras } from '../utils/formatarData';
+import { foiZerado, soParticipacaoNoHype } from '../utils/jogoZerado';
 
 // Quantos jogos aparecem no histórico da página (o resto fica em "Ver completo").
 const HISTORICO_NA_PAGINA = 5;
@@ -83,7 +84,8 @@ function LinhaJogo({ completion, row, mostrarJogador = true }) {
           </div>
           <div className="truncate text-xs text-slate-500 dark:text-slate-400">
             {mostrarJogador && <span className="font-semibold text-slate-600 dark:text-slate-300">{completion.userDisplayName} · </span>}
-            {formatarData(completion.completedAt)} · {formatarHoras(completion.hoursPlayed)}
+            {formatarData(completion.completedAt)} ·{' '}
+            {soParticipacaoNoHype(completion) ? '🔥 Participação no Hype' : formatarHoras(completion.hoursPlayed)}
           </div>
           <RuleEmojiStrip ruleCodes={completion.ruleCodes} className="mt-2" />
         </div>
@@ -259,7 +261,8 @@ function TabelaRanking({ ranking, jogosPorUsuario, usuarioAtualId, onSelecionar 
         <ol className="space-y-1">
           {ranking.map((row, index) => {
             const souEu = row.userId === usuarioAtualId;
-            const jogos = (jogosPorUsuario[row.userId] || []).length;
+            // So jogos zerados: participacao no Hype da ponto, mas nao e jogo zerado.
+            const jogos = (jogosPorUsuario[row.userId] || []).filter(foiZerado).length;
             return (
               <li key={row.userId}>
                 <button
@@ -336,7 +339,7 @@ function Historico({ completions, rankingPorUsuario }) {
       {completoAberto && (
         <JanelaFoco
           titulo="Histórico de conquistas"
-          subtitulo={`${ordenados.length} jogos aprovados, do mais recente ao mais antigo`}
+          subtitulo={`${ordenados.length} registros aprovados, do mais recente ao mais antigo`}
           onFechar={() => setCompletoAberto(false)}
         >
           <ul className="space-y-3">
@@ -357,6 +360,14 @@ const ORDENACOES = {
   alpha: (a, b) => String(a.gameName || '').localeCompare(String(b.gameName || ''), 'pt-BR'),
 };
 
+/** "3 jogos zerados · 2 participações no Hype" */
+function resumoDosJogos(jogos) {
+  const zerados = jogos.filter(foiZerado).length;
+  const participacoes = jogos.length - zerados;
+  const texto = `${zerados} ${zerados === 1 ? 'jogo zerado' : 'jogos zerados'}`;
+  return participacoes > 0 ? `${texto} · ${participacoes} ${participacoes === 1 ? 'participação' : 'participações'} no Hype` : texto;
+}
+
 function JogosDoJogador({ jogador, jogos, onFechar }) {
   const [ordem, setOrdem] = useState('date');
   const ordenados = [...jogos].sort((a, b) => ORDENACOES[ordem](a, b) || ORDENAR_POR_DATA(a, b));
@@ -364,7 +375,7 @@ function JogosDoJogador({ jogador, jogos, onFechar }) {
   return (
     <JanelaFoco
       titulo={`Jogos de ${jogador.displayName}`}
-      subtitulo={`${jogador.totalPoints} pts · ${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`}
+      subtitulo={`${jogador.totalPoints} pts · ${resumoDosJogos(jogos)}`}
       icone={<Avatar row={jogador} size="h-10 w-10" />}
       onFechar={onFechar}
     >
@@ -430,7 +441,8 @@ export default function RankingPage() {
       nomePorUsuario[row.userId] = row.displayName;
     });
 
-    const horasTotais = completions.reduce((soma, completion) => soma + Number(completion.hoursPlayed || 0), 0);
+    const zerados = completions.filter(foiZerado);
+    const horasTotais = zerados.reduce((soma, completion) => soma + Number(completion.hoursPlayed || 0), 0);
 
     // Destaque = quem tem o maior valor; empates aparecem juntos ("A e B").
     const destaque = (titulo, emoji, valorDe, formatar) => {
@@ -445,12 +457,12 @@ export default function RankingPage() {
       rankingPorUsuario: Object.fromEntries(ranking.map((row) => [row.userId, row])),
       totais: [
         { label: 'Jogadores', valor: ranking.length },
-        { label: 'Jogos', valor: completions.length },
+        { label: 'Jogos', valor: zerados.length },
         { label: 'Horas', valor: Math.floor(horasTotais) },
-        { label: 'Platinas', valor: completions.filter((completion) => completion.platinum).length },
+        { label: 'Platinas', valor: zerados.filter((completion) => completion.platinum).length },
       ],
       destaques: [
-        destaque('Quem mais zerou', '🎮', (jogos) => jogos.length, (v) => `${v} ${v === 1 ? 'jogo' : 'jogos'}`),
+        destaque('Quem mais zerou', '🎮', (jogos) => jogos.filter(foiZerado).length, (v) => `${v} ${v === 1 ? 'jogo' : 'jogos'}`),
         destaque('Quem mais jogou', '⏱️', (jogos) => jogos.reduce((s, j) => s + Number(j.hoursPlayed || 0), 0), (v) => formatarHoras(Math.floor(v))),
         destaque('Quem mais platinou', '🏆', (jogos) => jogos.filter((j) => j.platinum).length, (v) => `${v} ${v === 1 ? 'platina' : 'platinas'}`),
       ],

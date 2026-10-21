@@ -11,6 +11,7 @@ import { MAX_ORIGINAL_IMAGE_SIZE } from '../utils/compressImage';
 import { scoringRules } from '../data/scoringRules';
 import { sortearFrase } from '../data/frasesBoasVindas';
 import { formatarData } from '../utils/formatarData';
+import { foiZerado } from '../utils/jogoZerado';
 import { isStaffRole } from '../utils/roles';
 
 // "Jogo fechado" já aparece como contagem de jogos; as demais regras viram medalhas.
@@ -63,6 +64,8 @@ export default function MenuPage() {
     const pontos = myRow?.totalPoints ?? 0;
     const lider = ranking[0]?.totalPoints ?? 0;
     const mine = completions.filter((completion) => completion.userId === user?.id);
+    // Participacao no Hype (sem concluir) da ponto e medalha, mas nao conta como jogo zerado.
+    const meusZerados = mine.filter(foiZerado);
 
     const ruleCounts = {};
     mine.forEach((completion) => {
@@ -77,14 +80,14 @@ export default function MenuPage() {
       posicao: myRow ? index + 1 : null,
       totalJogadores: ranking.length,
       faltamLider: myRow ? Math.max(0, lider - pontos) : 0,
-      jogos: mine.length,
-      horas: mine.reduce((total, completion) => total + Number(completion.hoursPlayed || 0), 0),
-      platinas: mine.filter((completion) => completion.platinum).length,
+      jogos: meusZerados.length,
+      horas: meusZerados.reduce((total, completion) => total + Number(completion.hoursPlayed || 0), 0),
+      platinas: meusZerados.filter((completion) => completion.platinum).length,
       medalhas: medalRules
         .map((rule) => ({ ...rule, count: ruleCounts[rule.code] || 0 }))
         .filter((rule) => rule.count > 0),
       // Datas no formato AAAA-MM-DD: a comparacao de texto ja ordena do mais novo para o mais antigo.
-      ultimosJogos: [...mine]
+      ultimosJogos: [...meusZerados]
         .sort((a, b) => String(b.completedAt || '').localeCompare(String(a.completedAt || '')))
         .slice(0, 3),
     };
