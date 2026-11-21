@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
+  CalendarClock,
   ChevronDown,
   ClipboardList,
   FileText,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { isStaffRole, roleLabel } from '../utils/roles';
+import { isFundadorRole, isStaffRole, roleLabel } from '../utils/roles';
 import JanelaAlterarSenha from './JanelaAlterarSenha';
 
 const ABAS = [
@@ -34,7 +35,11 @@ const ABAS_ADMIN = [
   { to: '/admin/records', rotulo: 'Registros', icone: FileText },
   { to: '/admin/users', rotulo: 'Usuários', icone: Users },
   { to: '/admin/logs', rotulo: 'Logs', icone: ClipboardList },
+  { to: '/admin/edition', rotulo: 'Virada de edição', icone: CalendarClock, soFundador: true },
 ];
+
+/** Abas do Admin que este cargo enxerga (a virada de edição é só do Fundador). */
+const abasAdminPara = (role) => ABAS_ADMIN.filter((aba) => !aba.soFundador || isFundadorRole(role));
 
 const classeAba = (ativa) =>
   `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition ${
@@ -162,7 +167,7 @@ export function CabecalhoSite({ isDarkMode, onToggleTheme }) {
                 </button>
                 {adminAberto && (
                   <div className={`${classeCaixaMenu} w-48`} role="menu" onClick={(event) => event.target.closest('a') && setAdminAberto(false)}>
-                    {ABAS_ADMIN.map(({ to, rotulo, icone }) => (
+                    {abasAdminPara(user?.role).map(({ to, rotulo, icone }) => (
                       <ItemMenu key={to} to={to} icone={icone} role="menuitem">
                         {rotulo}
                       </ItemMenu>
@@ -199,7 +204,7 @@ export function CabecalhoSite({ isDarkMode, onToggleTheme }) {
                     <ItemMenu key={to} to={to} icone={icone} role="menuitem">{rotulo}</ItemMenu>
                   ))}
                   {equipe &&
-                    ABAS_ADMIN.map(({ to, rotulo, icone }) => (
+                    abasAdminPara(user?.role).map(({ to, rotulo, icone }) => (
                       <ItemMenu key={to} to={to} icone={icone} role="menuitem">Admin · {rotulo}</ItemMenu>
                     ))}
                 </div>

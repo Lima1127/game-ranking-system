@@ -35,6 +35,14 @@ class CompletionDateRulesTest {
     }
 
     @Test
+    void edicaoQueAindaNaoComecouRecusaComMensagemClara() {
+        LocalDate antesDoInicio = LocalDate.of(2025, 12, 28);
+        assertThatThrownBy(() -> CompletionDateRules.validate(edition, LocalDate.of(2025, 12, 28), antesDoInicio))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("so comeca em");
+    }
+
+    @Test
     void depoisDoFimDaEdicaoOLimiteEhOFimDaEdicao() {
         LocalDate afterEdition = LocalDate.of(2027, 2, 1);
         assertThatCode(() -> CompletionDateRules.validate(edition, LocalDate.of(2026, 12, 31), afterEdition)).doesNotThrowAnyException();

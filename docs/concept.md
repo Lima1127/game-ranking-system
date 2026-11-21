@@ -51,9 +51,20 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   - Só funciona pelo endereço configurado em `app.public-url` (por túnel, troque esse endereço).
 
 ### Edição
-- É a competição do ano. Hoje existe apenas **"Reviradao 2026"** (01/01/2026 a 31/12/2026),
-  criada pela migration V1. Não há tela para criar edições.
-- Tudo acontece na **edição ativa**; só pode haver uma ativa.
+- É a competição do ano. A primeira, **"Reviradao 2026"** (01/01/2026 a 31/12/2026), foi
+  criada pela migration V1.
+- Tudo acontece na **edição ativa**; só pode haver uma ativa (garantido também no banco).
+- **Virada de edição** (*Admin → Virada de edição*, só o **Fundador**):
+  - A tela sugere a próxima (nome, ano e período do ano seguinte) e mostra uma checagem.
+  - **Bloqueia** enquanto houver, na edição atual, pedido de registro, pedido de atualização ou
+    obrigação em revisão pendentes: a equipe resolve tudo antes.
+  - Obrigações **em aberto** (pendentes/aceitas) são encerradas como canceladas, **sem penalidade**.
+  - A nova edição precisa começar **depois do fim** da atual e não pode repetir o ano.
+  - Para confirmar, o Fundador digita o nome da edição atual. Fica no log (`EDITION_ROLLOVER`).
+  - A edição antiga fica **só para consulta**: o ranking dela fica congelado e aparece no seletor
+    de edição da tela Ranking. A nova começa do zero (ranking, obrigações e lista rotativa).
+  - Se a virada for feita antes do início da nova edição, os registros só são aceitos a partir
+    da data de início.
 
 ### Jogos
 - Catálogo compartilhado. Quando alguém digita um jogo que não existe, ele é criado na hora.
@@ -75,7 +86,8 @@ tomadas pelo grupo. Se o código e este documento divergirem, trate como bug e c
   pelo próprio jogador ou por um admin enquanto estiver pendente.
 - **Data da conclusão:** precisa estar entre o início da edição e o menor valor entre o fim da
   edição e **hoje** (não aceita datas passadas fora da edição nem datas futuras).
-- **Um registro por jogador e jogo**, considerando pendentes e aprovados de **qualquer edição**.
+- **Um registro por jogador e jogo em cada edição**, considerando pendentes e aprovados.
+  Numa edição nova, o jogador pode registrar de novo um jogo que já zerou numa edição anterior.
   Pedidos **cancelados não contam**: quem cancelou pode enviar o mesmo jogo de novo.
 - Registro já aprovado pode receber um **pedido de atualização** (horas, data, platina, hype,
   primeira vez, em dia, observações, novo anexo). **Coop e lista rotativa não podem ser
@@ -244,6 +256,9 @@ Zerou pela primeira vez, foi o primeiro da edição, 30h, sem platina:
 | 28/09/2026 | Ano de lançamento dos jogos é opcional e **definido apenas por admin**. |
 | 15/10/2026 | Cargos **Fundador > Co-fundador > Admin > Jogador**; Fundador só pelo banco. |
 | 15/10/2026 | Nome de exibição só é alterado pela equipe; senha, pelo próprio jogador (Menu). |
+| 21/11/2026 | **Virada de edição** pelo Fundador, bloqueada por pendências; obrigações abertas encerradas sem penalidade. |
+| 21/11/2026 | O mesmo jogo pode ser registrado de novo **em outra edição**. |
+| 21/11/2026 | Rankings de edições encerradas ficam visíveis (só consulta) no seletor do Ranking. |
 
 ## Regras ainda não definidas
 

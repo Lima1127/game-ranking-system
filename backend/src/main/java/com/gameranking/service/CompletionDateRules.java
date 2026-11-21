@@ -19,6 +19,11 @@ final class CompletionDateRules {
             throw new BusinessException("Informe a data de conclusao");
         }
 
+        if (today.isBefore(edition.getStartsAt())) {
+            // Virada feita antes do fim do ano: a edicao nova ainda nao comecou.
+            throw new BusinessException("A edicao " + edition.getName() + " so comeca em " + edition.getStartsAt());
+        }
+
         LocalDate latestAllowed = edition.getEndsAt().isBefore(today) ? edition.getEndsAt() : today;
         if (completedAt.isBefore(edition.getStartsAt()) || completedAt.isAfter(latestAllowed)) {
             throw new BusinessException(
