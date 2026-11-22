@@ -419,14 +419,23 @@ function JogosDoJogador({ jogador, jogos, onFechar }) {
 export default function RankingPage() {
   const { user } = useAuth();
   const [jogadorSelecionadoId, setJogadorSelecionadoId] = useState(null);
+  // null = edição ativa. Edições antigas ficam disponíveis só para consulta.
+  const [edicaoId, setEdicaoId] = useState(null);
+
+  const { data: edicoes = [] } = useQuery({
+    queryKey: ['editions'],
+    queryFn: async () => (await api.get('/editions')).data,
+  });
+  const edicaoVista = edicaoId ? edicoes.find((edicao) => edicao.id === edicaoId) : edicoes.find((edicao) => edicao.active);
+  const params = edicaoId ? { editionId: edicaoId } : undefined;
 
   const { data: ranking = [], isLoading, error } = useQuery({
-    queryKey: ['ranking'],
-    queryFn: async () => (await api.get('/ranking')).data,
+    queryKey: ['ranking', edicaoId],
+    queryFn: async () => (await api.get('/ranking', { params })).data,
   });
   const { data: completions = [], isLoading: completionsLoading } = useQuery({
-    queryKey: ['ranking-completions'],
-    queryFn: async () => (await api.get('/completions')).data,
+    queryKey: ['ranking-completions', edicaoId],
+    queryFn: async () => (await api.get('/completions', { params })).data,
   });
 
   const { jogosPorUsuario, rankingPorUsuario, totais, destaques } = useMemo(() => {
@@ -498,8 +507,40 @@ export default function RankingPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-4xl font-bold">Ranking</h1>
-        <LegendaPontuacao />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* O seletor só aparece quando já existe mais de uma edição */}
+          {edicoes.length > 1 && (
+            <select
+              value={edicaoId || ''}
+              onChange={(event) => {
+                setJogadorSelecionadoId(null);
+                setEdicaoId(event.target.value || null);
+              }}
+              aria-label="Escolher edição"
+              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {edicoes.map((edicao) => (
+                <option key={edicao.id} value={edicao.active ? '' : edicao.id}>
+                  {edicao.name}
+                  {edicao.active ? ' (atual)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          <LegendaPontuacao />
+        </div>
       </div>
+
+      {edicaoVista && !edicaoVista.active && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          <span>
+            🏛️ Você está vendo a edição encerrada <strong>{edicaoVista.name}</strong>. O resultado é final, só para consulta.
+          </span>
+          <button type="button" onClick={() => setEdicaoId(null)} className="font-bold underline">
+            Voltar para a edição atual
+          </button>
+        </div>
+      )}
 
       {/* Telas largas: Resumo+Pódio | Classificação | Histórico. Médias: 2 colunas. Celular: uma embaixo da outra.
           O layout aparece sempre, mesmo sem jogos aprovados (o pódio mostra os lugares vagos). */}

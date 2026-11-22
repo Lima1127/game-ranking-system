@@ -12,6 +12,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ObligationRepository extends JpaRepository<Obligation, UUID> {
+    long countByEditionIdAndStatusIn(UUID editionId, List<ObligationStatus> statuses);
+
+    List<Obligation> findAllByEditionIdAndStatusIn(UUID editionId, List<ObligationStatus> statuses);
+
     long countByEditionIdAndAssignedByIdAndSlotConsumedTrue(UUID editionId, UUID assignedById);
 
     boolean existsByEditionIdAndAssignedToIdAndGameIdAndStatusIn(UUID editionId, UUID assignedToId, UUID gameId, List<ObligationStatus> statuses);

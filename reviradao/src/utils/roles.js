@@ -11,6 +11,11 @@ export function isStaffRole(role) {
   return (ROLES[role]?.nivel ?? 0) >= ROLES.ADMIN.nivel;
 }
 
+/** Só o Fundador faz a virada de edição. */
+export function isFundadorRole(role) {
+  return role === 'FUNDADOR';
+}
+
 export function roleLabel(role) {
   return ROLES[role]?.label || 'Jogador';
 }
