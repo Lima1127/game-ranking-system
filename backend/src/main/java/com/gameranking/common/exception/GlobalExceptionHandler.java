@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
                 : ex.getMessage();
 
         if (detailedMessage != null && detailedMessage.contains("uq_completions_user_game")) {
-            return build(HttpStatus.CONFLICT, "O usuario ja possui uma conclusao para esse jogo.");
+            return build(HttpStatus.CONFLICT, "O usuario ja possui uma conclusao para esse jogo nesta edicao.");
         }
         if (detailedMessage != null && detailedMessage.contains("platinum_proofs_completion_id_key")) {
             return build(HttpStatus.CONFLICT, "Ja existe um anexo vinculado a este registro. Tente novamente.");

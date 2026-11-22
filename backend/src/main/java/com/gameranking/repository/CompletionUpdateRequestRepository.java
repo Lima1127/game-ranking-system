@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface CompletionUpdateRequestRepository extends JpaRepository<CompletionUpdateRequest, UUID> {
+    long countByCompletionEditionIdAndStatus(UUID editionId, CompletionUpdateStatus status);
+
     boolean existsByCompletionIdAndStatus(UUID completionId, CompletionUpdateStatus status);
     Optional<CompletionUpdateRequest> findByIdAndCompletionEditionId(UUID updateRequestId, UUID editionId);
 

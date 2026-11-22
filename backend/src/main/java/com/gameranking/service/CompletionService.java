@@ -84,11 +84,11 @@ public class CompletionService {
 
         List<String> duplicatedUsers = involvedUserIds.stream()
                 .map(involvedUserId -> userRepository.findById(involvedUserId).orElse(null))
-                .filter(involvedUser -> involvedUser != null && completionRepository.existsByUserIdAndGameIdAndStatusNot(involvedUser.getId(), game.getId(), CompletionStatus.CANCELLED))
+                .filter(involvedUser -> involvedUser != null && completionRepository.existsByUserIdAndGameIdAndEditionIdAndStatusNot(involvedUser.getId(), game.getId(), edition.getId(), CompletionStatus.CANCELLED))
                 .map(User::getDisplayName)
                 .toList();
         if (!duplicatedUsers.isEmpty()) {
-            throw new BusinessException("Ja existe conclusao registrada para este jogo para: " + String.join(", ", duplicatedUsers));
+            throw new BusinessException("Ja existe conclusao registrada para este jogo nesta edicao para: " + String.join(", ", duplicatedUsers));
         }
 
         if (request.platinumProofId() == null) {
@@ -314,7 +314,10 @@ public class CompletionService {
 
     @Transactional(readOnly = true)
     public List<UUID> listRegisteredUserIds(UUID gameId) {
-        return completionRepository.listUserIdsByGameIdAndStatusNot(gameId, CompletionStatus.CANCELLED);
+        UUID editionId = editionRepository.findByActiveTrue()
+                .orElseThrow(() -> new NotFoundException("Edicao ativa nao encontrada"))
+                .getId();
+        return completionRepository.listUserIdsByGameIdAndEditionIdAndStatusNot(gameId, editionId, CompletionStatus.CANCELLED);
     }
 
     private List<User> resolveCoopParticipants(User requester, CreateCompletionRequest request) {

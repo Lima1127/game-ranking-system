@@ -15,14 +15,16 @@ import java.util.UUID;
 
 public interface CompletionRepository extends JpaRepository<Completion, UUID> {
     boolean existsByEditionIdAndGameIdAndStatus(UUID editionId, UUID gameId, CompletionStatus status);
-    /** Pedidos cancelados nao bloqueiam um novo registro do mesmo jogo. */
-    boolean existsByUserIdAndGameIdAndStatusNot(UUID userId, UUID gameId, CompletionStatus status);
+    /** Pedidos cancelados nao bloqueiam um novo registro do mesmo jogo. Vale dentro de cada edicao. */
+    boolean existsByUserIdAndGameIdAndEditionIdAndStatusNot(UUID userId, UUID gameId, UUID editionId, CompletionStatus status);
+
+    long countByEditionIdAndStatus(UUID editionId, CompletionStatus status);
 
     boolean existsByExtraProofId(UUID extraProofId);
 
-    // Quem ja tem registro (nao cancelado) desse jogo: a tela esconde essas pessoas das listas de coop/hype.
-    @Query("select distinct c.user.id from Completion c where c.game.id = :gameId and c.status <> :status")
-    List<UUID> listUserIdsByGameIdAndStatusNot(UUID gameId, CompletionStatus status);
+    // Quem ja tem registro (nao cancelado) desse jogo na edicao: a tela esconde essas pessoas das listas de coop/hype.
+    @Query("select distinct c.user.id from Completion c where c.game.id = :gameId and c.edition.id = :editionId and c.status <> :status")
+    List<UUID> listUserIdsByGameIdAndEditionIdAndStatusNot(UUID gameId, UUID editionId, CompletionStatus status);
     boolean existsByUserIdAndGameIdAndStatus(UUID userId, UUID gameId, CompletionStatus status);
     Optional<Completion> findByIdAndEditionId(UUID completionId, UUID editionId);
 

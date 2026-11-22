@@ -16,6 +16,7 @@ import RotativeListPage from './pages/RotativeListPage';
 import AdminRecordsPage from './pages/AdminRecordsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminEditionPage from './pages/AdminEditionPage';
 import { isStaffRole } from './utils/roles';
 import { BarraInferior, CabecalhoSite } from './components/CabecalhoSite';
 
@@ -205,6 +206,16 @@ function AppContent({ isDarkMode, onToggleTheme }) {
           <AdminRoute>
             <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
               <AdminAuditLogsPage />
+            </MainLayout>
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/edition"
+        element={
+          <AdminRoute>
+            <MainLayout isDarkMode={isDarkMode} onToggleTheme={onToggleTheme}>
+              <AdminEditionPage />
             </MainLayout>
           </AdminRoute>
         }

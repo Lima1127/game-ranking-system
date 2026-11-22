@@ -6,11 +6,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface EditionRepository extends JpaRepository<Edition, UUID> {
     Optional<Edition> findByActiveTrue();
+
+    /** Da mais nova para a mais antiga (seletor de edicao do ranking). */
+    List<Edition> findAllByOrderByStartsAtDesc();
+
+    boolean existsByYear(Integer year);
 
     /**
      * SELECT ... FOR UPDATE na edicao: serializa operacoes que calculam pontos
